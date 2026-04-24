@@ -6,12 +6,14 @@ import com.auction.server.models.User.Bidder;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.chrono.ChronoLocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Auction extends Entity implements Serializable {
     private Item item;
     private double currentPrice;
+    private double stepPrice;
     private Bidder highestBidder;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
@@ -22,8 +24,9 @@ public class Auction extends Entity implements Serializable {
     private static final int THRESHOLD_SECONDS = 30; // Nếu thầu trong 30s cuối
     private static final int EXTENSION_SECONDS = 60; // Thì cộng thêm 60s
 
-    public Auction(Item item, LocalDateTime startTime, LocalDateTime endtime){
+    public Auction(Item item, double stepPrice, LocalDateTime startTime, LocalDateTime endtime){
         this.item = item;
+        this.stepPrice = stepPrice;
         this.currentPrice = item.getStartingPrice();
         this.startTime = startTime;
         this.endTime = endtime;
@@ -48,7 +51,24 @@ public class Auction extends Entity implements Serializable {
         LocalDateTime now = LocalDateTime.now();
         refreshStatus(now);
 
-        //2. Kiểm tra trạng thái phiên đấu giá
+        //2. Kiểm tra hợp lệ
+        if (this.checkBid(bidder,amount)){
+            //hoàn tiền người đặt giá cao nhất cũ
+            this.highestBidder.refund(this.currentPrice);
+
+            //update người đặt giá cao nhất mới
+            this.updateBid(bidder,amount,now);
+
+            //3. Thuật toán Anti-sniping (Gia hạn tự động)
+            checkAndExtend(now);
+            return true;
+        }
+        System.out.println("Lỗi: Giá đặt phải cao hơn giá hiện tại: " + currentPrice);
+        return false;
+    }
+
+    private boolean checkBid(Bidder bidder,double amount){
+        //Kiểm tra trạng thái phiên đấu giá
         if (this.status == AuctionStatus.OPEN){
             System.out.println("Lỗi: phiên đấu giá chưa bắt đầu");
             return false;
@@ -58,22 +78,24 @@ public class Auction extends Entity implements Serializable {
             return false;
         }
 
-        //3. Kiểm tra giá đặt hợp lệ
-        if (amount > currentPrice){
-            //hoàn tiền người đặt giá cao nhất cũ
-            this.highestBidder.refund(this.currentPrice);
-
-            //update người đặt giá cao nhất mới
-            this.currentPrice = amount;
-            this.highestBidder = bidder;
-            this.bids.add(new BidTransaction(bidder,amount,now));
-
-            //4. Thuật toán Anti-sniping (Gia hạn tự động)
-            checkAndExtend(now);
-            return true;
+        //Kiểm tra người đấu giá
+        if(bidder == null){
+            System.out.println("Lỗi: Người đặt giá không tồn tại");
+            return false;
         }
-        System.out.println("Lỗi: Giá đặt phải cao hơn giá hiện tại: " + currentPrice);
-        return false;
+
+        // Kiểm tra giá đặt hợp lệ
+        if ((amount - currentPrice)>= stepPrice){
+            System.out.println("Lỗi: đặt giá bé hơn step tối thiểu");
+            return false;
+        }
+        return true;
+    }
+
+    private void updateBid(Bidder bidder, double amount, LocalDateTime time ){
+        this.currentPrice = amount;
+        this.highestBidder = bidder;
+        this.bids.add(new BidTransaction(bidder,amount,time));
     }
 
     /*
@@ -82,9 +104,7 @@ public class Auction extends Entity implements Serializable {
     public void refreshStatus(LocalDateTime now){
         if (status == AuctionStatus.PAID || status == AuctionStatus.CANCELED) return;
 
-        if(now.isBefore(startTime)){
-            this.status = AuctionStatus.OPEN;
-        } else if (now.isAfter(startTime) && now.isBefore(endTime)) {
+        if (now.isBefore(endTime)) {
             this.status = AuctionStatus.RUNNING;
         }
         else{
@@ -93,4 +113,24 @@ public class Auction extends Entity implements Serializable {
     }
 
     public AuctionStatus getStatus(){return this.status;}
+
+    public void setStatus(AuctionStatus auctionStatus) {
+        status=auctionStatus;
+    }
+
+    public ChronoLocalDateTime<?> getStartTime() {
+        return startTime;
+    }
+
+    public ChronoLocalDateTime<?> getEndTime() {
+        return endTime;
+    }
+
+    public Bidder getHigestBidder() {
+        return highestBidder;
+    }
+
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
 }
