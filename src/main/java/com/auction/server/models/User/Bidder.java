@@ -7,15 +7,11 @@ public class Bidder extends User {
     private double balance; // số dư
     private List<String> joinedAuctionIds;
     public Bidder(String username,String password, String email, double initialBalance){
-        super(username, password, email);
+        super(username, password, email,UserRole.BIDDER);
         this.balance=initialBalance;
         this.joinedAuctionIds=new ArrayList<>();
     }
 
-    @Override
-    public String getRole() {
-        return "Bidder";
-    }
 
     //Nạp tiền
     public boolean topUp(double amount){
@@ -27,7 +23,7 @@ public class Bidder extends User {
     }
 
     //Trừ tiền khi đặt giá
-    public boolean deductBalance(double amount){
+    public synchronized boolean deductBalance(double amount){
         if(this.balance >= amount){
             this.balance -= amount;
             return true;
@@ -36,7 +32,7 @@ public class Bidder extends User {
     }
 
     //Hoàn tiền (khi có người khác bid cao hơn)
-    public void refund(double amount){
+    public synchronized void refund(double amount){
         this.balance += amount;
     }
 
@@ -49,7 +45,7 @@ public class Bidder extends User {
         return false;
     }
 
-    // uỷ quền placeBid cho auction
+    /*// uỷ quền placeBid cho auction
     public boolean placeBid(Auction auction, double amount){
         //1. Kiểm tra người dùng
         if (amount > balance){
@@ -65,7 +61,6 @@ public class Bidder extends User {
             deductBalance(amount);
         }
         return isSuccess;
-
-
-    }
+    }*/
+    //nen dua vo auctionService
 }

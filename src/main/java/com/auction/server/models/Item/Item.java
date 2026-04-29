@@ -26,7 +26,7 @@ public abstract class Item extends Entity implements Serializable {
         return this.description;
     }
 
-    protected double getStartingPrice() {
+    public double getStartingPrice() {
         return this.startingPrice;
     }
 
