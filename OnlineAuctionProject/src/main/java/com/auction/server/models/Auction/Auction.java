@@ -85,7 +85,7 @@ public class Auction extends Entity implements Serializable {
         }
 
         // Kiểm tra giá đặt hợp lệ
-        if ((amount - currentPrice)>= stepPrice){
+        if ((amount - currentPrice)<= stepPrice){
             System.out.println("Lỗi: đặt giá bé hơn step tối thiểu");
             return false;
         }

@@ -7,7 +7,7 @@ import java.util.List;
 public class Admin extends User{
     private List<String> actionLogs;
     public Admin(String username, String password, String email){
-        super(username, password, email);
+        super(username, password, email,UserRole.ADMIN);
         this.actionLogs= new ArrayList<>();
     }
 
@@ -17,10 +17,6 @@ public class Admin extends User{
         this.actionLogs.add("[" + time + "]" +action);
     }
 
-    @Override
-    public String getRole() {
-        return "Admin";
-    }
 
     public List<String> getActionLogs(){
         return actionLogs;

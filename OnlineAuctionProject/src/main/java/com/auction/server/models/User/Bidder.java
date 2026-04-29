@@ -7,15 +7,11 @@ public class Bidder extends User {
     private double balance; // số dư
     private List<String> joinedAuctionIds;
     public Bidder(String username,String password, String email, double initialBalance){
-        super(username, password, email);
+        super(username, password, email,UserRole.BIDDER);
         this.balance=initialBalance;
         this.joinedAuctionIds=new ArrayList<>();
     }
 
-    @Override
-    public String getRole() {
-        return "Bidder";
-    }
 
     //Nạp tiền
     public boolean topUp(double amount){

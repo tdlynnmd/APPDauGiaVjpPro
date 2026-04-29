@@ -85,10 +85,4 @@ public class AuctionManage {
             }
         },0,1, TimeUnit.SECONDS);
     }
-
-
-
-
-
-
 }

@@ -1,10 +1,9 @@
 package com.auction.server;
 
-import com.auction.server.manage.AuctionManage;
+/*import com.auction.server.manage.AuctionManage;
 import com.auction.server.models.Auction.Auction;
 import com.auction.server.service.AuctionService;
-
-import java.time.LocalDateTime;
+import java.time.LocalDateTime;*/
 
 public class ServerApp {
     static void main()  {
