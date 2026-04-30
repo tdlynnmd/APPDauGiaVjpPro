@@ -9,9 +9,14 @@ public class Seller extends User {
     private double rating;
     private transient List<Item> myItems;
     public Seller(String username, String password, String email){
-        super(username,password,email,UserRole.SELLER);
+        super(username,email,password,UserRole.SELLER);
         this.rating = 5.0;
         this.myItems = new ArrayList<>();
+    }
+
+    @Override
+    public Seller createUser(String username, String email, String password, UserRole role) {
+        return new Seller(username,email,password);
     }
 
     //Thêm vật đấu giá
