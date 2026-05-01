@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.auction.client.controller.DashboardController">
+
+    <center>
+        <VBox spacing="15" alignment="CENTER">
+            <padding>
+                <Insets top="30" right="30" bottom="30" left="30"/>
+            </padding>
+
+            <Label text="ONLINE AUCTION SYSTEM"
+                   style="-fx-font-size: 26px; -fx-font-weight: bold;"/>
+
+            <Label fx:id="welcomeLabel"
+                   text="Xin chào, username"
+                   style="-fx-font-size: 18px;"/>
+
+            <Label fx:id="roleLabel"
+                   text="Role: UNKNOWN"
+                   style="-fx-font-size: 16px;"/>
+
+            <Button fx:id="auctionListButton"
+                    text="Auction List"
+                    prefWidth="250"
+                    onAction="#handleAuctionList"/>
+
+            <Button fx:id="sellerManagementButton"
+                    text="Seller Management"
+                    prefWidth="250"
+                    onAction="#handleSellerManagement"/>
+
+            <Button fx:id="adminPanelButton"
+                    text="Admin Panel"
+                    prefWidth="250"
+                    onAction="#handleAdminPanel"/>
+
+            <Button fx:id="logoutButton"
+                    text="Logout"
+                    prefWidth="250"
+                    onAction="#handleLogout"/>
+        </VBox>
+    </center>
+
+</BorderPane>

@@ -1,9 +1,24 @@
 package com.auction.client;
 
-public class ClientApp {
+import com.auction.client.util.SceneNavigator;
+import javafx.application.Application;
+import javafx.stage.Stage;
+
+/**
+ * ClientApp là cửa khởi động của app người dùng
+ 1. Khởi động JavaFX
+ 2. Nhận cửa sổ chính từ JavaFX
+ 3. Đưa cửa sổ đó cho SceneNavigator quản lý
+ */
+public class ClientApp extends Application {
+
+    @Override
+    public void start(Stage primaryStage) {
+        SceneNavigator.setStage(primaryStage);
+        SceneNavigator.showLogin();
+    }
+
     public static void main(String[] args) {
-        System.out.println("=== HỆ THỐNG CLIENT ===");
-        System.out.println("[Client] Khách hàng đã vào quán.");
-        System.out.println("[Client] Vì chưa có JavaFX nên tạm thời dùng màn hình Console.");
+        launch(args);
     }
 }
