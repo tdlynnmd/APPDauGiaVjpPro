@@ -7,6 +7,13 @@ import com.auction.server.manage.UserManage;
 import com.auction.server.models.User.User;
 import com.auction.server.models.User.UserFactory;
 import com.auction.server.models.User.UserRole;
+import com.auction.server.models.User.Bidder;
+import com.auction.server.models.User.Seller;
+import com.auction.server.models.User.Admin;
+import com.auction.dto.UserDTO;
+import com.auction.dto.BidderDTO;
+import com.auction.dto.SellerDTO;
+import com.auction.dto.AdminDTO;
 
 public class AuthService {
     private final UserManage userManage = UserManage.getInstance();
@@ -15,7 +22,7 @@ public class AuthService {
     private static final String PASSWORD_REGEX = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
 
     //đăng ký
-    public <T extends User> T register (String username, String password, String email, UserRole role) throws AuthenticationException {
+    public <E extends User> UserDTO register (String username, String password, String email, UserRole role) throws AuthenticationException {
 
         //Kiểm tra hợp lệ
         this.validateUsername(username);
@@ -26,18 +33,18 @@ public class AuthService {
         String hashedPassword = this.hashPassword(password);
 
         //Tạo
-        T newUser = UserFactory.createUser(role, username, email, hashedPassword);
+        E newUser = UserFactory.createUser(role, username, email, hashedPassword);
 
         //Thêm vào Map của userManage
         this.userManage.addUser(newUser);
 
         //Luu vào DataBase (nếu có)
 
-        return newUser;
+        return  this.convertUserToDTO(newUser,role);
     }
 
     //Đăng nhập
-    public User login(String usernameOrEmail, String password) throws AuthenticationException {
+    public UserDTO login(String usernameOrEmail, String password) throws AuthenticationException {
         if(usernameOrEmail == null || password == null || usernameOrEmail.isEmpty() || password.isEmpty()){
             throw new AuthenticationException(AuthErrorCode.INPUT_NULL_EMPTY) ;//Exception ko được để trống
         }
@@ -61,29 +68,26 @@ public class AuthService {
         //Thiết lập Online
         ConnectionManage.getInstance().registerOnline(user);
 
-        return user;
+        return this.convertUserToDTO(user,user.getUserRole());
     }
 
 
     //Đăng xuất
-    public void logout(User user) throws AuthenticationException {
+    public void logout(String userId) throws AuthenticationException {
         //Xoá người dùng khỏi session, cập nhập trạng thái người dùng
         //Dọn dẹp tài nguyên, xoá thread
         //Thông báo đăng xuât thành công
         //Ghi log
-        if(user == null)
-            throw new AuthenticationException(AuthErrorCode.USER_NULL);
+        if(userId == null || userId.isEmpty())
+            throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
 
-        ConnectionManage.getInstance().removeOffline(user.getId());
+        ConnectionManage.getInstance().removeOffline(userId);
     }
 
 
     /**
      * Kiểm tra email hợp lệ - Ít nhất 5 ký tự - nhiều nhất 20 ký tự, bao gồm chữ cái, chữ số và . , _
      */
-    private boolean isEmailFormatValid(String email) {
-        return email.matches(EMAIL_REGEX);
-    }
 
     private void validateEmail(String email) throws AuthenticationException {
         if (email == null)
@@ -136,6 +140,57 @@ public class AuthService {
         } catch (Exception e) {
             return null; // Hoặc ném RuntimeException
         }
+    }
+
+    /**
+     * Chuyển đổi User entity thành UserDTO tương ứng
+     * Tách riêng dữ liệu nhạy cảm (password) khỏi dữ liệu được gửi đến client
+     *
+     * @param user User entity từ server
+     * @return UserDTO tương ứng với role của user (BidderDTO, SellerDTO, AdminDTO)
+     */
+    public UserDTO convertUserToDTO(User user,UserRole role) {
+        if (user == null) {
+            return null;
+        }
+
+        if (UserRole.BIDDER.equals(role)) {
+            Bidder bidder = (Bidder) user;
+            return new BidderDTO(
+                bidder.getId(),
+                bidder.getUsername(),
+                bidder.getEmail(),
+                UserRole.BIDDER,
+                bidder.getBalance(),
+                bidder.getJoinedAuctionIds()
+            );
+        } else if (UserRole.SELLER.equals(role)) {
+            Seller seller = (Seller) user;
+            return new SellerDTO(
+                seller.getId(),
+                seller.getUsername(),
+                seller.getEmail(),
+                UserRole.SELLER,
+                seller.getRating()
+            );
+        } else if (UserRole.ADMIN.equals(role)) {
+            Admin admin = (Admin) user;
+            return new AdminDTO(
+                admin.getId(),
+                admin.getUsername(),
+                admin.getEmail(),
+                UserRole.ADMIN,
+                admin.getActionLogs()
+            );
+        }
+
+        // Fallback: nếu ko match với role cụ thể nào, trả về UserDTO cơ bản
+        return new UserDTO(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            UserRole.valueOf(user.getRole())
+        );
     }
 
 }

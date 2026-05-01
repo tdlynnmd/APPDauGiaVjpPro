@@ -54,4 +54,14 @@ public class Bidder extends User implements Subscriber {
         }
         return false;
     }
+
+    // Getter cho balance
+    public double getBalance() {
+        return balance;
+    }
+
+    // Getter cho joinedAuctionIds
+    public List<String> getJoinedAuctionIds() {
+        return new ArrayList<>(joinedAuctionIds);
+    }
 }

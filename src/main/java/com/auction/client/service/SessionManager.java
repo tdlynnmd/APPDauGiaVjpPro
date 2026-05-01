@@ -1,13 +1,17 @@
 package com.auction.client.service;
 
-import com.auction.server.models.User.User;
+import com.auction.dto.UserDTO;
+import com.auction.dto.BidderDTO;
+import com.auction.dto.SellerDTO;
+import com.auction.dto.AdminDTO;
 
 public class SessionManager {
     // Sử dụng Singleton Pattern để truy cập phiên làm việc ở mọi nơi trong Client
     private static SessionManager instance;
 
-    // Lưu trữ duy nhất một User đang đăng nhập trên máy khách này [cite: 1494, 2938]
-    private User currentUser;
+    // Lưu trữ duy nhất một UserDTO đang đăng nhập trên máy khách này
+    // Sử dụng DTO thay vì User entity để bảo vệ thông tin nhạy cảm (password, etc.)
+    private UserDTO currentUserDTO;
 
     private SessionManager() {}
 
@@ -18,23 +22,50 @@ public class SessionManager {
         return instance;
     }
 
-    // Logic nghiệp vụ: Thiết lập phiên làm việc sau khi login thành công
-    public void setCurrentUser(User user) {
-        this.currentUser = user;
+    // Logic nghiệp vụ: Thiết lập phiên làm việc sau khi login thành công (sử dụng UserDTO)
+    public void setCurrentUser(UserDTO userDTO) {
+        this.currentUserDTO = userDTO;
     }
 
-    public User getCurrentUser() {
-        return currentUser;
+    public UserDTO getCurrentUser() {
+        return currentUserDTO;
+    }
+
+    // Convenience methods để lấy DTO cụ thể theo role
+    public BidderDTO getCurrentBidder() {
+        if (currentUserDTO instanceof BidderDTO) {
+            return (BidderDTO) currentUserDTO;
+        }
+        return null;
+    }
+
+    public SellerDTO getCurrentSeller() {
+        if (currentUserDTO instanceof SellerDTO) {
+            return (SellerDTO) currentUserDTO;
+        }
+        return null;
+    }
+
+    public AdminDTO getCurrentAdmin() {
+        if (currentUserDTO instanceof AdminDTO) {
+            return (AdminDTO) currentUserDTO;
+        }
+        return null;
     }
 
     // Kiểm tra trạng thái đã đăng nhập hay chưa để điều hướng UI
     public boolean isLoggedIn() {
-        return currentUser != null;
+        return currentUserDTO != null;
+    }
+
+    // Lấy ID người dùng hiện tại
+    public String getCurrentUserId() {
+        return currentUserDTO != null ? currentUserDTO.getId() : null;
     }
 
     // Logic nghiệp vụ đăng xuất: Xóa sạch thông tin phiên
     public void clearSession() {
-        this.currentUser = null;
+        this.currentUserDTO = null;
         System.out.println("Đã xóa phiên làm việc cục bộ.");
     }
 }

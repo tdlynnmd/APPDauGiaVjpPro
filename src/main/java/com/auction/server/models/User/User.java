@@ -25,6 +25,8 @@ public abstract class User extends Entity {
         return this.role.toString();
     };
 
+    public UserRole getUserRole(){return this.role;}
+
     public String getUsername() {
         return this.username;
     }
