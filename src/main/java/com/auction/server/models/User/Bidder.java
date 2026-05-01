@@ -1,9 +1,11 @@
 package com.auction.server.models.User;
-import com.auction.server.models.Auction.Auction;
+
+import com.auction.server.observer.Subscriber;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Bidder extends User {
+public class Bidder extends User implements Subscriber {
     private double balance=0; // số dư
     private List<String> joinedAuctionIds;
     public Bidder(String username,String password, String email){
@@ -16,6 +18,10 @@ public class Bidder extends User {
         return new Bidder(username,email,password);
     }
 
+    @Override
+    public void update(String context) {
+        System.out.println("Thông báo cho "+this.getUsername()+": "+context);
+    }
 
     //Nạp tiền
     public boolean topUp(double amount){
