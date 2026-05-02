@@ -1,5 +1,7 @@
 package com.auction.server.manage;
 
+import com.auction.server.exception.AuthErrorCode;
+import com.auction.server.exception.AuthenticationException;
 import com.auction.server.models.User.User;
 import com.auction.server.models.User.UserRole;
 
@@ -13,7 +15,7 @@ public class UserManage {
     private static volatile UserManage instance;
 
     // Sử dụng ConcurrentHashMap để thread-safe
-    private final Map<String, User> users;
+    private final Map<String, User> users; // id -> user
     private final Map<String, String> usernameToIdMap; // username -> userId
     private final Map<String, String> emailToIdMap;    // email -> userId
 
@@ -40,23 +42,14 @@ public class UserManage {
     }
 
     /**
-     * Thêm người dùng mới vào hệ thống     * @param user Người dùng cần thêm     * @return true nếu thêm thành công, false nếu username/email đã tồn tại
+     * Thêm người dùng mới vào hệ thống
+     * * @param user Người dùng cần thêm
+     * * @return true nếu thêm thành công, false nếu username/email đã tồn tại
      */
-    public synchronized boolean addUser(User user) {
-        if (this.isDataInvalid(user)) {
-            System.out.println("Lỗi: Người dùng không được null tên người dùng k được lưu");
-            return false;
-        }
+    public synchronized boolean addUser(User user) throws AuthenticationException {
 
-        if(this.isUsernameExists(user.getUsername())){
-            System.out.println("Lỗi: Username '" + user.getUsername() + "' đã tồn tại");
-            return false;
-        }
-
-        if (isEmailExists(user.getEmail())){
-            System.out.println("Lỗi: Email '" + user.getEmail() + "' đã tồn tại");
-            return false;
-        }
+        this.isUsernameExists(user.getUsername()); // Kiểm tra username đã tồn tại, nếu có sẽ ném AuthenticationException
+        this.isEmailExists(user.getEmail());       // Kiểm tra email đã tồn tại, nếu có sẽ ném AuthenticationException
 
         String id = user.getId();
         users.put(id, user);
@@ -70,22 +63,25 @@ public class UserManage {
     /** Cần sửa lại,
      * Cập nhật thông tin người dùng     * @param userId ID của người dùng cần cập nhật     * @param updatedUser Người dùng mới với thông tin cập nhật     * @return true nếu cập nhật thành công, false nếu người dùng không tồn tại
      */
-    public synchronized boolean updateUser(String userId, User updatedUser) {
-        if (this.isDataInvalid(updatedUser)) {
-            System.out.println("Lỗi: ID người dùng hoặc người dùng mới không được null");
-            return false;
-        }
+    public synchronized boolean updateUser(String userId, User updatedUser) throws AuthenticationException {
 
-        if (!this.isUsernameExists(updatedUser.getUsername())) {
-            System.out.println("Lỗi: Người dùng với ID '" + userId + "' không tồn tại");
-            return false;
-        }
+        this.isUserIdInvalid(userId); // Kiểm tra ID hợp lệ, nếu không sẽ ném AuthenticationException
 
         User oldUser = users.get(userId);
         String oldUsername = oldUser.getUsername();
         String oldEmail = oldUser.getEmail();
         String newUsername = updatedUser.getUsername();
         String newEmail = updatedUser.getEmail();
+
+        // Kiểm tra username mới không trùng với user khác (nếu thay đổi)
+        if (!newUsername.equals(oldUsername)){
+            this.isUsernameExists(newUsername);
+        }
+
+        // Kiểm tra email mới không trùng với user khác (nếu thay đổi)
+        if (!newEmail.equals(oldEmail)){
+            this.isEmailExists(newEmail);
+        }
 
         // Cập nhật maps
         usernameToIdMap.remove(oldUsername);
@@ -103,16 +99,10 @@ public class UserManage {
     /**
      * Xóa người dùng khỏi hệ thống     * @param userId ID của người dùng cần xóa     * @return true nếu xóa thành công, false nếu người dùng không tồn tại
      */
-    public synchronized boolean deleteUser(String userId) {
-        if (this.isDataInvalid(users.get(userId))) {
-            System.out.println("Lỗi: ID người dùng không hợp lệ");
-            return false;
-        }
+    public synchronized boolean deleteUser(String userId) throws AuthenticationException {
 
-        if (!users.containsKey(userId)) {
-            System.out.println("Lỗi: Người dùng với ID '" + userId + "' không tồn tại");
-            return false;
-        }
+        //check có tồn tại id này ko
+        this.isUserIdInvalid(userId); // Kiểm tra ID hợp lệ, nếu không sẽ ném AuthenticationException
 
         User user = users.get(userId);
         String username = user.getUsername();
@@ -126,26 +116,7 @@ public class UserManage {
         return true;
     }
 
-    /** Cần đưa sang service
-     * Xác thực đăng nhập     * @param usernameOrEmail Username hoặc email     * @param password Mật khẩu     * @return User nếu đăng nhập thành công, null nếu thất bại
-     */
-    public User authenticate(String usernameOrEmail, String password) {
-        if (usernameOrEmail == null || password == null) {
-            return null;
-        }
 
-        String userId = usernameToIdMap.get(usernameOrEmail);
-        if (userId == null) {
-            userId = emailToIdMap.get(usernameOrEmail);
-        }
-
-        if (userId == null) {
-            return null;
-        }
-
-        User user = users.get(userId);
-        return user.checkpassword(password) ? user : null;
-    }
 
     /**
      * Lấy người dùng theo ID     * @param userId ID của người dùng     * @return User nếu tìm thấy, null nếu không tồn tại
@@ -193,18 +164,21 @@ public class UserManage {
         return users.size();
     }
 
-    //Kiểm tra hợp lệ
-    private boolean isDataInvalid(User user) {
-        return user == null || user.getUsername() == null || user.getUsername().isEmpty();
+    //Kiểm tra id truyền vào hợp lệ ko
+    private void isUserIdInvalid(String userId) throws AuthenticationException {
+        if(userId == null || userId.isEmpty() || !users.containsKey(userId))
+            throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
     }
 
     //Kiểm tra username tồn tại chưa
-    private boolean isUsernameExists(String username) {
-        return usernameToIdMap.containsKey(username);
+    public void isUsernameExists(String username) throws AuthenticationException {
+        if (usernameToIdMap.containsKey(username))
+            throw new AuthenticationException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
     }
 
     //Kiểm tra email tồn tại chưa
-    private boolean isEmailExists(String email) {
-        return emailToIdMap.containsKey(email);
+    public void isEmailExists(String email) throws AuthenticationException {
+        if (emailToIdMap.containsKey(email))
+            throw new AuthenticationException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
     }
 }

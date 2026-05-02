@@ -1,6 +1,6 @@
 package com.auction.server.manage;
 
-import com.auction.server.models.Auction.Auction;import com.auction.server.service.NotificationService;
+import com.auction.server.models.Auction.Auction;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,7 +15,6 @@ import static com.auction.server.models.Auction.AuctionStatus.*;
 
 
 public class AuctionManage {
-    private static NotificationService notificationService = NotificationService.getInstance();
     public static volatile AuctionManage instance;
     private final Map<String, Auction> activeAuctions = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();;
@@ -51,18 +50,18 @@ public class AuctionManage {
     }
 
     private void finishAuction(String auctionId) {
-        Auction a = activeAuctions.get(auctionId);
-        if (a != null) {
+        Auction auction = activeAuctions.get(auctionId);
+        if (auction != null) {
             //Lấy thông tin winner
-            String idWinner = a.getHigestBidder().getId();
-            double finalPrice = a.getCurrentPrice();
+            String idWinner = auction.getHigestBidder().getId();
+            double finalPrice = auction.getCurrentPrice();
             String notification = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC VỚI NGƯỜI THẮNG CUỘC LÀ: ID "+idWinner;
 
             // Xóa khỏi danh sách "đang hoạt động" để giải phóng bộ nhớ RAM
             activeAuctions.remove(auctionId);
 
             // Ở đây bạn sẽ gọi NotificationService.broadcast() để báo cho các Client qua Socket
-            notificationService.notify(notification);
+            auction.notifySubscribers(notification);
         }
     }
 
@@ -75,7 +74,7 @@ public class AuctionManage {
 
                 //Nếu auction bắt đầu thông báo
                 if(auction.getStatus() == RUNNING)
-                    notificationService.notify("Thông báo: Phiên "+ auction.getId()+" ĐÃ BẮT ĐẦU. ");
+                    auction.notifySubscribers("Thông báo: Phiên " + auction.getId() + " ĐÃ BẮT ĐẦU! Hãy đặt giá ngay!");
                 //Nếu auction kết thúc thực hiện logic nghiệp vụ
                 if(auction.getStatus() == FINISHED ){
                     finishAuction(auction.getId());

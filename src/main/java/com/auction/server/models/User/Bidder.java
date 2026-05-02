@@ -1,17 +1,27 @@
 package com.auction.server.models.User;
-import com.auction.server.models.Auction.Auction;
+
+import com.auction.server.observer.Subscriber;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Bidder extends User {
-    private double balance; // số dư
+public class Bidder extends User implements Subscriber {
+    private double balance=0; // số dư
     private List<String> joinedAuctionIds;
-    public Bidder(String username,String password, String email, double initialBalance){
-        super(username, password, email,UserRole.BIDDER);
-        this.balance=initialBalance;
+    public Bidder(String username,String password, String email){
+        super(username, email, password,UserRole.BIDDER);
         this.joinedAuctionIds=new ArrayList<>();
     }
 
+    @Override
+    public Bidder createUser(String username, String email, String password, UserRole role) {
+        return new Bidder(username,email,password);
+    }
+
+    @Override
+    public void update(String context) {
+        System.out.println("Thông báo cho "+this.getUsername()+": "+context);
+    }
 
     //Nạp tiền
     public boolean topUp(double amount){
@@ -45,22 +55,13 @@ public class Bidder extends User {
         return false;
     }
 
-    /*// uỷ quền placeBid cho auction
-    public boolean placeBid(Auction auction, double amount){
-        //1. Kiểm tra người dùng
-        if (amount > balance){
-            System.out.println("Lỗi: Số dư tài khoản không đủ đặt giá này.");
-            return false;
-        }
+    // Getter cho balance
+    public double getBalance() {
+        return balance;
+    }
 
-        //2. Kiểm tra bên Auction
-        boolean isSuccess = auction.placeBid(this, amount);
-
-        if(isSuccess){
-            System.out.println("Thông báo: Bạn đã đặt giá thành công.");
-            deductBalance(amount);
-        }
-        return isSuccess;
-    }*/
-    //nen dua vo auctionService
+    // Getter cho joinedAuctionIds
+    public List<String> getJoinedAuctionIds() {
+        return new ArrayList<>(joinedAuctionIds);
+    }
 }

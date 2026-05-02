@@ -10,6 +10,7 @@ public abstract class ItemFactory extends Entity {
     public static void register(String type, ItemFactory factory) {
         registry.put(type.toUpperCase(), factory);
     }
+
     //Đây là factory method, chỉ quan tâm tạo, ko quan tâm loại
     protected abstract Item createItem(Map<String, Object> data);
 

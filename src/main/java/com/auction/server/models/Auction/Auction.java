@@ -3,6 +3,8 @@ package com.auction.server.models.Auction;
 import com.auction.server.models.Entity.Entity;
 import com.auction.server.models.Item.Item;
 import com.auction.server.models.User.Bidder;
+import com.auction.server.observer.Publisher;
+import com.auction.server.observer.Subscriber;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -10,7 +12,7 @@ import java.time.chrono.ChronoLocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Auction extends Entity implements Serializable {
+public class Auction extends Entity implements Serializable, Publisher {
     private Item item;
     private double currentPrice;
     private double stepPrice;
@@ -19,6 +21,7 @@ public class Auction extends Entity implements Serializable {
     private LocalDateTime endTime;
     private AuctionStatus status;
     private final List<BidTransaction> bids;
+    private final List<Subscriber> subscribers = new ArrayList<>();
 
     //Cấu hình Anti-sniping
     private static final int THRESHOLD_SECONDS = 30; // Nếu thầu trong 30s cuối
@@ -109,6 +112,23 @@ public class Auction extends Entity implements Serializable {
         }
         else{
             this.status = AuctionStatus.FINISHED;
+        }
+    }
+
+    @Override
+    public void subscribe(Subscriber subscriber) {
+        this.subscribers.add(subscriber);
+    }
+
+    @Override
+    public void unsubscribe(Subscriber subscriber) {
+        this.subscribers.remove(subscriber);
+    }
+
+    @Override
+    public void notifySubscribers(String message) {
+        for (Subscriber subscriber : subscribers) {
+            subscriber.update(message);
         }
     }
 
