@@ -15,47 +15,46 @@
 <?import javafx.scene.paint.RadialGradient?>
 <?import javafx.scene.paint.Stop?>
 
-<StackPane xmlns="http://javafx.com/javafx/25"
-           xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="768.0" prefWidth="1024.0" style="-fx-background-color: #2b57fd;">
-            <children>
-                <VBox alignment="CENTER" layoutX="256.0" layoutY="138.0" prefHeight="497.0" prefWidth="510.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-border-color: #E0E0E0; -fx-border-radius: 20;">
-                    <children>
-                        <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
-                            <image>
-                                <Image url="@../../../../image/Logo_DHCN.png" />
-                            </image>
-                        </ImageView>
-                        <Label prefHeight="60.0" prefWidth="260.0" style="-fx-font-size: 14; -fx-text-fill: #64748b;" text="Chào mừng đến với app đấu giá top1 UET">
-                            <textFill>
-                                <RadialGradient centerX="0.5" centerY="0.5" radius="0.5">
-                                    <stops>
-                                        <Stop>
-                                            <color>
-                                                <Color />
-                                            </color>
-                                        </Stop>
-                                        <Stop offset="1.0">
-                                            <color>
-                                                <Color red="1.0" green="1.0" blue="1.0" />
-                                            </color>
-                                        </Stop>
-                                    </stops>
-                                </RadialGradient>
-                            </textFill>
-                        </Label>
-                        <TextField prefHeight="47.0" prefWidth="313.0" promptText="Account" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
-                        <PasswordField prefHeight="47.0" prefWidth="313.0" promptText="Password" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
-                        <Hyperlink prefHeight="24.0" prefWidth="116.0" text="Forgot password?" textAlignment="CENTER" />
-                        <Hyperlink prefHeight="24.0" prefWidth="78.0" text="Register? " textAlignment="CENTER" />
-                        <Button mnemonicParsing="false" prefHeight="31.0" prefWidth="211.0" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Login" />
-                    </children>
-                    <padding>
-                        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
-                    </padding>
-                </VBox>
-            </children>
-        </Pane>
-    </children>
+<StackPane xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.LoginController">
+   <children>
+      <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="768.0" prefWidth="1024.0" style="-fx-background-color: #2b57fd;">
+         <children>
+            <VBox alignment="CENTER" layoutX="256.0" layoutY="138.0" prefHeight="497.0" prefWidth="510.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-border-color: #E0E0E0; -fx-border-radius: 20;">
+               <children>
+                  <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@../../../../images/Logo-DH-Cong-Nghe-UET.png" />
+                     </image>
+                  </ImageView>
+                  <Label prefHeight="60.0" prefWidth="260.0" style="-fx-font-size: 14; -fx-text-fill: #64748b;" text="Chào mừng đến với app đấu giá top1 UET">
+                     <textFill>
+                        <RadialGradient centerX="0.5" centerY="0.5" radius="0.5">
+                           <stops>
+                              <Stop>
+                                 <color>
+                                    <Color />
+                                 </color>
+                              </Stop>
+                              <Stop offset="1.0">
+                                 <color>
+                                    <Color red="1.0" green="1.0" blue="1.0" />
+                                 </color>
+                              </Stop>
+                           </stops>
+                        </RadialGradient>
+                     </textFill>
+                  </Label>
+                  <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Account" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
+                  <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Password" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
+                  <Hyperlink prefHeight="24.0" prefWidth="116.0" text="Forgot password?" textAlignment="CENTER" />
+                  <Hyperlink prefHeight="24.0" prefWidth="78.0" text="Register? " textAlignment="CENTER" />
+                  <Button mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Login" />
+               </children>
+               <padding>
+                  <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+               </padding>
+            </VBox>
+         </children>
+      </Pane>
+   </children>
 </StackPane>
