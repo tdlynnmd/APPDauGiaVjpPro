@@ -6,14 +6,9 @@ import java.util.List;
 
 public class Admin extends User{
     private List<String> actionLogs;
-    public Admin(String username, String password, String email){
+    public Admin(String username, String email, String password){
         super(username, email, password,UserRole.ADMIN);
         this.actionLogs= new ArrayList<>();
-    }
-
-    @Override
-    public Admin createUser(String username, String email, String password, UserRole role) {
-        return new Admin(username,email,password);
     }
 
     // Ghi nhận 1 hành động của Admin

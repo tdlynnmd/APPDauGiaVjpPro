@@ -8,14 +8,9 @@ import java.util.List;
 public class Bidder extends User implements Subscriber {
     private double balance=0; // số dư
     private List<String> joinedAuctionIds;
-    public Bidder(String username,String password, String email){
+    public Bidder(String username,String email, String password){
         super(username, email, password,UserRole.BIDDER);
         this.joinedAuctionIds=new ArrayList<>();
-    }
-
-    @Override
-    public Bidder createUser(String username, String email, String password, UserRole role) {
-        return new Bidder(username,email,password);
     }
 
     @Override

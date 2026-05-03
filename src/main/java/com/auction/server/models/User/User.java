@@ -1,5 +1,7 @@
 package com.auction.server.models.User;
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.auction.server.models.Entity.Entity;
+
 
 public abstract class User extends Entity {
     private String username;
@@ -14,16 +16,14 @@ public abstract class User extends Entity {
         this.role=role;
     }
 
-    //30/4/26 cần xem xét lại tạo UserFactory ko
-    public abstract <Type> Type createUser(String username, String password, String email, UserRole role);
-
-    public boolean checkpassword(String input){
-        return this.password.equals(input);
+    public boolean checkPassword(String plainPasswordInput) {
+        BCrypt.Result result = BCrypt.verifyer().verify(plainPasswordInput.toCharArray(), password);
+        return result.verified;
     }
 
     public String getRole(){
         return this.role.toString();
-    };
+    }
 
     public UserRole getUserRole(){return this.role;}
 

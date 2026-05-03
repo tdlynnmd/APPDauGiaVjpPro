@@ -2,7 +2,7 @@ package com.auction.server.models.User;
 
 public class SellerFactory extends UserFactory {
     @Override
-    protected Seller createInstance(String username, String email, String password) {
-        return new Seller(username,email,password);
+    <T extends User> T createInstance(String username, String email, String password) {
+        return (T) new Seller(username, email, password);
     }
 }

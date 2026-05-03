@@ -1,5 +1,6 @@
 package com.auction.server.service;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.auction.server.exception.AuthErrorCode;
 import com.auction.server.exception.AuthenticationException;
 import com.auction.server.manage.ConnectionManage;
@@ -15,25 +16,27 @@ import com.auction.dto.BidderDTO;
 import com.auction.dto.SellerDTO;
 import com.auction.dto.AdminDTO;
 
+
 public class AuthService {
     private final UserManage userManage = UserManage.getInstance();
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
     private static final String USERNAME_REGEX = "^[A-Za-z0-9._]{5,20}$";
     private static final String PASSWORD_REGEX = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
 
-    //đăng ký
-    public <E extends User> UserDTO register (String username, String password, String email, UserRole role) throws AuthenticationException {
+
+    //REGISTER
+    public <T extends User> UserDTO register (String username, String password, String email, UserRole role) throws AuthenticationException {
 
         //Kiểm tra hợp lệ
         this.validateUsername(username);
         this.validateEmail(email);
         this.validatePassword(password);
 
-        //Mã hoá
-        String hashedPassword = this.hashPassword(password);
+        // ✅ THAY ĐỔI: Dùng BCrypt encoder.encode() thay hashPassword()
+        String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
 
         //Tạo
-        E newUser = UserFactory.createUser(role, username, email, hashedPassword);
+        T newUser = UserFactory.createUser(role, username, email, hashedPassword);
 
         //Thêm vào Map của userManage
         this.userManage.addUser(newUser);
@@ -60,9 +63,9 @@ public class AuthService {
         }
 
         //Kiểm tra mật khẩu
-        String hashedInputPassword = this.hashPassword(password);
-        if (!user.checkpassword(hashedInputPassword)) {
-            throw new AuthenticationException(AuthErrorCode.INVALID_CREDENTIALS);// Exception chung
+        // matches() tự động extract salt từ stored hash và so sánh
+        if (!user.checkPassword(password)) {
+            throw new AuthenticationException(AuthErrorCode.INVALID_CREDENTIALS); // Exception chung
         }
 
         //Thiết lập Online
@@ -90,7 +93,7 @@ public class AuthService {
      */
 
     private void validateEmail(String email) throws AuthenticationException {
-        if (email == null)
+        if (email == null || email.isEmpty())
             throw new AuthenticationException(AuthErrorCode.EMAIL_NULL_EMPTY);
         if (!email.matches(EMAIL_REGEX))
             throw new AuthenticationException(AuthErrorCode.EMAIL_INVALID_FORMAT);
@@ -100,7 +103,7 @@ public class AuthService {
      * Kiểm tra username hợp lệ - Ít nhất 5 ký tự - nhiều nhất 20 ký tự, bao gồm chữ cái, chữ số và . , _
      */
     private void validateUsername(String username) throws AuthenticationException {
-        if (username == null)
+        if (username == null || username.isEmpty())
             throw new AuthenticationException(AuthErrorCode.USERNAME_NULL_EMPTY);
         if (username.length() < 5)
             throw new AuthenticationException(AuthErrorCode.USERNAME_TOO_SHORT);
@@ -114,7 +117,7 @@ public class AuthService {
      * Kiểm tra mật khẩu hợp lệ - Ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
      */
     private void validatePassword(String password) throws AuthenticationException {
-        if (password == null)
+        if (password == null || password.isEmpty())
             throw new AuthenticationException(AuthErrorCode.PASSWORD_NULL_EMPTY);
         if (password.length() < 8)
             throw new AuthenticationException(AuthErrorCode.PASSWORD_TOO_SHORT);
@@ -122,25 +125,6 @@ public class AuthService {
             throw new AuthenticationException(AuthErrorCode.PASSWORD_WEAK);
     }
 
-    //Mã hoá password
-    private String hashPassword(String password) {
-        try {
-            // Sử dụng thuật toán SHA-256 có sẵn trong Java
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] encodedhash = digest.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-
-            // Chuyển đổi mảng byte sang chuỗi Hex để lưu trữ
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : encodedhash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (Exception e) {
-            return null; // Hoặc ném RuntimeException
-        }
-    }
 
     /**
      * Chuyển đổi User entity thành UserDTO tương ứng
