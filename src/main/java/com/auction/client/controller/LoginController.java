@@ -33,7 +33,6 @@ public class LoginController {
             return; // Đuổi về, không cho chạy tiếp xuống dưới
         }
 
-        // 3. ĐIỀU PHỐI (Gọi Người số 2)
         // LƯU Ý: Vì Người 2 chưa làm xong AuthService, mình tạm thời code "cứng" (Mock)
         // để bạn tự test xem giao diện có chạy đúng không.
         // Sau này Người 2 làm xong, bạn sẽ thay cụm if này bằng hàm của Người 2 nhé.
