@@ -1,9 +1,6 @@
-
-/**
- Ket noi giao dien DashboardView.fxml , các dòng fx:id ở fxml dùng cho Controller này điều khiển thành phàn giao diện
- */
 package com.auction.client.controller;
 
+import com.auction.client.util.ClientSession;
 import com.auction.client.util.SceneNavigator;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -30,23 +27,15 @@ public class DashboardController {
     @FXML
     private Button logoutButton;
 
-    /*
-     * Đây là dữ liệu tạm để test Dashboard.
-     * Sau này Người 3 làm Login xong thì username và role thật sẽ được truyền vào đây.
-     *
-     * Bạn có thể đổi DEMO_ROLE thành:
-     * - "BIDDER"
-     * - "SELLER"
-     * - "ADMIN"
-     * để test ẩn/hiện nút.
-     */
-    private static final String DEMO_USERNAME = "demo_user";
-    private static final String DEMO_ROLE = "BIDDER";
-
     @FXML
     public void initialize() {
-        String username = DEMO_USERNAME;
-        String role = DEMO_ROLE.toUpperCase();
+        if (!ClientSession.isLoggedIn()) {
+            SceneNavigator.showLogin();
+            return;
+        }
+
+        String username = ClientSession.getCurrentUser().getUsername();
+        String role = ClientSession.getCurrentUser().getRole().toString();
 
         welcomeLabel.setText("Xin chào, " + username);
         roleLabel.setText("Role: " + role);
@@ -93,6 +82,7 @@ public class DashboardController {
 
     @FXML
     private void handleLogout() {
+        ClientSession.clear();
         SceneNavigator.showLogin();
     }
 
