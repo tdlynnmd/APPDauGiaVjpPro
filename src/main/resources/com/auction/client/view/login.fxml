@@ -46,6 +46,12 @@
                   </Label>
                   <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Account" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
                   <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Password" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
+                  <Label fx:id="errorLabel"
+                         text=""
+                         visible="false"
+                         prefWidth="313.0"
+                         wrapText="true"
+                         style="-fx-text-fill: red;" />
                   <Hyperlink prefHeight="24.0" prefWidth="116.0" text="Forgot password?" textAlignment="CENTER" />
                   <Hyperlink prefHeight="24.0" prefWidth="78.0" text="Register? " textAlignment="CENTER" />
                   <Button mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Login" />
