@@ -1,7 +1,9 @@
 package com.auction.dto;
 import com.auction.server.models.User.UserRole;
 
-public class UserDTO{
+import java.io.Serializable;
+
+public class UserDTO {
     private String id;
     private String username;
     private String email;

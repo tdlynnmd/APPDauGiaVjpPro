@@ -1,6 +1,8 @@
 package com.auction.dto;
 
-public class LoginResponse {
+import java.io.Serializable;
+
+public class LoginResponse{
     private boolean success;
     private String message;
     private String errorCode;

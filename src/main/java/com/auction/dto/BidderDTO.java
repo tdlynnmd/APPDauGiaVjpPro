@@ -1,6 +1,8 @@
 package com.auction.dto;
 
 import com.auction.server.models.User.UserRole;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,7 +11,7 @@ import java.util.List;
  * Chứa thông tin cơ bản của người mua và số dư tài khoản của họ
  * Không chứa thông tin nhạy cảm như mật khẩu
  */
-public class BidderDTO extends UserDTO {
+public class BidderDTO extends UserDTO{
     private double balance;
     private List<String> joinedAuctionIds;
 

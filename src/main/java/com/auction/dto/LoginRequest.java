@@ -1,6 +1,9 @@
 package com.auction.dto;
 
-public class LoginRequest {
+
+
+public class LoginRequest{
+
     private String usernameOrEmail;
     private String password;
 

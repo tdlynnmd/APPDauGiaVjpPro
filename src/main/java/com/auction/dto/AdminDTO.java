@@ -1,6 +1,8 @@
 package com.auction.dto;
 
 import com.auction.server.models.User.UserRole;
+
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -8,7 +10,7 @@ import java.util.List;
  * Chứa thông tin cơ bản của quản trị viên
  * Không chứa thông tin nhạy cảm như mật khẩu hoặc lịch sử hoạt động chi tiết
  */
-public class AdminDTO extends UserDTO {
+public class AdminDTO extends UserDTO{
     private final List<String> actionLogs;
 
     public AdminDTO(String id, String username, String email, UserRole role, List<String> actionLogs) {
