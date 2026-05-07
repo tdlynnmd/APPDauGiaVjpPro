@@ -16,7 +16,7 @@
         <javafx.version>25.0.1</javafx.version>
     </properties>
 
-    <dependencies>
+    <dependency>
         <!-- JavaFX Controls: dùng cho Button, Label, TextField, TableView, VBox, BorderPane,... -->
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -51,6 +51,12 @@
             <artifactId>logback-classic</artifactId>
             <version>1.5.13</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.controlsfx</groupId>
+            <artifactId>controlsfx</artifactId>
+            <version>11.1.2</version> </dependency>
         </dependency>
     </dependencies>
 

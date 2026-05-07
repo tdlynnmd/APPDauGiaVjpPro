@@ -6,6 +6,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.Pane?>
@@ -14,19 +15,20 @@
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.paint.RadialGradient?>
 <?import javafx.scene.paint.Stop?>
+<?import javafx.scene.text.Font?>
 
-<StackPane xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.LoginController">
+<StackPane fx:id="rootContainer" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" stylesheets="@light.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.LoginController">
    <children>
-      <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="768.0" prefWidth="1024.0" style="-fx-background-color: #2b57fd;">
+      <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="768.0" prefWidth="1024.0" styleClass="main-container">
          <children>
-            <VBox alignment="CENTER" layoutX="256.0" layoutY="138.0" prefHeight="497.0" prefWidth="510.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-border-color: #E0E0E0; -fx-border-radius: 20;">
+            <VBox alignment="CENTER" layoutX="256.0" layoutY="138.0" prefHeight="497.0" prefWidth="510.0" spacing="15.0" styleClass="login-card">
                <children>
-                  <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+                  <ImageView fitHeight="105.0" fitWidth="236.0" pickOnBounds="true" preserveRatio="true">
                      <image>
-                        <Image url="@../../../../images/Logo-DH-Cong-Nghe-UET.png" />
+                        <Image url="@../../../../image/LOGO.png" />
                      </image>
                   </ImageView>
-                  <Label prefHeight="60.0" prefWidth="260.0" style="-fx-font-size: 14; -fx-text-fill: #64748b;" text="Chào mừng đến với app đấu giá top1 UET">
+                  <Label alignment="CENTER" minHeight="50.0" prefHeight="60.0" prefWidth="260.0" styleClass="welcome-text" text="Welcom Back !!" textAlignment="JUSTIFY">
                      <textFill>
                         <RadialGradient centerX="0.5" centerY="0.5" radius="0.5">
                            <stops>
@@ -43,18 +45,16 @@
                            </stops>
                         </RadialGradient>
                      </textFill>
+                     <VBox.margin>
+                        <Insets bottom="15.0" />
+                     </VBox.margin>
                   </Label>
-                  <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Account" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
-                  <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Password" style="-fx-background-color: #f4f4f4; -fx-background-radius: 8; -fx-border-color: transparent;" />
-                  <Label fx:id="errorLabel"
-                         text=""
-                         visible="false"
-                         prefWidth="313.0"
-                         wrapText="true"
-                         style="-fx-text-fill: red;" />
-                  <Hyperlink prefHeight="24.0" prefWidth="116.0" text="Forgot password?" textAlignment="CENTER" />
-                  <Hyperlink prefHeight="24.0" prefWidth="78.0" text="Register? " textAlignment="CENTER" />
-                  <Button mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Login" />
+                  <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Account" styleClass="text-input" />
+                  <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Password" styleClass="text-input" />
+                  <Label fx:id="errorLabel" prefHeight="18.0" prefWidth="470.0" text="" visible="false" wrapText="true" />
+                  <Hyperlink alignment="CENTER" prefHeight="24.0" prefWidth="116.0" styleClass="second_label" text="Forgot password?" textAlignment="CENTER" />
+                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" prefHeight="24.0" prefWidth="78.0" styleClass="second_label" text="Register? " textAlignment="JUSTIFY" />
+                  <Button alignment="CENTER" mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" text="Login" textAlignment="JUSTIFY" />
                </children>
                <padding>
                   <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
@@ -62,5 +62,13 @@
             </VBox>
          </children>
       </Pane>
+      <ToggleButton fx:id="btnTheme" mnemonicParsing="false" onAction="#toggleTheme" prefHeight="45.0" prefWidth="45.0" styleClass="button" text="🌙" textAlignment="CENTER" StackPane.alignment="BOTTOM_RIGHT">
+         <font>
+            <Font size="19.0" />
+         </font>
+         <StackPane.margin>
+            <Insets bottom="25.0" right="25.0" />
+         </StackPane.margin>
+      </ToggleButton>
    </children>
 </StackPane>
