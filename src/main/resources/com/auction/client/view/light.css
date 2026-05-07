@@ -1,0 +1,53 @@
+/* Gán màu cho toàn bộ hệ thống */
+.root {
+    -fx-bg-main: #F4F7F6;         /* Nền xám nhạt */
+    -fx-bg-card: #FFFFFF;         /* Hộp trắng */
+    -fx-primary-color: #1877F2;   /* Xanh dương (Light) */
+    -fx-text-main: #1C1E21;       /* Chữ đen */
+}
+
+/* Áp dụng cho cái nền ngoài cùng */
+.main-container {
+    -fx-background-color: -fx-bg-main;
+}
+
+/* Áp dụng cho cái hộp VBox ở giữa */
+.login-card {
+    -fx-background-color: -fx-bg-card;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
+}
+
+/* Áp dụng cho TẤT CẢ các nút bấm */
+.button {
+    -fx-background-color: -fx-primary-color;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+}
+
+/* Áp dụng cho TẤT CẢ các ô nhập liệu */
+.text-input {
+    -fx-background-color: #E8F0FE;
+    -fx-text-fill: -fx-text-main;
+}
+
+/* Áp dụng cho TẤT CẢ các nhãn chữ */
+.label {
+    -fx-text-fill: -fx-text-main;
+}
+.second_label {
+    -fx-text-fill: -fx-primary-color;
+}
+.welcome-text {
+    -fx-font-family: "Segoe UI Bold", sans-serif;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+
+    /* Gradient từ Xanh Navy sang Xanh Slate */
+    -fx-fill: linear-gradient(to right, #0F2027, #203A43, #2C5364);
+
+    /* Đổ bóng sắc nét để chữ trông như được dập nổi lên bề mặt */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 2);
+
+    -fx-letter-spacing: 1px;
+}

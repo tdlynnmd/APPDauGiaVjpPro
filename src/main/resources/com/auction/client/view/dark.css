@@ -1,0 +1,56 @@
+/* Gán màu cho toàn bộ hệ thống */
+.root {
+    -fx-background-color: #18191A;
+    -fx-bg-main: #18191A;         /* Nền đen sâu */
+    -fx-bg-card: #242526;         /* Hộp xám đen */
+    -fx-primary-color: #F59E0B;   /* Vàng Cam (Dark) */
+    -fx-text-main: #E4E6EB;       /* Chữ trắng xám */
+}
+
+/* Áp dụng cho nền ngoài cùng */
+.main-container {
+    -fx-background-color: -fx-bg-main;
+}
+
+/* Áp dụng cho cái hộp VBox ở giữa */
+.login-card {
+    -fx-background-color: -fx-bg-card;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 5);
+}
+
+/* Áp dụng cho TẤT CẢ các nút bấm */
+.button {
+    -fx-background-color: -fx-primary-color;
+    -fx-text-fill: #18191A;       /* Chữ đen trên nền cam cho rõ */
+    -fx-background-radius: 8;
+}
+
+/* Áp dụng cho TẤT CẢ các ô nhập liệu */
+.text-input {
+    -fx-background-color: #3A3B3C;
+    -fx-text-fill: white;
+}
+
+/* Áp dụng cho TẤT CẢ các nhãn chữ */
+.label {
+    -fx-text-fill: -fx-text-main;
+}
+.second_label {
+    -fx-text-fill: -fx-primary-color;
+}
+.welcome-text {
+    /* Font chữ: Dày và vuông vức tạo sự tin cậy */
+    -fx-font-family: "Segoe UI Black", sans-serif;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase; /* Viết hoa toàn bộ cho quyền lực */
+
+    /* Màu vàng Gold rực rỡ */
+    -fx-fill: linear-gradient(to bottom, #FFD700, #FFA500);
+
+    /* Hiệu ứng Neon phát sáng như bảng điện tử sàn đấu giá */
+    -fx-effect: dropshadow(gaussian, rgba(255, 215, 0, 0.6), 15, 0.4, 0, 0);
+
+    -fx-letter-spacing: 2px;
+}
