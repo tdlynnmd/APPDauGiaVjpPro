@@ -22,10 +22,10 @@ public class clientAuthApi {
 
     public LoginResponse login (String usernameOrEmail, String password) {      // Hàm nay được LoginController gọi khi người dùng bấm nút login
         try (
-            Socket socket = new Socket(SERVER_HOST, SERVER_PORT);               // Mở cổng kết nối tới Sever, nếu Sever chưa chạy, sẽ lỗi đi vào catch
-            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);       // gửi du liệu tu Client sang Sever
-            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));     // đọc dữ liệu Sever gi về
-            )
+                Socket socket = new Socket(SERVER_HOST, SERVER_PORT);               // Mở cổng kết nối tới Sever, nếu Sever chưa chạy, sẽ lỗi đi vào catch
+                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);       // gửi du liệu tu Client sang Sever
+                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));     // đọc dữ liệu Sever gi về
+        )
         {
             LoginRequest loginRequest = new LoginRequest(usernameOrEmail, password);    // chứa username/email và password.
             JsonObject loginBody = gson.toJsonTree(loginRequest).getAsJsonObject();     // chuyển LoginRequest thành JSON Object
@@ -36,14 +36,14 @@ public class clientAuthApi {
             String responseJson = reader.readLine();                                // Đợi Sever trả response về
             if (responseJson == null || responseJson.isBlank()) {
                 return LoginResponse.failure(
-                        "Server không trả về dữ liệu",
+                        "The server did not return any data.",
                         "EMPTY_RESPONSE"
                 );
             }
             return gson.fromJson(responseJson, LoginResponse.class);     // Chuyển JSON Server trả về thành LoginResponse.
         } catch(Exception e){
             return LoginResponse.failure(
-                    "Không thể kết nối tới Sever. Hãy kiểm tra Server đã chạy chưa.",
+                    "Cannot connect to the server. Please check whether the server is running.",
                     "CONNECTION_ERROR"
             );
         }
