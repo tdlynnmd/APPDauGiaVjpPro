@@ -44,9 +44,16 @@
                               <Circle fx:id="userAvatar" fill="DODGERBLUE" radius="35.0" stroke="#008cff" strokeType="INSIDE" />
                            </children>
                         </StackPane>
-                        <Label alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="59.0" text="Username" textAlignment="CENTER">
+
+                        <Label fx:id="welcomeLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="150.0" text="Username" textAlignment="CENTER">
                            <font>
                               <Font size="15.0" />
+                           </font>
+                        </Label>
+
+                        <Label fx:id="roleLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="150.0" text="Role" textAlignment="CENTER">
+                           <font>
+                              <Font size="13.0" />
                            </font>
                         </Label>
                      </children>
@@ -61,12 +68,22 @@
             <VBox prefHeight="499.0" prefWidth="200.0" spacing="25.0" BorderPane.alignment="TOP_CENTER">
                <children>
                   <Label alignment="CENTER" prefHeight="18.0" prefWidth="197.0" text="AuctionVZ Menu " textAlignment="CENTER" />
+
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Account" />
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Auction list" />
+
+                  <Button fx:id="auctionListButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Auction list" onAction="#handleAuctionList" />
+
+                  <Button fx:id="sellerManagementButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Seller management" onAction="#handleSellerManagement" />
+
+                  <Button fx:id="adminPanelButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Admin panel" onAction="#handleAdminPanel" />
+
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Wallet" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Deposit history" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Transaction history" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Settings" />
+
+                  <Button fx:id="logoutButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Logout" onAction="#handleLogout" />
+
                   <Region prefHeight="152.0" prefWidth="162.0" VBox.vgrow="ALWAYS" />
                </children>
                <padding>

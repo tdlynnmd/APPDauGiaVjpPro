@@ -1,11 +1,16 @@
 package com.auction.client.controller;
 
+import com.auction.client.network.clientAuthApi;
+import com.auction.client.util.ClientSession;
+import com.auction.client.util.SceneNavigator;
+import com.auction.dto.LoginResponse;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane; // Cần thiết để điều khiển nền
+
 import java.util.Objects;
 
 public class LoginController {
@@ -53,8 +58,11 @@ public class LoginController {
     @FXML
     public void handleLogin(ActionEvent event) {
         // 1. LẤY DỮ LIỆU
-        String username = usernameField.getText();
+        String username = usernameField.getText().trim();
         String password = passwordField.getText();
+
+        // Hiển thị label thông báo vì trong login.fxml errorLabel đang visible="false"
+        errorLabel.setVisible(true);
 
         // 2. KIỂM TRA SƠ BỘ
         if (username.isEmpty() || password.isEmpty()) {
@@ -64,11 +72,21 @@ public class LoginController {
         }
 
         // 3. LOGIC ĐĂNG NHẬP
-        if (username.equals("admin1") && password.equals("123456")) {
+        // Gửi username/password sang Server để kiểm tra, không hardcode trong Controller nữa
+        clientAuthApi authApi = new clientAuthApi();
+        LoginResponse response = authApi.login(username, password);
+
+        if (response.isSuccess()) {
             errorLabel.setText("Đăng nhập thành công! Đang chuyển màn hình...");
             errorLabel.setStyle("-fx-text-fill: green;");
+
+            // Lưu phiên đăng nhập để DashboardController biết ai vừa đăng nhập
+            ClientSession.saveLoginSession(response.getToken(), response.getUser());
+
+            // Chuyển từ màn hình Login sang Dashboard
+            SceneNavigator.showDashboard();
         } else {
-            errorLabel.setText("Sai tài khoản hoặc mật khẩu. Vui lòng thử lại!");
+            errorLabel.setText(response.getMessage());
             errorLabel.setStyle("-fx-text-fill: red;");
         }
     }

@@ -13,7 +13,9 @@ public class SocketRequest {
     private String action;
     private String body;
 
-    public SocketRequest(String login, JsonObject loginBody) {
+    public SocketRequest(String action, JsonObject body) {
+        this.action = action;
+        this.body = body.toString();
     }
 
     public SocketRequest(String action, String body) {

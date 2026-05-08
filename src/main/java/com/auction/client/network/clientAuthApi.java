@@ -32,6 +32,7 @@ public class clientAuthApi {
             SocketRequest socketRequest = new SocketRequest("LOGIN", loginBody); // Bọc LoginRequest vào SocketRequest, để khi sever nhìn thấy action = "LOGIN" phải biết gọi AuthController.login()
             String requestJson = gson.toJson(socketRequest);                        // Chuyển SocketRequest thành chuỗi JSON để ửi qua mạng
             writer.println(requestJson);                                            // gui request dạng chuỗi JSON sang Sever
+
             String responseJson = reader.readLine();                                // Đợi Sever trả response về
             if (responseJson == null || responseJson.isBlank()) {
                 return LoginResponse.failure(
@@ -39,7 +40,7 @@ public class clientAuthApi {
                         "EMPTY_RESPONSE"
                 );
             }
-            return gson.fromJson(requestJson, LoginResponse.class);     // Chuyển JSON Server trả về thành LoginResponse.
+            return gson.fromJson(responseJson, LoginResponse.class);     // Chuyển JSON Server trả về thành LoginResponse.
         } catch(Exception e){
             return LoginResponse.failure(
                     "Không thể kết nối tới Sever. Hãy kiểm tra Server đã chạy chưa.",
