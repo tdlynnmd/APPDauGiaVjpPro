@@ -1,11 +1,18 @@
 package com.auction.models.Item;
 
 import com.auction.models.Entity.Entity;
+
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class ItemFactory extends Entity {
+public abstract class ItemFactory {
     private static final Map<String, ItemFactory> registry = new HashMap<>();
+
+    static {
+        registry.put("ART", new ArtFactory());
+        registry.put("VEHICLE", new VehicleFactory());
+        registry.put("ELECTRONICS", new ElectronicsFactory());
+    }
 
     public static void register(String type, ItemFactory factory) {
         registry.put(type.toUpperCase(), factory);

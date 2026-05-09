@@ -1,11 +1,13 @@
 package com.auction.models.Item;
 
+import com.auction.models.User.Seller;
+
 public class Art extends Item {
     private String artist;
     private String material;
 
-    Art(String name,double startingPrice,String description, int yearCreated,String artist,String material){
-        super(name, startingPrice, description,yearCreated);
+    Art(String name, double startingPrice, String description, int yearCreated, String artist, String material, String sellerId){
+        super(name, startingPrice, description,yearCreated,sellerId);
         this.artist = artist;
         this.material = material;
     }

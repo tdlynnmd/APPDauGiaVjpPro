@@ -7,11 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Seller extends User {
-    private double rating;
     private transient List<Item> myItems;
     public Seller(String username, String email, String password){
         super(username,email,password, com.auction.enums.UserRole.SELLER);
-        this.rating = 5.0;
+        this.myItems = new ArrayList<>();
+    }
+
+    public Seller(String id,String username, String email, String password){
+        super(id,username,email,password, com.auction.enums.UserRole.SELLER);
         this.myItems = new ArrayList<>();
     }
 
@@ -20,13 +23,9 @@ public class Seller extends User {
         this.myItems.add(item);
     }
 
-    // cập nhật điểm uy tín
-    public void updateRating(double newRating){
-        this.rating = (this.rating + newRating) / 2.0;
+    //Xoá vật đấu giá
+    public void removeItem(Item item){
+        this.myItems.remove(item);
     }
 
-    // Getter cho rating
-    public double getRating() {
-        return rating;
-    }
 }

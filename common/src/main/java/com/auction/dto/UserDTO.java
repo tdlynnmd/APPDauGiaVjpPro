@@ -1,5 +1,7 @@
 package com.auction.dto;
-import com.auction.server.models.User.UserRole;
+
+
+import com.auction.enums.UserRole;
 
 import java.io.Serializable;
 

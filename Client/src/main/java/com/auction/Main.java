@@ -1,6 +1,7 @@
-package com.auction.client;
+package com.auction;
 
-import com.auction.client.util.SceneNavigator;
+
+import com.auction.util.SceneNavigator;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
@@ -10,7 +11,7 @@ import javafx.stage.Stage;
  2. Nhận cửa sổ chính từ JavaFX
  3. Đưa cửa sổ đó cho SceneNavigator quản lý
  */
-public class ClientApp extends Application {
+public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {

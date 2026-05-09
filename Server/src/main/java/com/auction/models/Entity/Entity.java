@@ -10,6 +10,11 @@ public abstract class Entity {
         this.id = UUID.randomUUID().toString();
     }
 
+    // Constructor cho load từ DB (ID cho trước)
+    public Entity(String id) {
+        this.id = id;
+    }
+
     public String getId() {
         return id;
     }

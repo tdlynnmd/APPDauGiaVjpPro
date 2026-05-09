@@ -4,11 +4,20 @@ public class Electronics extends Item {
     private String brand;
     private int warrantyMonths;
 
-    public Electronics(String name,double startingPrice, String description,int yearCreated, String brand, int warrantyMonths){
-        super(name,startingPrice,description,yearCreated);
+    public Electronics(String name,double startingPrice, String description,int yearCreated, String brand, int warrantyMonths,String sellerId){
+        super(name,startingPrice,description,yearCreated,sellerId);
         this.brand = brand;
         this.warrantyMonths = warrantyMonths;
     }
+
+    // Constructor load từ DB
+    public Electronics(String id, String name, double startingPrice, String description,
+                       int yearCreated, String sellerId, String brand, int warrantyMonths) {
+        super(id, name, startingPrice, description, yearCreated, sellerId);
+        this.brand = brand;
+        this.warrantyMonths = warrantyMonths;
+    }
+
 
     @Override
     public String getInfo() {

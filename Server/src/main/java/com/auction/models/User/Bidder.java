@@ -2,6 +2,8 @@ package com.auction.models.User;
 
 
 import com.auction.observer.Subscriber;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,13 +16,18 @@ public class Bidder extends User implements Subscriber {
         this.joinedAuctionIds=new ArrayList<>();
     }
 
+    public Bidder(String id,String username,String email, String password){
+        super(id,username, email, password, com.auction.enums.UserRole.BIDDER);
+        this.joinedAuctionIds=new ArrayList<>();
+    }
+
     @Override
     public void update(String context) {
         System.out.println("Thông báo cho "+this.getUsername()+": "+context);
     }
 
     //Nạp tiền
-    public boolean topUp(double amount){
+    public synchronized boolean addBalance(double amount){
         if(amount>0){
             this.balance += amount;
             return true;
@@ -37,10 +44,6 @@ public class Bidder extends User implements Subscriber {
         return false;
     }
 
-    //Hoàn tiền (khi có người khác bid cao hơn)
-    public synchronized void refund(double amount){
-        this.balance += amount;
-    }
 
     // Ghi nhận tham gia thêm 1 phiên đấu giá
     public boolean addJoinedAuction(String auctionId){
@@ -59,5 +62,15 @@ public class Bidder extends User implements Subscriber {
     // Getter cho joinedAuctionIds
     public List<String> getJoinedAuctionIds() {
         return new ArrayList<>(joinedAuctionIds);
+    }
+
+    public String getJoinedAuctionIdsJson() {
+        return new Gson().toJson(joinedAuctionIds);
+    }
+
+    // Parse JSON from DB back to List
+    public void setJoinedAuctionIdsFromJson(String json) {
+        this.joinedAuctionIds = new Gson().fromJson(json,
+                new TypeToken<List<String>>(){}.getType());
     }
 }

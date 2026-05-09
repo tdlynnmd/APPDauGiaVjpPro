@@ -1,11 +1,11 @@
-package com.auction.server;
+package com.auction;
 
-import com.auction.server.exception.AuthenticationException;
-import com.auction.server.models.User.UserRole;
-import com.auction.server.network.SocketServer;
-import com.auction.server.service.AuthService;
+import com.auction.exception.AuthenticationException;
+import com.auction.enums.UserRole;
+import com.auction.network.SocketServer;
+import com.auction.service.AuthService;
 
-public class ServerApp {
+public class Main {
 
     public static void main(String[] args) {
         System.out.println("=== HỆ THỐNG SERVER ===");

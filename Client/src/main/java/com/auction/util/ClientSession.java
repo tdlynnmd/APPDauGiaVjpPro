@@ -1,11 +1,11 @@
-package com.auction.client.util;
+package com.auction.util;
 
 import com.auction.dto.UserDTO;     // Sau khi login thành công, Server trả về thông tin user an toàn dưới dạng UserDTO.
 
 /**
  * Lưu trạng thái đăng nhập ở phiá Client
-  Sau khi login thành công, Client cần nhớ: token, user hiện tại
-  Sau khi LoginController chuyển sang Dashboard, DashboardController cần biết:
+ Sau khi login thành công, Client cần nhớ: token, user hiện tại
+ Sau khi LoginController chuyển sang Dashboard, DashboardController cần biết:
  Sau khi LoginController chuyển sang Dashboard, DashboardController cần biết:
  - username là gì
  - role là gì

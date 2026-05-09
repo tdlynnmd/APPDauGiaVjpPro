@@ -59,7 +59,9 @@ public class Auction extends Entity implements Serializable, Publisher {
         //2. Kiểm tra hợp lệ
         if (this.checkBid(bidder,amount)){
             //hoàn tiền người đặt giá cao nhất cũ
-            this.highestBidder.refund(this.currentPrice);
+            if (this.highestBidder != null) {
+                this.highestBidder.addBalance(this.currentPrice);
+            }
 
             //update người đặt giá cao nhất mới
             this.updateBid(bidder,amount,now);
@@ -74,12 +76,12 @@ public class Auction extends Entity implements Serializable, Publisher {
 
     private boolean checkBid(Bidder bidder,double amount){
         //Kiểm tra trạng thái phiên đấu giá
-        if (this.status == com.auction.enums.AuctionStatus.OPEN){
-            System.out.println("Lỗi: phiên đấu giá chưa bắt đầu");
-            return false;
-        }
-        else if (this.status == com.auction.enums.AuctionStatus.FINISHED){
-            System.out.println("Lỗi: phiên đấu giá đã kết thúc");
+        if (this.status != com.auction.enums.AuctionStatus.RUNNING){
+            if (this.status == com.auction.enums.AuctionStatus.OPEN) {
+                System.out.println("Lỗi: phiên đấu giá chưa bắt đầu");
+            } else if (this.status == com.auction.enums.AuctionStatus.FINISHED){
+                System.out.println("Lỗi: phiên đấu giá đã kết thúc");
+            }
             return false;
         }
 
@@ -148,11 +150,22 @@ public class Auction extends Entity implements Serializable, Publisher {
         return endTime;
     }
 
-    public Bidder getHigestBidder() {
+    public Bidder getHighestBidder() {
         return highestBidder;
     }
 
     public double getCurrentPrice() {
         return currentPrice;
+    }
+    public Item getItem() {
+        return item;
+    }
+
+    public double getStepPrice() {
+        return stepPrice;
+    }
+
+    public List<BidTransaction> getBids() {
+        return new ArrayList<>(bids);
     }
 }

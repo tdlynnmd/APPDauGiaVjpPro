@@ -1,5 +1,6 @@
 package com.auction.models.User;
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import com.auction.enums.UserRole;
 import com.auction.models.Entity.Entity;
 
 
@@ -9,11 +10,20 @@ public abstract class User extends Entity {
     private String email;
     private com.auction.enums.UserRole role;
 
-    User(String username, String email, String password, com.auction.enums.UserRole role){
+    User(String username, String email, String password, UserRole role){
         this.email=email;
         this.password=password;
         this.username=username;
         this.role=role;
+    }
+
+    // Thêm constructor cho load từ DB
+    User(String id, String username, String email, String password, UserRole role){
+        super(id);
+        this.email = email;
+        this.password = password;
+        this.username = username;
+        this.role = role;
     }
 
     public boolean checkPassword(String plainPasswordInput) {
