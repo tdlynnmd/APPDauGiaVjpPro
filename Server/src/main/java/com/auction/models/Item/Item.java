@@ -5,6 +5,7 @@ import com.auction.enums.ItemType;
 import com.auction.models.Entity.Entity;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public abstract class Item extends Entity implements Serializable {
@@ -30,7 +31,7 @@ public abstract class Item extends Entity implements Serializable {
         this.yearCreated = yearCreated;
         this.sellerId = sellerId;
         this.itemType = itemType; // Bắt buộc truyền vào khi tạo subclass
-        this.imageUrl = imageUrl;
+        this.imageUrl = imageUrl; // Sử dụng Cloudinary
         this.status = ItemStatus.ACTIVE; // Mặc định khi mới tạo
         this.createdAt = LocalDateTime.now();
     }

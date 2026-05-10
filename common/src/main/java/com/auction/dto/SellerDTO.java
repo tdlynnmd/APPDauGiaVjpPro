@@ -1,32 +1,27 @@
 package com.auction.dto;
 
 import com.auction.enums.UserRole;
+import com.auction.enums.UserStatus;
+import java.math.BigDecimal;
 
-import java.io.Serializable;
+public class SellerDTO extends UserDTO {
+    private double balance; // Seller cũng cần xem tiền
+    private double rating;      // Hiển thị số sao/uy tín
 
-/**
- * Data Transfer Object cho Seller
- * Chứa thông tin cơ bản của người bán và điểm uy tín của họ
- * Không chứa thông tin nhạy cảm như mật khẩu
- */
-public class SellerDTO extends UserDTO{
-    private double rating;
-
-    public SellerDTO(String id, String username, String email, UserRole role, double rating) {
-        super(id, username, email, role);
+    public SellerDTO(String id, String username, String email, UserRole role, UserStatus status,
+                     double balance, double rating) {
+        super(id, username, email, role, status);
+        this.balance = balance;
         this.rating = rating;
     }
 
-    public double getRating() {
-        return rating;
-    }
+    // Getters
+    public double getBalance() { return balance; }
+    public double getRating() { return rating; }
 
-    public void setRating(double rating) {
-        this.rating = rating;
-    }
+    // Setters (Chỉ dùng để gán data thuần túy)
+    public void setBalance(double balance) { this.balance = balance; }
+    public void setRating(double rating) { this.rating = rating; }
 
-    public void updateRating(double newRating) {
-        this.rating = (this.rating + newRating) / 2.0;
-    }
+    // ĐÃ XÓA hàm updateRating() có chứa phép toán chia trung bình
 }
-

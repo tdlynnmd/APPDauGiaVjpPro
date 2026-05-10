@@ -14,12 +14,17 @@ public class AuctionService {
     private final AuctionManage manager = AuctionManage.getInstance();
     private final ConnectionManage connectionManage = ConnectionManage.getInstance();
     private final ReentrantLock bidLock = new ReentrantLock();
+    //private AuctionDAO auctionDAO;
 
     public  AuctionManage getManager() {
         return manager;
     }
 
-    //Xử lý đặt giá
+
+    // 1. Tạo phiên đấu giá mới (Nạp từ DB lên RAM luôn)
+    //public boolean createAuction(String itemId, double startPrice, LocalDateTime endTime) { ... }
+
+    //2. Xử lý đặt giá
     public boolean processBid(Bidder bidder, String auctionId, double amount) {
         Auction auction = manager.getAuctionById(auctionId);
 
@@ -63,4 +68,50 @@ public class AuctionService {
             }
         }
     }
+
+    //Từ userId -> Tìm các auctionId -> Tìm từng Auction -> Đóng gói thành AuctionSummaryDTO -> giúp hiển thị các auction theo dỗi
+    //Xây xog DAO quay lại mở khoá
+    // 3. [HÀM CỦA BIDDER] - Lấy danh sách các phiên đang tham gia để hiện lên JavaFX
+    /*public List<AuctionSummaryDTO> getJoinedAuctionsSummary(String userId) {
+        List<AuctionSummaryDTO> summaries = new ArrayList<>();
+
+        // 1. Lấy thông tin Bidder từ DB (Giả sử bạn có userDAO)
+        User user = userDAO.findById(userId);
+        if (!(user instanceof Bidder)) {
+            return summaries; // Trả về list rỗng nếu không phải Bidder
+        }
+
+        Bidder bidder = (Bidder) user;
+        List<String> joinedIds = bidder.getJoinedAuctionIds();
+
+        // 2. Lặp qua từng ID để lấy thông tin phiên đấu giá
+        for (String auctionId : joinedIds) {
+            // Ưu tiên lấy trên RAM trước cho nhanh
+            Auction auction = auctionManage.getAuctionById(auctionId);
+
+            // Nếu phiên đã FINISHED (bị xóa khỏi RAM), thì chui xuống DB lấy
+            if (auction == null) {
+                auction = auctionDAO.findById(auctionId);
+            }
+
+            // 3. Đóng gói DTO
+            if (auction != null) {
+                String itemName = (auction.getItem() != null) ? auction.getItem().getName() : "Vật phẩm ẩn";
+
+                AuctionSummaryDTO dto = new AuctionSummaryDTO(
+                        auction.getId(),
+                        itemName,
+                        auction.getCurrentPrice(),
+                        auction.getStatus().toString(),
+                        auction.getEndTime()
+                );
+                summaries.add(dto);
+            }
+        }
+        return summaries;
+    }*/
+
+    // 4. Lấy danh sách TẤT CẢ phiên đang chạy (Để hiển thị trang chủ)
+    //public List<AuctionSummaryDTO> getAllActiveAuctions() { ... }
+
 }

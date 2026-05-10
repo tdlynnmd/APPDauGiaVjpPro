@@ -1,27 +1,15 @@
 package com.auction.dto;
 
-
 import com.auction.enums.UserRole;
+import com.auction.enums.UserStatus;
 
-import java.io.Serializable;
-import java.util.List;
+public class AdminDTO extends UserDTO {
 
-/**
- * Data Transfer Object cho Admin
- * Chứa thông tin cơ bản của quản trị viên
- * Không chứa thông tin nhạy cảm như mật khẩu hoặc lịch sử hoạt động chi tiết
- */
-public class AdminDTO extends UserDTO{
-    private final List<String> actionLogs;
-
-    public AdminDTO(String id, String username, String email, UserRole role, List<String> actionLogs) {
-        super(id, username, email, role);
-        this.actionLogs = actionLogs;
+    // Đã xóa actionLogs. Chỉ giữ lại Constructor kế thừa chuẩn từ UserDTO
+    public AdminDTO(String id, String username, String email, UserRole role, UserStatus status) {
+        super(id, username, email, role, status);
     }
 
-    public List<String> getActionLogs() {
-        return actionLogs;
-    }
-
+    // Lớp này hiện tại trống, nhưng vẫn nên giữ để sau này có thêm các field
+    // đặc thù của Admin (ví dụ: cấp độ quyền hạn - level, bộ phận quản lý - department)
 }
-

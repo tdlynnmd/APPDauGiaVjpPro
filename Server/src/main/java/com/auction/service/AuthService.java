@@ -11,6 +11,8 @@ import com.auction.manage.UserManage;
 import com.auction.models.User.*;
 import com.auction.models.User.UserFactory;
 
+import java.util.ArrayList;
+
 
 public class AuthService {
     private final UserManage userManage = UserManage.getInstance();
@@ -63,9 +65,6 @@ public class AuthService {
             throw new AuthenticationException(AuthErrorCode.INVALID_CREDENTIALS); // Exception chung
         }
 
-        //Thiết lập Online
-        ConnectionManage.getInstance().registerOnline(user);
-
         return this.convertUserToDTO(user,user.getUserRole());
     }
 
@@ -78,8 +77,6 @@ public class AuthService {
         //Ghi log
         if(userId == null || userId.isEmpty())
             throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
-
-        ConnectionManage.getInstance().removeOffline(userId);
     }
 
 
@@ -140,6 +137,7 @@ public class AuthService {
                     bidder.getUsername(),
                     bidder.getEmail(),
                     UserRole.BIDDER,
+                    bidder.getStatus(),
                     bidder.getBalance(),
                     bidder.getJoinedAuctionIds()
             );
@@ -150,6 +148,8 @@ public class AuthService {
                     seller.getUsername(),
                     seller.getEmail(),
                     UserRole.SELLER,
+                    seller.getStatus(),
+                    seller.getBalance(),
                     seller.getRating()
             );
         } else if (UserRole.ADMIN.equals(role)) {
@@ -159,17 +159,12 @@ public class AuthService {
                     admin.getUsername(),
                     admin.getEmail(),
                     UserRole.ADMIN,
-                    admin.getActionLogs()
+                    admin.getStatus()
             );
         }
+        return null;
+        // Fallback: nếu ko match với role cụ thể nào, trả về null
 
-        // Fallback: nếu ko match với role cụ thể nào, trả về UserDTO cơ bản
-        return new UserDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                UserRole.valueOf(user.getRole())
-        );
     }
 
 }
