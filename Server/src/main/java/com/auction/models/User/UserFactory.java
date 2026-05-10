@@ -6,11 +6,12 @@ import java.util.Map;
 public abstract class UserFactory {
     private static final Map<com.auction.enums.UserRole, UserFactory> registry = new HashMap<>();
 
-    static {
+    //Giao nó cho một lớp Khởi tạo hệ thống (hoặc hàm main khi Server vừa bật lên) để tránh deadlock
+    /*static {
         registry.put(com.auction.enums.UserRole.BIDDER, new BidderFactory());
         registry.put(com.auction.enums.UserRole.SELLER, new SellerFactory());
         registry.put(com.auction.enums.UserRole.ADMIN, new AdminFactory());
-    }
+    }*/
 
     // Factory Method: Các lớp con sẽ triển khai logic khởi tạo riêng [cite: 29]
     abstract <T extends User> T createInstance(String username, String email, String password);

@@ -1,26 +1,27 @@
 package com.auction.models.Item;
 
-import com.auction.models.User.Seller;
-
 import java.util.Map;
 
-public class ArtFactory extends ItemFactory{
+public class ArtFactory extends ItemFactory {
+
     @Override
     protected Item createItem(Map<String, Object> data) {
-        // Lấy dữ liệu
-        String name = (String) data.get("name");
-        double startingPrice = (double) data.get("startingPrice");
-        String artist = (String) data.get("artist");
-        int yearCreated = (int) data.get("yearCreated");
-        String material = (String) data.get("material");
-        String sellerId = (String) data.get("sellerId");
+        // 1. Các trường BẮT BUỘC (Sẽ văng IllegalArgumentException nếu sai/thiếu)
+        String name = getRequiredString(data, "name");
+        double startingPrice = getRequiredDouble(data, "startingPrice");
+        int yearCreated = getRequiredInt(data, "yearCreated");
+        String sellerId = getRequiredString(data, "sellerId");
 
-        String description = "Không có mô tả";
-        //Tạo đối tượng Art
-        if(data.containsKey("description")){
-            description = (String) data.get("description");
-        }
-        return new Art(name, startingPrice, description,yearCreated,artist,material,sellerId);
+        // Các trường bắt buộc riêng của Art
+        String painter = getRequiredString(data, "painter");
+        String artStyle = getRequiredString(data, "artStyle");
 
+        // 2. Các trường TÙY CHỌN (Sẽ dùng giá trị mặc định nếu API không gửi)
+        String description = getOptionalString(data, "description", "Không có mô tả");
+        String imageUrl = getOptionalString(data, "imageUrl", "default_art.png");
+
+        // 3. Tạo Object an toàn
+        return new Art(name, startingPrice, description, yearCreated,
+                sellerId, imageUrl, painter, artStyle);
     }
 }

@@ -1,13 +1,12 @@
 package com.auction.models.Auction;
 
-
-
+import com.auction.enums.AuctionStatus;
+import com.auction.enums.BidStatus;
 import com.auction.models.Entity.Entity;
 import com.auction.models.Item.Item;
 import com.auction.models.User.Bidder;
 import com.auction.observer.Publisher;
 import com.auction.observer.Subscriber;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.chrono.ChronoLocalDateTime;
@@ -15,28 +14,76 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Auction extends Entity implements Serializable, Publisher {
-    private Item item;
+    private String itemId;              // Foreign Key
+    private String sellerId;            // Track người bán
+    private String highestBidderId;     // Foreign Key
+
+    // THÊM TRƯỜNG NÀY: Thay thế hoàn toàn cho cái List cồng kềnh
+    private String currentWinningBidId; // Trỏ tới BidTransaction đang ACCEPTED
+
     private double currentPrice;
     private double stepPrice;
-    private Bidder highestBidder;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private com.auction.enums.AuctionStatus status;
-    private final List<BidTransaction> bids;
-    private final List<Subscriber> subscribers = new ArrayList<>();
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private AuctionStatus status;
+
+    private transient Item item;                  // Load on-demand từ DB
+
+    private transient Bidder highestBidder;       // Load on-demand từ DB
+
+    private transient List<Subscriber> subscribers = new ArrayList<>();
 
     //Cấu hình Anti-sniping
     private static final int THRESHOLD_SECONDS = 30; // Nếu thầu trong 30s cuối
     private static final int EXTENSION_SECONDS = 60; // Thì cộng thêm 60s
 
-    public Auction(Item item, double stepPrice, LocalDateTime startTime, LocalDateTime endtime){
-        this.item = item;
+    /**
+     * CONSTRUCTOR 1: Tạo mới (New)
+     * Dùng khi User bắt đầu nhấn nút "Tạo phiên đấu giá"
+     */
+    public Auction(Item item, String sellerId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
+        super();
+        this.itemId = item.getId();
+        this.sellerId = sellerId;
         this.stepPrice = stepPrice;
         this.currentPrice = item.getStartingPrice();
         this.startTime = startTime;
-        this.endTime = endtime;
-        this.status = com.auction.enums.AuctionStatus.OPEN;
-        this.bids = new ArrayList<>();
+        this.endTime = endTime;
+        this.status = AuctionStatus.OPEN;
+
+        // Gán thời điểm hiện tại vì đây là lúc nó "sinh ra"
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+
+        this.subscribers = new ArrayList<>();
+    }
+
+    /**
+     * CONSTRUCTOR 2: Tái tạo từ DB (Hydration)
+     * Dùng trong DAO khi ResultSet trả về dữ liệu
+     */
+    public Auction(String id, String itemId, String sellerId, String highestBidderId,
+                   String currentWinningBidId, double currentPrice, double stepPrice,
+                   LocalDateTime startTime, LocalDateTime endTime,
+                   LocalDateTime createdAt, LocalDateTime updatedAt, AuctionStatus status) {
+        super(id);
+        this.itemId = itemId;
+        this.sellerId = sellerId;
+        this.highestBidderId = highestBidderId;
+        this.currentWinningBidId = currentWinningBidId;
+        this.currentPrice = currentPrice;
+        this.stepPrice = stepPrice;
+        this.startTime = startTime;
+        this.endTime = endTime;
+
+        // NHẬN GIÁ TRỊ TỪ DB: Không được dùng .now() ở đây
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+
+        this.status = status;
+        this.subscribers = new ArrayList<>();
     }
 
     //Tự động gia hạn thời gian nếu có lệnh đặt giá ở phút cuối
@@ -47,65 +94,75 @@ public class Auction extends Entity implements Serializable, Publisher {
         }
     }
 
-    /*
-     * Phương thức đặt giá (Thread-safe)
-     * Sd synchronized để tránh nhiều người đặt cùng lúc
+    /**
+     * Cập nhật logic CheckBid: Thêm kiểm tra người bán
      */
-    public synchronized boolean placeBid(Bidder bidder, double amount) {
-        //1. Cập nhật trạng thái lúc đặt giá
-        LocalDateTime now = LocalDateTime.now();
-        refreshStatus(now);
-
-        //2. Kiểm tra hợp lệ
-        if (this.checkBid(bidder,amount)){
-            //hoàn tiền người đặt giá cao nhất cũ
-            if (this.highestBidder != null) {
-                this.highestBidder.addBalance(this.currentPrice);
-            }
-
-            //update người đặt giá cao nhất mới
-            this.updateBid(bidder,amount,now);
-
-            //3. Thuật toán Anti-sniping (Gia hạn tự động)
-            checkAndExtend(now);
-            return true;
-        }
-        System.out.println("Lỗi: Giá đặt phải cao hơn giá hiện tại: " + currentPrice);
-        return false;
-    }
-
-    private boolean checkBid(Bidder bidder,double amount){
-        //Kiểm tra trạng thái phiên đấu giá
-        if (this.status != com.auction.enums.AuctionStatus.RUNNING){
-            if (this.status == com.auction.enums.AuctionStatus.OPEN) {
-                System.out.println("Lỗi: phiên đấu giá chưa bắt đầu");
-            } else if (this.status == com.auction.enums.AuctionStatus.FINISHED){
-                System.out.println("Lỗi: phiên đấu giá đã kết thúc");
-            }
+    private boolean checkBid(Bidder bidder, double amount) {
+        // 1. Kiểm tra trạng thái phiên
+        if (this.status != AuctionStatus.RUNNING) {
+            System.out.println("Lỗi: Phiên đấu giá không trong trạng thái hoạt động.");
             return false;
         }
 
-        //Kiểm tra người đấu giá
-        if(bidder == null){
+        // 2. CHỐNG ĐẤU GIÁ ẢO: Người bán không được tự bid
+        if (bidder.getId().equals(this.sellerId)) {
+            System.out.println("Lỗi: Người bán không thể tự đặt giá cho vật phẩm của mình!");
+            return false;
+        }
+
+        if(bidder.getId() == null){
             System.out.println("Lỗi: Người đặt giá không tồn tại");
             return false;
         }
 
-        // Kiểm tra giá đặt hợp lệ
-        if ((amount - currentPrice)<= stepPrice){
-            System.out.println("Lỗi: đặt giá bé hơn step tối thiểu");
+        // 3. Kiểm tra giá đặt hợp lệ
+        if ((amount - currentPrice) < stepPrice) {
+            System.out.println("Lỗi: Bước giá không đủ. Tối thiểu phải cộng thêm: " + stepPrice);
             return false;
         }
+
         return true;
     }
 
-    private void updateBid(Bidder bidder, double amount, LocalDateTime time ){
+    // Sửa lại hàm updateBid cho gọn gàng và chuẩn chữ ký hàm
+    private void updateBid(Bidder bidder, double amount, String highestBidderId) {
         this.currentPrice = amount;
         this.highestBidder = bidder;
-        this.bids.add(new BidTransaction(bidder,amount,time));
+        this.highestBidderId = highestBidderId;
     }
 
-    /*
+    /**
+     * Phương thức đặt giá (Thread-safe)
+     * Sd synchronized để tránh nhiều người đặt cùng lúc
+     */
+    public synchronized BidTransaction placeBid(Bidder bidder, double amount, String generatedBidId) {
+        LocalDateTime now = LocalDateTime.now();
+        refreshStatus(now);
+
+        if (!this.checkBid(bidder, amount)) {
+            // Trả về đối tượng DTO để Service lưu log thất bại
+            return new BidTransaction(generatedBidId, bidder.getId(), this.getId(), amount, now, BidStatus.REJECTED);
+        }
+
+        // Logic cũ: Hoàn tiền (giờ sẽ do Service xử lý DB)
+        if (this.highestBidder != null) {
+            this.highestBidder.addBalance(this.currentPrice);
+        }
+
+        // Tạo lượt bid mới thành công
+        BidTransaction newBid = new BidTransaction(generatedBidId, bidder.getId(), this.getId(), amount, now, BidStatus.ACCEPTED);
+
+        // Cập nhật các trường "con trỏ"
+        updateBid(bidder,amount,bidder.getId());
+
+        // QUAN TRỌNG: Ghi nhớ ID của lượt bid vừa thắng để lần sau còn lấy ra hoàn tiền
+        this.currentWinningBidId = newBid.getId();
+
+        checkAndExtend(now);
+        return newBid;
+    }
+
+    /**
      * Cập nhật trạng thái phiên dựa trên thời gian thực
      */
     public void refreshStatus(LocalDateTime now){
@@ -165,7 +222,18 @@ public class Auction extends Entity implements Serializable, Publisher {
         return stepPrice;
     }
 
-    public List<BidTransaction> getBids() {
-        return new ArrayList<>(bids);
+    // THÊM: Các hàm Setter cho Lazy Loading từ Service
+    public void setItem(Item item) {
+        this.item = item;
+        this.itemId = (item != null) ? item.getId() : null;
     }
+
+    public void setHighestBidder(Bidder bidder) {
+        this.highestBidder = bidder;
+        this.highestBidderId = (bidder != null) ? bidder.getId() : null;
+    }
+
+    public String getSellerId() { return sellerId; }
+    public String getItemId() { return itemId; }
+
 }

@@ -2,24 +2,31 @@ package com.auction.models.Item;
 
 import java.util.Map;
 
-public class VehicleFactory extends ItemFactory{
+public class VehicleFactory extends ItemFactory {
+
     @Override
     protected Item createItem(Map<String, Object> data) {
-        // Lấy dữ liệu
-        String name = (String) data.get("name");
-        double startingPrice = (double) data.get("startingPrice");
-        int yearCreated = (int) data.get("yearCreated");
-        String model = (String) data.get("model");
-        double kmAge = (double) data.get("kmAge");
-        String licensePlate = (String) data.get("licensePlate");
-        String engineType = (String) data.get("engineType");
-        String sellerId = (String) data.get("sellerId");
-        String description = "Không có mô tả";
+        // 1. Các trường BẮT BUỘC chung
+        String name = getRequiredString(data, "name");
+        double startingPrice = getRequiredDouble(data, "startingPrice");
+        int yearCreated = getRequiredInt(data, "yearCreated");
+        String sellerId = getRequiredString(data, "sellerId");
 
-        //Tạo đối tượng Electronics
-        if(data.containsKey("description")) {
-            description = (String) data.get("description");
-        }
-        return new Vehicle(name, startingPrice, description,yearCreated,model, engineType,licensePlate,kmAge,sellerId);
+        // Các trường bắt buộc riêng của Vehicle
+        String model = getRequiredString(data, "model");
+        String engineType = getRequiredString(data, "engineType");
+        String licensePlate = getRequiredString(data, "licensePlate");
+
+        // kmAge thường là số thập phân, ví dụ: 15000.5 km
+        double kmage = getRequiredDouble(data, "kmAge");
+
+        // 2. Các trường TÙY CHỌN
+        String description = getOptionalString(data, "description", "Không có mô tả");
+        String imageUrl = getOptionalString(data, "imageUrl", "default_vehicle.png");
+
+        // 3. Tạo Object an toàn
+        // (Lưu ý truyền đúng thứ tự Constructor của lớp Vehicle)
+        return new Vehicle(name, startingPrice, description, yearCreated,
+                sellerId, imageUrl, model, engineType, licensePlate, kmage);
     }
 }

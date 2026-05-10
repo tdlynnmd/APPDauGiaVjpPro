@@ -1,24 +1,45 @@
 package com.auction.models.Item;
 
-import com.auction.models.User.Seller;
+import com.auction.enums.ItemStatus;
+import com.auction.enums.ItemType;
+import java.time.LocalDateTime;
 
 public class Art extends Item {
-    private String artist;
-    private String material;
+    private String painter;
+    private String artStyle;
 
-    Art(String name, double startingPrice, String description, int yearCreated, String artist, String material, String sellerId){
-        super(name, startingPrice, description,yearCreated,sellerId);
-        this.artist = artist;
-        this.material = material;
+    // Constructor 1: Tạo mới
+    public Art(String name, double startingPrice, String description, int yearCreated,
+               String sellerId, String imageUrl, String painter, String artStyle) {
+        // Tự động truyền ItemType.ART lên lớp cha
+        super(name, startingPrice, description, yearCreated, sellerId, ItemType.ART, imageUrl);
+        this.painter = painter;
+        this.artStyle = artStyle;
+    }
+
+    // Constructor 2: Load từ Database
+    public Art(String id, String name, double startingPrice, String description,
+               int yearCreated, String sellerId, String imageUrl, ItemStatus status,
+               LocalDateTime createdAt, String painter, String artStyle) {
+        // Tự động truyền ItemType.ART lên lớp cha
+        super(id, name, startingPrice, description, yearCreated, sellerId, ItemType.ART, imageUrl, status, createdAt);
+        this.painter = painter;
+        this.artStyle = artStyle;
     }
 
     @Override
     public String getInfo() {
         return String.format("[Nghệ thuật]\n" +
-                "Tên: %s\n" +
-                "Tác giả: %s\n" +
-                "Chất liệu: %s\n" +
-                "Năm tạo ra: %d\n" +
-                "Giá gốc: %f VNĐ\n", this.getName(), artist, material, this.getYearCreated(), this.getStartingPrice());
+                        "Tên: %s\n" +
+                        "Họa sĩ/Tác giả: %s\n" +
+                        "Phong cách: %s\n" +
+                        "Năm sáng tác: %d\n" +
+                        "Giá khởi điểm: %,.0f VNĐ\n" +
+                        "Trạng thái: %s\n",
+                this.getName(), painter, artStyle, this.getYearCreated(), this.getStartingPrice(), this.getStatus());
     }
+
+    // Getters & Setters cho các field riêng (nếu cần)
+    public String getPainter() { return painter; }
+    public String getArtStyle() { return artStyle; }
 }
