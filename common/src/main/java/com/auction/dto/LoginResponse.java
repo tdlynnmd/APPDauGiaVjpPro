@@ -43,4 +43,8 @@ public class LoginResponse{
     public UserDTO getUser() {
         return user;
     }
+
+    public UserDTO getUserDto() {
+        return user;
+    }
 }

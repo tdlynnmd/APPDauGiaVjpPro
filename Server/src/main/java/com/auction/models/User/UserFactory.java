@@ -1,5 +1,7 @@
 package com.auction.models.User;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,11 +27,14 @@ public abstract class UserFactory {
     public static <T extends User> T createUser(com.auction.enums.UserRole role, String username, String email, String password ) {
         UserFactory factory = registry.get(role);
 
+        // ✅ THAY ĐỔI: Dùng BCrypt encoder.encode() thay hashPassword()
+        String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+
         if (factory == null) {
             throw new IllegalArgumentException("Role chưa được đăng ký trong hệ thống: " + role);
         }
 
         // Trả về đúng kiểu dữ liệu cụ thể nhờ Generics [cite: 61]
-        return (T) factory.createInstance(username, email, password);
+        return (T) factory.createInstance(username, email, hashedPassword);
     }
 }

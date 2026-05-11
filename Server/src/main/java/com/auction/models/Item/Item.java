@@ -59,11 +59,11 @@ public abstract class Item extends Entity implements Serializable {
 
     public abstract String getInfo();
 
-    protected String getName() {
+    public String getName() {
         return this.name;
     }
 
-    protected String getDescription() {
+    public String getDescription() {
         return this.description;
     }
 
@@ -71,11 +71,19 @@ public abstract class Item extends Entity implements Serializable {
         return this.startingPrice;
     }
 
-    protected int getYearCreated() {
+    public int getYearCreated() {
         return this.yearCreated;
     }
 
     public ItemStatus getStatus() {
         return status;
+    }
+
+    public String getSellerId() {
+        return sellerId;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
     }
 }

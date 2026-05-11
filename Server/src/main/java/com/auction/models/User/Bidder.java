@@ -21,9 +21,9 @@ public class Bidder extends User implements Subscriber {
     }
 
     // Constructor 2: Load từ DB (Đã xóa tham số double rating thừa)
-    protected Bidder(String id, String username, String email, String password,
-                     UserRole role, double balance, UserStatus status,
-                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Bidder(String id, String username, String email, String password,
+                  UserRole role, double balance, UserStatus status,
+                  LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(id, username, email, password, role, balance, status, createdAt, updatedAt);
         this.joinedAuctionIds = new ArrayList<>();
     }

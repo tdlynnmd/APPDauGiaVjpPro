@@ -1,4 +1,7 @@
 package com.auction.dao;
 
-public class BidTransactionDAO {
+import com.auction.models.Auction.BidTransaction;
+
+public interface BidTransactionDAO {
+    public boolean insertBid(BidTransaction bid);
 }

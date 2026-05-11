@@ -29,11 +29,8 @@ public class AuthService {
         this.validateEmail(email);
         this.validatePassword(password);
 
-        // ✅ THAY ĐỔI: Dùng BCrypt encoder.encode() thay hashPassword()
-        String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
-
         //Tạo
-        T newUser = UserFactory.createUser(role, username, email, hashedPassword);
+        T newUser = UserFactory.createUser(role, username, email, password);
 
         //Thêm vào Map của userManage
         this.userManage.addUser(newUser);

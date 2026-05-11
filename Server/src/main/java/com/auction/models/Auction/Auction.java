@@ -199,11 +199,11 @@ public class Auction extends Entity implements Serializable, Publisher {
         status=auctionStatus;
     }
 
-    public ChronoLocalDateTime<?> getStartTime() {
+    public LocalDateTime getStartTime() {
         return startTime;
     }
 
-    public ChronoLocalDateTime<?> getEndTime() {
+    public LocalDateTime getEndTime() {
         return endTime;
     }
 
@@ -222,18 +222,7 @@ public class Auction extends Entity implements Serializable, Publisher {
         return stepPrice;
     }
 
-    // THÊM: Các hàm Setter cho Lazy Loading từ Service
-    public void setItem(Item item) {
-        this.item = item;
-        this.itemId = (item != null) ? item.getId() : null;
+    public String getSellerId() {
+        return sellerId;
     }
-
-    public void setHighestBidder(Bidder bidder) {
-        this.highestBidder = bidder;
-        this.highestBidderId = (bidder != null) ? bidder.getId() : null;
-    }
-
-    public String getSellerId() { return sellerId; }
-    public String getItemId() { return itemId; }
-
 }

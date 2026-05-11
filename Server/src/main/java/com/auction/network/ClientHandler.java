@@ -1,85 +1,54 @@
 package com.auction.network;
-/**
- ClientHandler xử lý request từ một Client cụ thể.
- Khi SocketServer nhận kết nối, clientHandler sẽ nhận từng request rồi chia xuống cho Controller ở sever thực hiện
- */
-
-import com.auction.controller.AuthController;// ClientHandler sẽ gọi AuthController để xử lý login.
-import com.auction.dto.LoginRequest;
-import com.auction.dto.LoginResponse;       //Server dùng DTO chung với Client.
-import com.auction.dto.SocketRequest;
-import com.google.gson.Gson;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import com.auction.manage.ConnectionManage;
 
-public class ClientHandler implements Runnable {            //ClientHandler implements Runnable để có thể chạy trong Thread.
-    private final Socket socket;                            //Đây là kết nối tới một Client cụ thể.
-    private final Gson gson = new Gson();                   //Dùng Gson để đọc/ghi JSON.
-
-    private final AuthController authController = new AuthController();
+public class ClientHandler implements Runnable {
+    private final Socket socket;
+    // Chuyển việc phân luồng cho Dispatcher lo
+    private final RequestDispatcher dispatcher;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
+        this.dispatcher = new RequestDispatcher();
     }
 
     @Override
     public void run() {
-        try (
-                BufferedReader reader = new BufferedReader(         // Đọc dữ liệu Client gửi lên.
-                        new InputStreamReader(socket.getInputStream())
-                );
-                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)    // Gửi dữ liệu từ Server về Client.
-        ) {
-            String requestJson = reader.readLine();
+        ClientSession session = null;
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
 
-            if (requestJson == null || requestJson.isBlank()) {
-                LoginResponse response = LoginResponse.failure(
-                        "Request rỗng",
-                        "EMPTY_REQUEST"
-                );
-                writer.println(gson.toJson(response));
-                return;
+            // Bọc Socket và Writer vào một cái "Thẻ bàn" (ClientSession)
+            session = new ClientSession(socket, writer);
+
+            String requestJson;
+            // VÒNG LẶP SINH TỬ: Giữ kết nối liên tục.
+            // Vòng lặp này chỉ dừng khi Client tắt App hoặc rớt mạng (reader trả về null)
+            while ((requestJson = reader.readLine()) != null) {
+                if (requestJson.isBlank()) continue;
+
+                // Bưng cục JSON và cái thẻ bàn ném cho Tổ trưởng (Dispatcher) xử lý
+                dispatcher.processRequest(requestJson, session);
             }
 
-            SocketRequest socketRequest = gson.fromJson(
-                    requestJson,
-                    SocketRequest.class
-            );
-
-            Object response = handleRequest(socketRequest);
-
-            String responseJson = gson.toJson(response);
-
-            writer.println(responseJson);
-
-        } catch (Exception e) {
-            System.err.println("[Server] Lỗi xử lý client: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("[Server] Client ngắt kết nối đột ngột: " + e.getMessage());
+        } finally {
+            // DỌN DẸP KHI CLIENT RỚT MẠNG
+            if (session != null) {
+                String userId = session.getUserId();
+                if (userId != null) {
+                    // Xóa khỏi danh bạ Online
+                    ConnectionManage.getInstance().removeConnection(userId, session);
+                }
+                session.close();
+            }
         }
-    }
-
-    private Object handleRequest(SocketRequest socketRequest) {         //Hàm phân loại request.
-        if (socketRequest == null || socketRequest.getAction() == null) {
-            return LoginResponse.failure(
-                    "Request không hợp lệ",
-                    "BAD_REQUEST"
-            );
-        }
-
-        if ("LOGIN".equals(socketRequest.getAction())) {
-            LoginRequest loginRequest = gson.fromJson(
-                    socketRequest.getBody(),
-                    LoginRequest.class
-            );
-
-            return authController.login(loginRequest);
-        }
-
-        return LoginResponse.failure(
-                "Action không được hỗ trợ: " + socketRequest.getAction(),
-                "UNSUPPORTED_ACTION"
-        );
     }
 }

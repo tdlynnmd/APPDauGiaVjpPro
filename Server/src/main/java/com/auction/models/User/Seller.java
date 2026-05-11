@@ -19,9 +19,9 @@ public class Seller extends User {
         this.rating = 0;
     }
 
-    protected Seller(String id, String username, String email, String password,
-                   UserRole role, double balance, UserStatus status,
-                   LocalDateTime createdAt, LocalDateTime updatedAt, double rating) {
+    public Seller(String id, String username, String email, String password,
+                  UserRole role, double balance, UserStatus status,
+                  LocalDateTime createdAt, LocalDateTime updatedAt, double rating) {
         super(id, username, email, password, role, balance, status, createdAt, updatedAt);
         this.rating = rating;
         this.myItems = new ArrayList<>();

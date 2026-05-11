@@ -40,4 +40,20 @@ public class BidTransaction extends Entity {
     public void setStatus(BidStatus status) {
         this.status = status;
     }
+
+    public String getBidderId() {
+        return bidderId;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public String getAuctionId() {
+        return auctionId;
+    }
+
+    public LocalDateTime getTime() {
+        return time;
+    }
 }

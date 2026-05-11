@@ -53,4 +53,8 @@ public class Vehicle extends Item {
     public double getKmage() { return kmage; }
     public String getLicensePlate() { return licensePlate; }
     public String getEngineType() { return engineType; }
+
+    public double getKmAge() {
+        return kmage;
+    }
 }
