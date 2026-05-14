@@ -5,7 +5,7 @@ import com.auction.enums.UserStatus; // Bổ sung Status
 
 import java.io.Serializable;
 
-public abstract class UserDTO implements Serializable {
+public class UserDTO implements Serializable {
     private static final long serialVersionUID = 1L; // Đảm bảo an toàn khi truyền qua mạng
 
     private String id;

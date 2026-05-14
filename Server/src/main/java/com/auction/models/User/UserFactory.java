@@ -1,6 +1,7 @@
 package com.auction.models.User;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import com.auction.enums.UserRole;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +15,10 @@ public abstract class UserFactory {
         registry.put(com.auction.enums.UserRole.SELLER, new SellerFactory());
         registry.put(com.auction.enums.UserRole.ADMIN, new AdminFactory());
     }*/
+
+    public static void setRegistry(UserRole role, UserFactory userFactory){
+        registry.put(role,userFactory);
+    }
 
     // Factory Method: Các lớp con sẽ triển khai logic khởi tạo riêng [cite: 29]
     abstract <T extends User> T createInstance(String username, String email, String password);

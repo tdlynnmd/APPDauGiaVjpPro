@@ -176,6 +176,8 @@ public class Auction extends Entity implements Serializable, Publisher {
         }
     }
 
+    //Thông báo cho các Subscriber khi có sự kiện mới (ví dụ: có người đặt giá mới)
+
     @Override
     public void subscribe(Subscriber subscriber) {
         this.subscribers.add(subscriber);

@@ -21,18 +21,18 @@ public class clientAuthApi {
     private final Gson gson = new Gson();
 
     public LoginResponse login (String usernameOrEmail, String password) {      // Hàm nay được LoginController gọi khi người dùng bấm nút login
-        try (
-                Socket socket = new Socket(SERVER_HOST, SERVER_PORT);               // Mở cổng kết nối tới Sever, nếu Sever chưa chạy, sẽ lỗi đi vào catch
-                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);       // gửi du liệu tu Client sang Sever
-                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));     // đọc dữ liệu Sever gi về
-        )
+        try
         {
+            ClientNetworkManager network = ClientNetworkManager.getInstance();
+            PrintWriter writer = network.getWriter();
+            BufferedReader reader = network.getReader();
+
             LoginRequest loginRequest = new LoginRequest(usernameOrEmail, password);    // chứa username/email và password.
             JsonObject loginBody = gson.toJsonTree(loginRequest).getAsJsonObject();     // chuyển LoginRequest thành JSON Object
             SocketRequest socketRequest = new SocketRequest("LOGIN", loginBody); // Bọc LoginRequest vào SocketRequest, để khi sever nhìn thấy action = "LOGIN" phải biết gọi AuthController.login()
-            String requestJson = gson.toJson(socketRequest);                        // Chuyển SocketRequest thành chuỗi JSON để ửi qua mạng
-            writer.println(requestJson);                                            // gui request dạng chuỗi JSON sang Sever
+            String requestJson = gson.toJson(socketRequest);// Chuyển SocketRequest thành chuỗi JSON để gửi qua mạng
 
+            writer.println(requestJson);                                            // gui request dạng chuỗi JSON sang Sever
             String responseJson = reader.readLine();                                // Đợi Sever trả response về
             if (responseJson == null || responseJson.isBlank()) {
                 return LoginResponse.failure(
@@ -42,6 +42,7 @@ public class clientAuthApi {
             }
             return gson.fromJson(responseJson, LoginResponse.class);     // Chuyển JSON Server trả về thành LoginResponse.
         } catch(Exception e){
+            e.printStackTrace();
             return LoginResponse.failure(
                     "Cannot connect to the server. Please check whether the server is running.",
                     "CONNECTION_ERROR"
