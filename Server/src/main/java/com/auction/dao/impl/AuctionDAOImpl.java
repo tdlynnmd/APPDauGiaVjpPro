@@ -137,4 +137,34 @@ public class AuctionDAOImpl implements AuctionDAO {
                 createdAt, updatedAt, status
         );
     }
+
+    @Override
+    public List<Auction> findByStatuses(List<AuctionStatus> statuses) {
+        List<Auction> auctions = new ArrayList<>();
+        if (statuses == null || statuses.isEmpty()) return auctions;
+
+        // Tạo chuỗi chấm hỏi (?,?,?) dựa trên số lượng status truyền vào
+        String placeholders = statuses.stream()
+                .map(s -> "?")
+                .collect(java.util.stream.Collectors.joining(","));
+
+        String sql = "SELECT * FROM auctions WHERE status IN (" + placeholders + ")";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < statuses.size(); i++) {
+                stmt.setString(i + 1, statuses.get(i).name());
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    auctions.add(mapResultSetToAuction(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi findByStatuses: " + e.getMessage());
+        }
+        return auctions;
+    }
 }

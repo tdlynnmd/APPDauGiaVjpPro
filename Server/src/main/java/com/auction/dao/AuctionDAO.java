@@ -1,5 +1,6 @@
 package com.auction.dao;
 
+import com.auction.enums.AuctionStatus;
 import com.auction.models.Auction.Auction;
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,4 +17,6 @@ public interface AuctionDAO {
     List<Auction> findRunningAuctionsPastEndTime();
 
     boolean updateStatus(String auctionId, String status);
+
+    List<Auction> findByStatuses(List<AuctionStatus> activeStatuses);
 }

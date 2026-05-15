@@ -28,7 +28,8 @@ public enum AuthErrorCode {
     USER_NULL("AUTH_USER_003", "User must not be null"),
 
     // ===== GENERAL ERRORS =====
-    INVALID_CREDENTIALS("AUTH_GEN_001", "Invalid username/email or password");
+    INVALID_CREDENTIALS("AUTH_GEN_001", "Invalid username/email or password"),
+    REGISTRATION_FAILED("AUTH_GEN_002", "Register failed");
 
     private final String code;
     private final String message;
