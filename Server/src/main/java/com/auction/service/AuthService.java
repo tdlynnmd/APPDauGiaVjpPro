@@ -144,9 +144,43 @@ public class AuthService {
     }
 
     // --- CÁC HÀM VALIDATE GIỮ NGUYÊN ---
-    private void validateEmail(String email) throws AuthenticationException { /*...*/ }
-    private void validateUsername(String username) throws AuthenticationException { /*...*/ }
-    private void validatePassword(String password) throws AuthenticationException { /*...*/ }
+    /**
+     * Kiểm tra email hợp lệ - Ít nhất 5 ký tự - nhiều nhất 20 ký tự, bao gồm chữ cái, chữ số và . , _
+     */
+
+    private void validateEmail(String email) throws AuthenticationException {
+        if (email == null || email.isEmpty())
+            throw new AuthenticationException(AuthErrorCode.EMAIL_NULL_EMPTY);
+        if (!email.matches(EMAIL_REGEX))
+            throw new AuthenticationException(AuthErrorCode.EMAIL_INVALID_FORMAT);
+    }
+
+    /**
+     * Kiểm tra username hợp lệ - Ít nhất 5 ký tự - nhiều nhất 20 ký tự, bao gồm chữ cái, chữ số và . , _
+     */
+    private void validateUsername(String username) throws AuthenticationException {
+        if (username == null || username.isEmpty())
+            throw new AuthenticationException(AuthErrorCode.USERNAME_NULL_EMPTY);
+        if (username.length() < 5)
+            throw new AuthenticationException(AuthErrorCode.USERNAME_TOO_SHORT);
+        if (username.length() > 20)
+            throw new AuthenticationException(AuthErrorCode.USERNAME_TOO_LONG);
+        if (!username.matches(USERNAME_REGEX))
+            throw new AuthenticationException(AuthErrorCode.USERNAME_INVALID_FORMAT);
+    }
+
+    /**
+     * Kiểm tra mật khẩu hợp lệ - Ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
+     */
+    private void validatePassword(String password) throws AuthenticationException {
+        if (password == null || password.isEmpty())
+            throw new AuthenticationException(AuthErrorCode.PASSWORD_NULL_EMPTY);
+        if (password.length() < 8)
+            throw new AuthenticationException(AuthErrorCode.PASSWORD_TOO_SHORT);
+        if (!password.matches(PASSWORD_REGEX))
+            throw new AuthenticationException(AuthErrorCode.PASSWORD_WEAK);
+    }
+
 
     /**
      * Chuyển đổi User entity thành UserDTO

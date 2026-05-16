@@ -46,9 +46,11 @@ public class AuctionService {
     // 1. Tạo phiên đấu giá mới (Nạp từ DB lên RAM luôn)
     public boolean createAuction(String itemId, String sellerId, double startPrice,
                                  double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
+        //Tìm item
+        Item item = itemDAO.findById(itemId).get();
 
         // Tạo đối tượng Auction (Constructor mới không cần ID, không cần Status)
-        Auction newAuction = new Auction(itemId, sellerId, stepPrice, startTime, endTime);
+        Auction newAuction = new Auction(item, sellerId, stepPrice, startTime, endTime);
 
         // Lưu vào Database
         boolean isSaved = auctionDAO.insertAuction(newAuction);

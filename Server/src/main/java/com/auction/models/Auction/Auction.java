@@ -42,9 +42,10 @@ public class Auction extends Entity implements Serializable, Publisher {
      * CONSTRUCTOR 1: Tạo mới (New)
      * Dùng khi User bắt đầu nhấn nút "Tạo phiên đấu giá"
      */
-    public Auction(String itemId, String sellerId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(Item item, String sellerId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
         super();
-        this.itemId = itemId;
+        this.item =item;
+        this.itemId = item.getId();
         this.sellerId = sellerId;
         this.stepPrice = stepPrice;
         this.currentPrice = item.getStartingPrice();
@@ -103,14 +104,14 @@ public class Auction extends Entity implements Serializable, Publisher {
             return false;
         }
 
-        // 2. CHỐNG ĐẤU GIÁ ẢO: Người bán không được tự bid
-        if (bidder.getId().equals(this.sellerId)) {
-            System.out.println("Lỗi: Người bán không thể tự đặt giá cho vật phẩm của mình!");
+        if(bidder.getId() == null){
+            System.out.println("Lỗi: Người đặt giá không tồn tại");
             return false;
         }
 
-        if(bidder.getId() == null){
-            System.out.println("Lỗi: Người đặt giá không tồn tại");
+        // 2. CHỐNG ĐẤU GIÁ ẢO: Người bán không được tự bid
+        if (bidder.getId().equals(this.sellerId)) {
+            System.out.println("Lỗi: Người bán không thể tự đặt giá cho vật phẩm của mình!");
             return false;
         }
 
