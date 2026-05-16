@@ -7,7 +7,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-
+import com.auction.dto.LogoutResponse;
+import com.auction.network.ClientAuthApi;
 public class DashboardController {
 
     @FXML
@@ -83,7 +84,34 @@ public class DashboardController {
 
     @FXML
     private void handleLogout() {
+
+        /**
+         Xu lí khi nguoi dung bấm nút Logout trên Dasshboard
+         Luồng xử lí:
+         1. Lấy userId hiện tại từ ClientSession
+         2. Gửi request LOGOUT sang Server
+         3. Server xóa session khỏi ConnectionManage
+         4. Client xóa token/user hiện tại
+         5. Quay về màn hình Login
+         */
+        if (ClientSession.isLoggedIn()) {
+            String userId = ClientSession.getCurrentUser().getId();
+
+            // Gửi logout lên Server để Server xóa kết nối online.
+            ClientAuthApi authApi = new ClientAuthApi();
+            LogoutResponse response = authApi.logout(userId);
+
+            // Nếu Server báo lỗi, vẫn có thể cho Client thoát,
+            // nhưng nên hiển thị để dễ debug trong quá trình làm project.
+            if (!response.isSuccess()) {
+                showInfo("Server báo lỗi khi đăng xuất: " + response.getMessage());
+            }
+        }
+        // Xóa session phía Client.
+        // Sau bước này, Dashboard không còn biết user hiện tại là ai.
         ClientSession.clear();
+
+        // Quay về màn hình đăng nhập.
         SceneNavigator.showLogin();
     }
 

@@ -1,7 +1,7 @@
 package com.auction.controller;
 
 import com.auction.dto.LoginResponse;
-import com.auction.network.clientAuthApi;
+import com.auction.network.ClientAuthApi;
 import com.auction.util.ClientSession;
 import com.auction.util.SceneNavigator;
 import javafx.event.ActionEvent;
@@ -72,7 +72,7 @@ public class LoginController {
 
         // 3. LOGIC ĐĂNG NHẬP
         // Gửi username/password sang Server để kiểm tra, không hardcode trong Controller nữa
-        clientAuthApi authApi = new clientAuthApi();
+        ClientAuthApi authApi = new ClientAuthApi();
         LoginResponse response = authApi.login(username, password);
 
         if (response.isSuccess()) {
