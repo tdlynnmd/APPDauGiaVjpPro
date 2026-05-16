@@ -1,6 +1,11 @@
 package com.auction.network;
 /**
  SocketServer mở cổng Server để Client kết nối vào.
+
+ - Mở cổng server, ví dụ port 5555
+ - Chờ client kết nối
+ - Mỗi khi có client mới, tạo một ClientHandler riêng
+ - Chạy ClientHandler bằng Thread riêng
  */
 
 import java.io.IOException;

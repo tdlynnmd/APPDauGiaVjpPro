@@ -89,4 +89,8 @@ public class LoginController {
             errorLabel.setStyle("-fx-text-fill: red;");
         }
     }
+    @FXML
+    public void goToRegister(ActionEvent event){
+        SceneNavigator.showRegister();
+    }
 }

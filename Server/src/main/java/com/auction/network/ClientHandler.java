@@ -1,4 +1,13 @@
 package com.auction.network;
+/**
+ ClientHandler xu ly 1 client cụ thể
+ Nhiệm vụ:
+ -> Đọc request từ client gửi lên
+ -> Gửi request đó cho RequestDispatcher xử lý
+ -> Nhận response trả về
+ -> Gửi response lại cho client
+ -> Quản lý vòng đời kết nối socket của client đó
+ */
 
 import java.io.BufferedReader;
 import java.io.IOException;

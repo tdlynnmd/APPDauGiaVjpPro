@@ -1,9 +1,17 @@
 package com.auction.network;
+/**
+ Là bo điều phối request phía Server
+
+    Nhiệm vụ
+  Nhận JSON từ ClientHandler.
+  Chuyển JSON thành SocketRequest.
+  Nhìn action.
+  Gọi đúng handler: LOGIN, REGISTER, LOGOUT.
+  Gửi response về Client qua ClientSession.
+ */
 
 import com.auction.controller.AuthController;
-import com.auction.dto.LoginRequest;
-import com.auction.dto.LoginResponse;
-import com.auction.dto.SocketRequest;
+import com.auction.dto.*;
 import com.auction.manage.ConnectionManage;
 import com.google.gson.Gson;
 
@@ -29,6 +37,12 @@ public class RequestDispatcher {
                     handleLogin(socketRequest.getBody(), session);
                     break;
 
+                case "REGISTER":
+                    handleRegister(socketRequest.getBody(), session);
+
+                case "LOGOUT":
+                    handleLogout(socketRequest.getBody(), session);
+
                 case "PLACE_BID":
                     // auctionController.placeBid(socketRequest.getBody(), session);
                     break;
@@ -43,8 +57,19 @@ public class RequestDispatcher {
         }
     }
 
-    // --- Các hàm xử lý chi tiết (Delegation) ---
+    //// --- Các hàm xử lý chi tiết (Delegation) ---
 
+
+    /**
+      Xử lý LOGIN.
+
+      Luồng:
+      1. Parse body thành LoginRequest.
+      2. Gọi AuthController.login().
+      3. Nếu login thành công, gắn userId vào ClientSession.
+      4. Đăng ký connection vào ConnectionManage.
+      5. Gửi LoginResponse về Client.
+     */
     private void handleLogin(String bodyJson, ClientSession session) {
         LoginRequest loginRequest = gson.fromJson(bodyJson, LoginRequest.class);
 
@@ -62,6 +87,67 @@ public class RequestDispatcher {
         // Gửi trả kết quả cho Client thông qua session
         session.sendMessage(gson.toJson(response));
     }
+
+    private void handleRegister(String bodyJson, ClientSession session){
+        /**
+          Xử lý REGISTER.
+
+          Luồng:
+          1. Parse body thành RegisterRequest.
+          2. Gọi AuthController.register().
+          3. Gửi RegisterResponse về Client.
+
+          Lưu ý:
+          - Đăng ký thành công chưa tự động login.
+          - Vì vậy không gọi session.setUserId() ở đây.
+         */
+        RegisterRequest registerRequest = gson.fromJson(bodyJson, RegisterRequest.class);
+        RegisterResponse response = authController.register(registerRequest);
+        session.sendMessage(gson.toJson(response));
+    }
+
+    private void handleLogout(String bodyJson, ClientSession session) {
+        /**
+          Xử lý LOGOUT.
+
+          Luồng:
+          1. Parse body thành LogoutRequest.
+          2. Ưu tiên lấy userId từ ClientSession phía Server.
+          3. Nếu session chưa có userId thì lấy dự phòng từ LogoutRequest.
+          4. Gọi AuthController.logout() để kiểm tra userId hợp lệ.
+          5. Nếu thành công, xóa session khỏi ConnectionManage.
+          6. Set session.userId = null.
+          7. Gửi LogoutResponse về Client.
+         */
+        LogoutRequest logoutRequest = gson.fromJson(bodyJson, LogoutRequest.class);
+
+        // Ưu tiên lấy userId từ session phía Server vì đây là dữ liệu Server đang quản lý.
+        String userId = session.getUserId();
+
+        if (userId == null) {
+            LogoutResponse response = LogoutResponse.failure(
+                    "User is not logged in on this session.",
+                    "USER_NOT_LOGGED_IN"
+            );
+            session.sendMessage(gson.toJson(response));
+            return;
+        }
+
+        LogoutResponse response = authController.logout(userId);
+
+        if (response.isSuccess()) {
+            // Xóa đúng session hiện tại khỏi danh sách online.
+            if (session.getUserId() != null) {
+                ConnectionManage.getInstance().removeConnection(session.getUserId(), session);
+            }
+
+            // Sau logout, socket này không còn gắn với user nào nữa.
+            session.setUserId(null);
+        }
+
+        session.sendMessage(gson.toJson(response));
+    }
+
 
     private void sendError(ClientSession session, String code, String message) {
         LoginResponse errorResponse = LoginResponse.failure(message, code);

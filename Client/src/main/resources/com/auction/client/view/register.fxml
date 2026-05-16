@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
@@ -17,18 +18,71 @@
 <?import javafx.scene.paint.Stop?>
 <?import javafx.scene.text.Font?>
 
-<StackPane fx:id="rootContainer" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" stylesheets="@light.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.LoginController">
+<!--
+    register.fxml là giao diện đăng ký tài khoản phía Client.
+
+    Vai trò:
+    - Hiển thị form nhập username, email, password, repeat password.
+    - Cho người dùng chọn role bằng roleComboBox.
+    - Gắn các control với RegisterController thông qua fx:id.
+    - Khi bấm Register, JavaFX gọi RegisterController.handleRegister().
+    - Khi bấm Login?, JavaFX gọi RegisterController.goToLogin().
+
+    Lưu ý:
+    - File FXML chỉ mô tả giao diện.
+    - Không xử lý logic đăng ký trong FXML.
+    - Logic đăng ký nằm trong RegisterController.
+-->
+
+<StackPane fx:id="rootContainer"
+           maxHeight="1.7976931348623157E308"
+           maxWidth="1.7976931348623157E308"
+           stylesheets="@light.css"
+           xmlns="http://javafx.com/javafx/26"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.auction.controller.RegisterController">
+
    <children>
-      <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="768.0" prefWidth="1024.0" styleClass="main-container">
+
+      <Pane maxHeight="-Infinity"
+            maxWidth="-Infinity"
+            minHeight="-Infinity"
+            minWidth="-Infinity"
+            prefHeight="768.0"
+            prefWidth="1024.0"
+            styleClass="main-container">
+
          <children>
-            <VBox alignment="CENTER" layoutX="257.0" layoutY="103.0" prefHeight="497.0" prefWidth="510.0" spacing="15.0" styleClass="login-card">
+
+            <VBox alignment="CENTER"
+                  layoutX="257.0"
+                  layoutY="70.0"
+                  prefHeight="630.0"
+                  prefWidth="510.0"
+                  spacing="15.0"
+                  styleClass="login-card">
+
                <children>
-                  <ImageView fitHeight="105.0" fitWidth="236.0" pickOnBounds="true" preserveRatio="true">
+
+                  <!-- Logo của ứng dụng -->
+                  <ImageView fitHeight="105.0"
+                             fitWidth="236.0"
+                             pickOnBounds="true"
+                             preserveRatio="true">
                      <image>
                         <Image url="@../../../../image/LOGO.png" />
                      </image>
                   </ImageView>
-                  <Label alignment="CENTER" minHeight="50.0" prefHeight="60.0" prefWidth="260.0" styleClass="welcome-text" text="Welcom Back !!" textAlignment="JUSTIFY">
+
+                  <!-- Tiêu đề màn hình đăng ký -->
+                  <Label alignment="CENTER"
+                         minHeight="50.0"
+                         prefHeight="60.0"
+                         prefWidth="260.0"
+                         styleClass="welcome-text"
+                         text="Create Account"
+                         textAlignment="JUSTIFY">
+
                      <textFill>
                         <RadialGradient centerX="0.5" centerY="0.5" radius="0.5">
                            <stops>
@@ -45,32 +99,139 @@
                            </stops>
                         </RadialGradient>
                      </textFill>
+
                      <VBox.margin>
-                        <Insets bottom="15.0" />
+                        <Insets bottom="10.0" />
                      </VBox.margin>
                   </Label>
-                  <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Username" styleClass="text-input" />
-                  <TextField fx:id="usernameField1" prefHeight="47.0" prefWidth="313.0" promptText="Email" styleClass="text-input" />
-                  <TextField fx:id="usernameField2" prefHeight="47.0" prefWidth="313.0" promptText="Password" styleClass="text-input" />
-                  <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Repeat password" styleClass="text-input" />
-                  <Label fx:id="errorLabel" prefHeight="18.0" prefWidth="470.0" text="" visible="false" wrapText="true" />
-                  <Hyperlink alignment="CENTER" prefHeight="24.0" prefWidth="207.0" styleClass="second_label" text="already have an account?" textAlignment="CENTER" />
-                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" prefHeight="24.0" prefWidth="78.0" styleClass="second_label" text="Login?" textAlignment="JUSTIFY" />
-                  <Button alignment="CENTER" mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" text="Register" textAlignment="JUSTIFY" />
+
+                  <!--
+                      usernameField khớp với biến:
+                      @FXML private TextField usernameField;
+                      trong RegisterController.
+                  -->
+                  <TextField fx:id="usernameField"
+                             prefHeight="47.0"
+                             prefWidth="313.0"
+                             promptText="Username"
+                             styleClass="text-input" />
+
+                  <!--
+                      emailField khớp với biến:
+                      @FXML private TextField emailField;
+                      trong RegisterController.
+                  -->
+                  <TextField fx:id="emailField"
+                             prefHeight="47.0"
+                             prefWidth="313.0"
+                             promptText="Email"
+                             styleClass="text-input" />
+
+                  <!--
+                      passwordField là mật khẩu chính.
+                      Dùng PasswordField để không hiện ký tự thật khi nhập.
+                  -->
+                  <PasswordField fx:id="passwordField"
+                                 prefHeight="47.0"
+                                 prefWidth="313.0"
+                                 promptText="Password"
+                                 styleClass="text-input" />
+
+                  <!--
+                      confirmPasswordField là ô nhập lại mật khẩu.
+                      RegisterController sẽ kiểm tra có trùng passwordField không.
+                  -->
+                  <PasswordField fx:id="confirmPasswordField"
+                                 prefHeight="47.0"
+                                 prefWidth="313.0"
+                                 promptText="Repeat password"
+                                 styleClass="text-input" />
+
+                  <!--
+                      roleComboBox cho người dùng chọn vai trò tài khoản.
+                      Danh sách BIDDER/SELLER được thêm trong RegisterController.initialize().
+                  -->
+                  <ComboBox fx:id="roleComboBox"
+                            prefHeight="47.0"
+                            prefWidth="313.0"
+                            promptText="Role"
+                            styleClass="text-input" />
+
+                  <!--
+                      errorLabel dùng để hiển thị lỗi hoặc thông báo thành công.
+                      Ban đầu ẩn, khi có lỗi RegisterController sẽ setVisible(true).
+                  -->
+                  <Label fx:id="errorLabel"
+                         prefHeight="18.0"
+                         prefWidth="470.0"
+                         text=""
+                         visible="false"
+                         wrapText="true" />
+
+                  <Hyperlink alignment="CENTER"
+                             prefHeight="24.0"
+                             prefWidth="207.0"
+                             styleClass="second_label"
+                             text="Already have an account?"
+                             textAlignment="CENTER" />
+
+                  <!--
+                      Khi bấm Login?, JavaFX gọi RegisterController.goToLogin().
+                  -->
+                  <Hyperlink alignment="CENTER"
+                             contentDisplay="CENTER"
+                             prefHeight="24.0"
+                             prefWidth="78.0"
+                             styleClass="second_label"
+                             text="Login?"
+                             textAlignment="JUSTIFY"
+                             onAction="#goToLogin" />
+
+                  <!--
+                      Khi bấm Register, JavaFX gọi RegisterController.handleRegister().
+                  -->
+                  <Button alignment="CENTER"
+                          mnemonicParsing="false"
+                          onAction="#handleRegister"
+                          prefHeight="31.0"
+                          prefWidth="211.0"
+                          text="Register"
+                          textAlignment="JUSTIFY" />
+
                </children>
+
                <padding>
                   <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
                </padding>
+
             </VBox>
+
          </children>
       </Pane>
-      <ToggleButton fx:id="btnTheme" mnemonicParsing="false" onAction="#toggleTheme" prefHeight="45.0" prefWidth="45.0" styleClass="button" text="🌙" textAlignment="CENTER" StackPane.alignment="BOTTOM_RIGHT">
+
+      <!--
+          Nút đổi theme sáng/tối.
+          Khi bấm, JavaFX gọi RegisterController.toggleTheme().
+      -->
+      <ToggleButton fx:id="btnTheme"
+                    mnemonicParsing="false"
+                    onAction="#toggleTheme"
+                    prefHeight="45.0"
+                    prefWidth="45.0"
+                    styleClass="button"
+                    text="🌙"
+                    textAlignment="CENTER"
+                    StackPane.alignment="BOTTOM_RIGHT">
+
          <font>
             <Font size="19.0" />
          </font>
+
          <StackPane.margin>
             <Insets bottom="25.0" right="25.0" />
          </StackPane.margin>
+
       </ToggleButton>
+
    </children>
 </StackPane>

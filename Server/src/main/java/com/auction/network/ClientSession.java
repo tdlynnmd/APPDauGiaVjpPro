@@ -1,5 +1,17 @@
 package com.auction.network;
 
+/**
+ ClientSession là "Hồ sơ tạm thời" của Client đang kết nối
+
+ Nhiệm vụ: quản lý
+ - Client này đã đăng nhập chưa?
+ - userId là gì?
+ - username là gì?
+ - role là BIDDER, SELLER hay ADMIN?
+ - socket nào đang thuộc về client này?
+ - client đang xem phiên đấu giá nào?
+ */
+
 import java.io.PrintWriter;
 import java.net.Socket;
 
