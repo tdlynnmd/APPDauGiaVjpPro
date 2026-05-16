@@ -141,6 +141,10 @@ public class UserManage {
         return userId != null ? users.get(userId) : null;
     }
 
+    public User getUserById(String id) {
+        return id != null ? users.get(id) : null;
+    }
+
     /**
      * Lấy tất cả người dùng     * @return Danh sách tất cả người dùng
      */

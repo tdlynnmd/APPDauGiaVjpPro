@@ -12,17 +12,24 @@ public class UserDTO implements Serializable {
     private String username;
     private String email;
     private UserRole role;
-    private UserStatus status; // Cho Client biết tài khoản có bị khóa không
+    private UserStatus status;
+    // Thêm 2 trường này
+    private double availableBalance;
+    private double frozenBalance;
 
-    public UserDTO(String id, String username, String email, UserRole role, UserStatus status){
+    public UserDTO(String id, String username, String email, UserRole role, UserStatus status, double availableBalance, double frozenBalance) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.role = role;
         this.status = status;
+        this.availableBalance = availableBalance;
+        this.frozenBalance = frozenBalance;
     }
 
     // Getters
+    public double getAvailableBalance() { return availableBalance; }
+    public double getFrozenBalance() { return frozenBalance; }
     public String getId() { return id; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }

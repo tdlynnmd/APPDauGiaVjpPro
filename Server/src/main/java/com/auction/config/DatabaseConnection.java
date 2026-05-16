@@ -11,7 +11,7 @@ public class DatabaseConnection {
     private static HikariDataSource ds;
 
     static {
-        config.setJdbcUrl("jdbc:mysql://localhost:3306/clb_db");
+        config.setJdbcUrl("jdbc:mysql://localhost:3306/vnu_auction_system");
         config.setUsername("root");
         config.setPassword("Son22092007@");
 

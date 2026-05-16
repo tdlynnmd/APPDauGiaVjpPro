@@ -1,10 +1,9 @@
 package com.auction.manage;
 
-
-
 import com.auction.enums.AuctionStatus;
 import com.auction.models.Auction.Auction;
 import com.auction.models.User.Bidder;
+import com.auction.service.AuctionService;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,11 +15,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import static com.auction.enums.AuctionStatus .*;
 
-
 public class AuctionManage {
     public static volatile AuctionManage instance;
     private final Map<String, Auction> activeAuctions = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private AuctionService auctionService;
 
     private AuctionManage(){}
     public static AuctionManage getInstance(){
@@ -34,6 +33,14 @@ public class AuctionManage {
             }
         }
         return temp;
+    }
+
+    // Hàm gọi lười AuctionService
+    private AuctionService getAuctionService() {
+        if (auctionService == null) {
+            auctionService = new AuctionService();
+        }
+        return auctionService;
     }
 
     public void addAuction(Auction auction){
@@ -62,23 +69,11 @@ public class AuctionManage {
                     return; // Quay xe, chưa hết giờ!
                 }
 
-                //Lấy thông tin winner
-                Bidder winner = auction.getHighestBidder();
-                double finalPrice = auction.getCurrentPrice();
-                String notification;
+                // 1. Gọi Service Kế toán để trừ/cộng tiền trong Database
+                getAuctionService().finalizeAuction(auctionId);
 
-                // Xử lý an toàn trường hợp không có ai bid
-                if (winner != null) {
-                    notification = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC. Người thắng: ID " + winner.getId() + " với mức giá: " + finalPrice;
-
-                } else {
-                    notification = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC. Không có người đặt giá.";
-                }
                 // Xóa khỏi danh sách "đang hoạt động" để giải phóng bộ nhớ RAM
                 activeAuctions.remove(auctionId);
-
-                // Ở đây bạn sẽ gọi NotificationService.broadcast() để báo cho các Client qua Socket
-                auction.notifySubscribers(notification);
             }
         }
     }

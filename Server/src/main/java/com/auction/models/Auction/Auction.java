@@ -9,7 +9,6 @@ import com.auction.observer.Publisher;
 import com.auction.observer.Subscriber;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.time.chrono.ChronoLocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +32,7 @@ public class Auction extends Entity implements Serializable, Publisher {
 
     private transient Bidder highestBidder;       // Load on-demand từ DB
 
-    private transient List<Subscriber> subscribers = new ArrayList<>();
+    private transient List<Subscriber> subscribers;
 
     //Cấu hình Anti-sniping
     private static final int THRESHOLD_SECONDS = 30; // Nếu thầu trong 30s cuối
@@ -43,9 +42,9 @@ public class Auction extends Entity implements Serializable, Publisher {
      * CONSTRUCTOR 1: Tạo mới (New)
      * Dùng khi User bắt đầu nhấn nút "Tạo phiên đấu giá"
      */
-    public Auction(Item item, String sellerId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(String itemId, String sellerId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
         super();
-        this.itemId = item.getId();
+        this.itemId = itemId;
         this.sellerId = sellerId;
         this.stepPrice = stepPrice;
         this.currentPrice = item.getStartingPrice();
@@ -144,11 +143,6 @@ public class Auction extends Entity implements Serializable, Publisher {
             return new BidTransaction(generatedBidId, bidder.getId(), this.getId(), amount, now, BidStatus.REJECTED);
         }
 
-        // Logic cũ: Hoàn tiền (giờ sẽ do Service xử lý DB)
-        if (this.highestBidder != null) {
-            this.highestBidder.addBalance(this.currentPrice);
-        }
-
         // Tạo lượt bid mới thành công
         BidTransaction newBid = new BidTransaction(generatedBidId, bidder.getId(), this.getId(), amount, now, BidStatus.ACCEPTED);
 
@@ -226,5 +220,17 @@ public class Auction extends Entity implements Serializable, Publisher {
 
     public String getSellerId() {
         return sellerId;
+    }
+
+    public String getHighestBidderId() {
+        return highestBidderId;
+    }
+
+    public void setItem(Item item) {
+        this.item = item;
+    }
+
+    public String getItemId() {
+        return this.itemId;
     }
 }

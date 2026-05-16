@@ -15,9 +15,9 @@ public class Admin extends User {
 
     // Constructor 2: Load từ DB
     public Admin(String id, String username, String email, String password,
-                 UserRole role, double balance, UserStatus status,
+                 UserRole role, double availableBalance, double frozenBalance, UserStatus status,
                  LocalDateTime createdAt, LocalDateTime updatedAt) {
-        super(id, username, email, password, role, balance, status, createdAt, updatedAt);
+        super(id, username, email, password, role, availableBalance, frozenBalance, status, createdAt, updatedAt);
     }
 
     // XÓA BỎ actionLogs ở đây.

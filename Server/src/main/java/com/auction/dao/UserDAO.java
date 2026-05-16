@@ -12,6 +12,18 @@ public interface UserDAO {
 
     boolean insertUser(User user);
 
-    // Hàm cập nhật tiền riêng biệt để tối ưu hóa, thay vì update toàn bộ User
-    boolean updateBalance(String userId, double newBalance);
+    // --- 4 Hàm Nghiệp Vụ Tài Chính Quan Trọng ---
+
+    // 1. Đóng băng tiền (Từ Available -> Frozen)
+    boolean freezeMoney(String userId, double amount);
+
+    // 2. Giải phóng tiền (Từ Frozen -> Available)
+    boolean unfreezeMoney(String userId, double amount);
+
+    // 3. Khấu trừ tiền thắng cuộc (Trừ hẳn khỏi Frozen)
+    boolean deductFrozenMoney(String userId, double amount);
+
+    // 4. Nạp tiền/Nhận tiền (Cộng vào Available)
+    boolean addAvailableBalance(String userId, double amount);
+
 }
