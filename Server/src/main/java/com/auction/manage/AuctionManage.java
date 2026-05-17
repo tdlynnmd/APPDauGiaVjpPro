@@ -2,7 +2,6 @@ package com.auction.manage;
 
 import com.auction.enums.AuctionStatus;
 import com.auction.models.Auction.Auction;
-import com.auction.models.User.Bidder;
 import com.auction.service.AuctionService;
 
 import java.time.LocalDateTime;
@@ -95,7 +94,9 @@ public class AuctionManage {
 
                 // 3. Chỉ thông báo 1 lần khi VỪA MỚI chuyển trạng thái
                 if (oldStatus == OPEN && newStatus == RUNNING) {
-                    auction.notifySubscribers("Thông báo: Phiên " + auction.getId() + " ĐÃ BẮT ĐẦU! Hãy đặt giá ngay!");
+                    // THAY THẾ NOTIFY CŨ BẰNG LIVEROOMMANAGE
+                    String jsonMsg = "{\"action\": \"AUCTION_STARTED\", \"auctionId\": \"" + auction.getId() + "\", \"message\": \"Phiên đấu giá ĐÃ BẮT ĐẦU! Hãy đặt giá ngay!\"}";
+                    LiveRoomManage.getInstance().broadcast(auction.getId(), jsonMsg);
                 }
 
                 // 4. Nếu VỪA MỚI kết thúc thì gọi hàm xử lý

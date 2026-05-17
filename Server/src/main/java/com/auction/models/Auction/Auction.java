@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Auction extends Entity implements Serializable, Publisher {
+public class Auction extends Entity implements Serializable {
     private String itemId;              // Foreign Key
     private String sellerId;            // Track người bán
     private String highestBidderId;     // Foreign Key
@@ -171,24 +171,6 @@ public class Auction extends Entity implements Serializable, Publisher {
         }
     }
 
-    //Thông báo cho các Subscriber khi có sự kiện mới (ví dụ: có người đặt giá mới)
-
-    @Override
-    public void subscribe(Subscriber subscriber) {
-        this.subscribers.add(subscriber);
-    }
-
-    @Override
-    public void unsubscribe(Subscriber subscriber) {
-        this.subscribers.remove(subscriber);
-    }
-
-    @Override
-    public void notifySubscribers(String message) {
-        for (Subscriber subscriber : subscribers) {
-            subscriber.update(message);
-        }
-    }
 
     public com.auction.enums.AuctionStatus getStatus(){return this.status;}
 

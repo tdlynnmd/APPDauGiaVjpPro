@@ -15,7 +15,9 @@ import com.auction.enums.AuctionStatus;
 import com.auction.enums.BidStatus;
 import com.auction.manage.AuctionManage;
 import com.auction.manage.ConnectionManage;
+import com.auction.manage.LiveRoomManage;
 import com.auction.models.Auction.Auction;
+import com.auction.network.ClientSession;
 import com.auction.models.Auction.BidTransaction;
 import com.auction.models.Item.Item;
 import com.auction.models.User.Bidder;
@@ -119,9 +121,9 @@ public class AuctionService {
                             // hoặc thông qua một hệ thống Cache/UserManage nếu bạn muốn đồng bộ tức thì 100%.
                         }
 
-                        // 6. Gửi thông báo qua Socket cho các Subscriber
+                        // 6. Broadcast thông báo qua LiveRoom cho tất cả clients trong phòng
                         String msg = "Thông báo: " + bidder.getUsername() + " đã đặt giá " + amount;
-                        auction.notifySubscribers(msg);
+                        LiveRoomManage.getInstance().broadcast(auctionId, msg);
                         return true;
                     } else {
                         // Nếu update Auction DB lỗi -> Rollback tiền lại cho Bidder
@@ -175,8 +177,11 @@ public class AuctionService {
             // 3. Cập nhật trạng thái kết thúc trong DB
             auctionDAO.updateStatus(auctionId, AuctionStatus.FINISHED.name());
 
-            // 4. Thông báo kết thúc
-            auction.notifySubscribers(notification);
+            // 4. Broadcast thông báo kết thúc
+            LiveRoomManage.getInstance().broadcast(auctionId, notification);
+
+            // 5. Xóa phòng (không ai cần broadcast nữa)
+            LiveRoomManage.getInstance().clearRoom(auctionId);
         }
     }
 
@@ -329,15 +334,94 @@ public class AuctionService {
             auction.setStatus(AuctionStatus.CANCELED);
             auctionDAO.updateStatus(auctionId, AuctionStatus.CANCELED.name());
 
-            // 3. Thông báo cho những người đang theo dõi
-            auction.notifySubscribers("Thông báo: Phiên đấu giá bị hủy do: " + reason);
+            // 3. Broadcast thông báo cho những người đang theo dõi
+            LiveRoomManage.getInstance().broadcast(auctionId,
+                "Thông báo: Phiên đấu giá bị hủy do: " + reason);
 
-            // 4. Xóa khỏi RAM
+            // 4. Xóa phòng
+            LiveRoomManage.getInstance().clearRoom(auctionId);
+
+            // 5. Xóa khỏi RAM
             manager.removeAuctionById(auctionId);
             return true;
         }
     }
 
+    /**
+     * Bidder join vào phiên đấu giá để tracking + receive notifications
+     *
+     * Luồng:
+     * 1. Lưu vào DB bảng bidder_joined_auctions (persist dữ liệu)
+     * 2. Cập nhật RAM của Bidder (joinedAuctionIds)
+     * 3. Thêm ClientSession vào LiveRoom (để receive real-time broadcasts)
+     *
+     * @param bidder Người dùng join
+     * @param auctionId Phiên cần join
+     * @param clientSession Kết nối socket để gửi real-time notifications
+     * @return true nếu join thành công
+     */
+    public boolean joinAuction(Bidder bidder, String auctionId, ClientSession clientSession) {
+        Auction auction = manager.getAuctionById(auctionId);
+        if (auction == null) {
+            auction = auctionDAO.findById(auctionId).orElse(null);
+        }
 
+        if (auction == null) {
+            System.err.println("Lỗi: Phiên đấu giá không tồn tại");
+            return false;
+        }
+
+        // 1. Lưu vào DB (bảng trung gian: bidder_joined_auctions)
+        boolean savedToDB = userDAO.addJoinedAuction(bidder.getId(), auctionId);
+        if (!savedToDB) {
+            System.err.println("Lỗi: Không thể lưu vào DB");
+            return false;
+        }
+
+        // 2. Cập nhật RAM của Bidder
+        if (bidder.addJoinedAuction(auctionId)) {
+            System.out.println("✅ Bidder " + bidder.getUsername() + " đã join phiên " + auctionId);
+        }
+
+        // 3. Thêm vào LiveRoom để nhận broadcasts real-time
+        LiveRoomManage.getInstance().joinRoom(auctionId, clientSession);
+
+        // 4. Broadcast thông báo có người join mới
+        String joinMsg = "Thông báo: " + bidder.getUsername() + " đã tham gia phiên";
+        LiveRoomManage.getInstance().broadcast(auctionId, joinMsg);
+
+        return true;
+    }
+
+    /**
+     * Bidder rút khỏi phiên đấu giá
+     *
+     * Luồng:
+     * 1. Xóa khỏi DB
+     * 2. Xóa khỏi RAM của Bidder
+     * 3. Xóa ClientSession khỏi LiveRoom
+     *
+     * @param bidder Người dùng leave
+     * @param auctionId Phiên cần leave
+     * @param clientSession Kết nối socket
+     * @return true nếu leave thành công
+     */
+    public boolean leaveAuction(Bidder bidder, String auctionId, ClientSession clientSession) {
+        // 1. Xóa khỏi DB
+        userDAO.removeJoinedAuction(bidder.getId(), auctionId);
+
+        // 2. Xóa khỏi RAM của Bidder
+        bidder.removeJoinedAuction(auctionId);
+
+        // 3. Xóa khỏi LiveRoom
+        LiveRoomManage.getInstance().leaveRoom(auctionId, clientSession);
+
+        // 4. Broadcast thông báo
+        String leaveMsg = "Thông báo: " + bidder.getUsername() + " đã rời khỏi phiên";
+        LiveRoomManage.getInstance().broadcast(auctionId, leaveMsg);
+
+        System.out.println("✅ Bidder " + bidder.getUsername() + " đã leave phiên " + auctionId);
+        return true;
+    }
 }
 

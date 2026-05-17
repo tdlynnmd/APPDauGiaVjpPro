@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Bidder extends User implements Subscriber {
+public class Bidder extends User {
     // Chỉ lưu trên RAM, DAO sẽ tự động query bảng phụ để đắp vào đây khi load
     private transient List<String> joinedAuctionIds;
 
@@ -28,10 +28,6 @@ public class Bidder extends User implements Subscriber {
         this.joinedAuctionIds = new ArrayList<>();
     }
 
-    @Override
-    public void update(String context) {
-        System.out.println("Thông báo (Real-time) tới Bidder [" + this.getUsername() + "]: " + context);
-    }
 
     public boolean addJoinedAuction(String auctionId) {
         if (!joinedAuctionIds.contains(auctionId)) {

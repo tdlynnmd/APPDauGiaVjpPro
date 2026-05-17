@@ -26,4 +26,8 @@ public interface UserDAO {
     // 4. Nạp tiền/Nhận tiền (Cộng vào Available)
     boolean addAvailableBalance(String userId, double amount);
 
+    boolean addJoinedAuction(String id, String auctionId);
+
+
+    void removeJoinedAuction(String id, String auctionId);
 }

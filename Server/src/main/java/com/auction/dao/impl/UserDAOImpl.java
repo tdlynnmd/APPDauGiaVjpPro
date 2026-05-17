@@ -182,6 +182,71 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
+    /**
+     * Thêm người dùng vào danh sách phiên đấu giá mà họ đang theo dõi
+     * Lưu vào bảng trung gian: bidder_joined_auctions
+     *
+     * @param userId ID của bidder
+     * @param auctionId ID của phiên đấu giá
+     * @return true nếu thêm thành công, false nếu thất bại (vd: trùng lặp)
+     */
+    @Override
+    public boolean addJoinedAuction(String userId, String auctionId) {
+        String sql = "INSERT INTO bidder_joined_auctions (user_id, auction_id) VALUES (?, ?)";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, userId);
+            stmt.setString(2, auctionId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("[UserDAO] ✅ Bidder " + userId + " joined auction " + auctionId);
+            }
+            return rowsAffected > 0;
+
+        } catch (SQLException e) {
+            // Có thể bị lỗi KEY_DUPLICATE nếu bidder đã join rồi (ignore)
+            if (e.getErrorCode() == 1062 || e.getErrorCode() == 1586) {
+                System.out.println("[UserDAO] ℹ️ Bidder " + userId + " đã join auction " + auctionId + " rồi");
+                return false;
+            }
+            System.err.println("[UserDAO] ❌ Lỗi Add Joined Auction: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Xóa người dùng khỏi danh sách phiên đấu giá
+     * Xóa từ bảng trung gian: bidder_joined_auctions
+     *
+     * @param userId ID của bidder
+     * @param auctionId ID của phiên đấu giá
+     * @return true nếu xóa thành công, false nếu không tìm thấy record
+     */
+    @Override
+    public void removeJoinedAuction(String userId, String auctionId) {
+        String sql = "DELETE FROM bidder_joined_auctions WHERE user_id = ? AND auction_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, userId);
+            stmt.setString(2, auctionId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("[UserDAO] ✅ Bidder " + userId + " left auction " + auctionId);
+            } else {
+                System.out.println("[UserDAO] ℹ️ Record không tồn tại: " + userId + " - " + auctionId);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] ❌ Lỗi Remove Joined Auction: " + e.getMessage());
+        }
+    }
+
     // --- CÁC HÀM TRUY VẤN ---
 
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
