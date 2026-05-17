@@ -349,7 +349,6 @@ public class AuctionService {
 
     /**
      * Bidder join vào phiên đấu giá để tracking + receive notifications
-     *
      * Luồng:
      * 1. Lưu vào DB bảng bidder_joined_auctions (persist dữ liệu)
      * 2. Cập nhật RAM của Bidder (joinedAuctionIds)
@@ -395,7 +394,6 @@ public class AuctionService {
 
     /**
      * Bidder rút khỏi phiên đấu giá
-     *
      * Luồng:
      * 1. Xóa khỏi DB
      * 2. Xóa khỏi RAM của Bidder
