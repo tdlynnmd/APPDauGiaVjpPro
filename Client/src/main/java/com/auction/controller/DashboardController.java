@@ -9,6 +9,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import com.auction.dto.LogoutResponse;
 import com.auction.network.ClientAuthApi;
+import com.auction.enums.UserRole;
+
 public class DashboardController {
 
     @FXML
@@ -37,10 +39,10 @@ public class DashboardController {
         }
 
         String username = ClientSession.getCurrentUser().getUsername();
-        String role = ClientSession.getCurrentUser().getRole().toString();
+        UserRole role = ClientSession.getCurrentUser().getRole();
 
-        welcomeLabel.setText("Xin chào, " + username);
         roleLabel.setText("Role: " + role);
+        welcomeLabel.setText("Hello " + username);
 
         hideAllRoleButtons();
         showButtonsByRole(role);
@@ -52,12 +54,12 @@ public class DashboardController {
         setButtonVisible(adminPanelButton, false);
     }
 
-    private void showButtonsByRole(String role) {
-        if ("BIDDER".equals(role)) {
+    private void showButtonsByRole(UserRole role) {
+        if (role == UserRole.BIDDER) {
             setButtonVisible(auctionListButton, true);
-        } else if ("SELLER".equals(role)) {
+        } else if (role == UserRole.SELLER) {
             setButtonVisible(sellerManagementButton, true);
-        } else if ("ADMIN".equals(role)) {
+        } else if (role == UserRole.ADMIN) {
             setButtonVisible(adminPanelButton, true);
         }
     }

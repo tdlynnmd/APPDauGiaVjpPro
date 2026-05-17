@@ -12,12 +12,15 @@ package com.auction.network;
 
 import com.auction.controller.AuthController;
 import com.auction.dto.*;
+import com.auction.enums.UserRole;
 import com.auction.manage.ConnectionManage;
+import com.auction.service.AuthorizationService;
 import com.google.gson.Gson;
 
 public class RequestDispatcher {
     private final Gson gson = new Gson();
     private final AuthController authController = new AuthController();
+    private final AuthorizationService authorizationService = new AuthorizationService();
 
     // Bạn có thể thêm AuctionController, UserController ở đây...
 
@@ -31,6 +34,13 @@ public class RequestDispatcher {
                 return;
             }
 
+            String action = socketRequest.getAction();
+            // Kiểm tra phân quyền trước khi xử lí action, đây là bức tường bảo ve chính phía Server
+            if (!authorizationService.canAccess(action, session)) {
+                sendError(session, "FORBIDDEN", "You can not use this feature.");
+                return;
+            }
+
             // 2. CÔNG TẮC ĐIỀU HƯỚNG (Routing)
             switch (socketRequest.getAction()) {
                 case "LOGIN":
@@ -39,9 +49,11 @@ public class RequestDispatcher {
 
                 case "REGISTER":
                     handleRegister(socketRequest.getBody(), session);
+                    break;
 
                 case "LOGOUT":
                     handleLogout(socketRequest.getBody(), session);
+                    break;
 
                 case "PLACE_BID":
                     // auctionController.placeBid(socketRequest.getBody(), session);
@@ -58,7 +70,6 @@ public class RequestDispatcher {
     }
 
     //// --- Các hàm xử lý chi tiết (Delegation) ---
-
 
     /**
       Xử lý LOGIN.
@@ -79,7 +90,12 @@ public class RequestDispatcher {
 
         // Cực kỳ quan trọng: Nếu login thành công, phải GẮN ID vào session
         if (response.isSuccess()) {
+            UserDTO user = response.getUserDto();
+
+            // Lưu userId và role vào session phía Server
             session.setUserId(response.getUserDto().getId());
+            session.setRole(user.getRole());
+
             // Đăng ký vào tổng đài
             ConnectionManage.getInstance().registerConnection(response.getUserDto().getId(), session);
         }
@@ -142,7 +158,7 @@ public class RequestDispatcher {
             }
 
             // Sau logout, socket này không còn gắn với user nào nữa.
-            session.setUserId(null);
+            session.clearLoginInfo();
         }
 
         session.sendMessage(gson.toJson(response));
