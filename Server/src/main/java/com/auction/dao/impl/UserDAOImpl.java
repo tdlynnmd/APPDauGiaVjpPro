@@ -265,14 +265,20 @@ public class UserDAOImpl implements UserDAO {
         java.time.LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
         java.time.LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
 
-        return switch (role) {
-            case BIDDER -> new Bidder(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
-            case SELLER -> {
+        switch (role) {
+            case BIDDER:
+                return new Bidder(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
+
+            case SELLER:
                 double rating = rs.getDouble("rating");
                 if (rs.wasNull()) rating = -1.0;
-                yield new Seller(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt, rating);
-            }
-            case ADMIN -> new Admin(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
-        };
+                return new Seller(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt, rating);
+
+            case ADMIN:
+                return new Admin(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
+
+            default:
+                throw new SQLException("Unsupported user role: " + role);
+        }
     }
 }

@@ -7,7 +7,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import com.auction.dto.LogoutResponse;
+import com.auction.dto.SocketResponse;
 import com.auction.network.ClientAuthApi;
 import com.auction.enums.UserRole;
 
@@ -101,14 +101,17 @@ public class DashboardController {
 
             // Gửi logout lên Server để Server xóa kết nối online.
             ClientAuthApi authApi = new ClientAuthApi();
-            LogoutResponse response = authApi.logout(userId);
+            SocketResponse response = authApi.logout(userId);
 
             // Nếu Server báo lỗi, vẫn có thể cho Client thoát,
             // nhưng nên hiển thị để dễ debug trong quá trình làm project.
-            if (!response.isSuccess()) {
+            if (response == null) {
+                showInfo("Server không trả về phản hồi đăng xuất hợp lệ.");
+            } else if (!response.isSuccess()) {
                 showInfo("Server báo lỗi khi đăng xuất: " + response.getMessage());
             }
         }
+
         // Xóa session phía Client.
         // Sau bước này, Dashboard không còn biết user hiện tại là ai.
         ClientSession.clear();

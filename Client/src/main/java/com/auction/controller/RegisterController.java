@@ -1,6 +1,6 @@
 package com.auction.controller;
 
-import com.auction.dto.RegisterResponse;
+import com.auction.dto.SocketResponse;
 import com.auction.enums.UserRole;
 import com.auction.network.ClientAuthApi;
 import com.auction.util.SceneNavigator;
@@ -17,20 +17,20 @@ import javafx.scene.layout.Pane;
 import java.util.Objects;
 
 /**
-  RegisterController là Controller phía Client cho màn hình đăng ký.
+ RegisterController là Controller phía Client cho màn hình đăng ký.
 
-  Vai trò:
-  - Nhận username, email, password, confirm password và role từ giao diện.
-  - Kiểm tra sơ bộ dữ liệu trước khi gửi lên Server.
-  - Gọi clientAuthApi.register() để gửi request REGISTER qua socket.
-  - Nhận RegisterResponse và hiển thị kết quả cho người dùng.
+ Vai trò:
+ - Nhận username, email, password, confirm password và role từ giao diện.
+ - Kiểm tra sơ bộ dữ liệu trước khi gửi lên Server.
+ - Gọi clientAuthApi.register() để gửi request REGISTER qua socket.
+ - Nhận SocketResponse và hiển thị kết quả cho người dùng.
 
  * Lưu ý quan trọng:
-  - Controller chỉ xử lý giao diện.
-  - Controller không tạo User.
-  - Controller không kiểm tra username/email trùng.
-  - Controller không hash password.
-  - Những nghiệp vụ đó thuộc về AuthService phía Server.
+ - Controller chỉ xử lý giao diện.
+ - Controller không tạo User.
+ - Controller không kiểm tra username/email trùng.
+ - Controller không hash password.
+ - Những nghiệp vụ đó thuộc về AuthService phía Server.
  */
 public class RegisterController {
 
@@ -62,11 +62,11 @@ public class RegisterController {
     /**
      * initialize() được JavaFX tự động gọi sau khi load register.fxml.
      * Nhiệm vụ:
-      - Đưa danh sách role vào ComboBox.
-      - Mặc định chọn BIDDER.
-      - Ẩn label lỗi ban đầu.
+     - Đưa danh sách role vào ComboBox.
+     - Mặc định chọn BIDDER.
+     - Ẩn label lỗi ban đầu.
 
-      Không đưa ADMIN vào đây vì tài khoản admin không nên cho đăng ký tự do.
+     Không đưa ADMIN vào đây vì tài khoản admin không nên cho đăng ký tự do.
      */
     @FXML
     public void initialize() {
@@ -82,7 +82,7 @@ public class RegisterController {
      * 1. Lấy dữ liệu từ form.
      * 2. Kiểm tra các lỗi nhập liệu cơ bản.
      * 3. Gửi request REGISTER sang Server.
-     * 4. Nhận RegisterResponse.
+     * 4. Nhận SocketResponse.
      * 5. Nếu thành công thì chuyển về Login.
      * 6. Nếu thất bại thì hiển thị lỗi.
      */
@@ -119,7 +119,7 @@ public class RegisterController {
         // Gọi lớp API phía Client để gửi request REGISTER qua socket.
         // Controller không tự làm việc với Socket trực tiếp.
         ClientAuthApi authApi = new ClientAuthApi();
-        RegisterResponse response = authApi.register(username, password, email, role);
+        SocketResponse response = authApi.register(username, password, email, role);
 
         if (response.isSuccess()) {
             showSuccess("Registration successful! Returning to the login screen.");
