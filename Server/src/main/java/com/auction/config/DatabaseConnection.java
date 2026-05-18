@@ -115,11 +115,13 @@ public class DatabaseConnection {
 
     private static String firstNonBlank(String... values) {
         if (values == null) return null;
+
         for (String value : values) {
-            if (value != null && !value.isBlank()) {
+            if (value != null && !value.trim().isEmpty()) {
                 return value;
             }
         }
+
         return null;
     }
 }
