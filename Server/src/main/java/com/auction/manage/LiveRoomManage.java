@@ -60,7 +60,7 @@ public class LiveRoomManage {
 
     /**
      * Rút khỏi phòng đấu giá (Unsubscribe)
-     * - Xóa client khỏi danh sách
+     * - Xóa client khỏi danh sách -> ngắt kế nối khi đóng tab liveroom, hoac mất mạng
      * - Xóa room nếu trống (dọn dẹp bộ nhớ)
      */
     public void leaveRoom(String auctionId, ClientSession clientSession) {

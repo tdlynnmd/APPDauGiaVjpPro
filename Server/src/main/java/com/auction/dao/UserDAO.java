@@ -2,6 +2,7 @@ package com.auction.dao;
 
 import com.auction.models.User.User;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserDAO {
@@ -26,8 +27,13 @@ public interface UserDAO {
     // 4. Nạp tiền/Nhận tiền (Cộng vào Available)
     boolean addAvailableBalance(String userId, double amount);
 
+    boolean withdrawAvailableBalance(String userId, double amount);
+
     boolean addJoinedAuction(String id, String auctionId);
 
-
     void removeJoinedAuction(String id, String auctionId);
+
+    List<User> findPaginated(int limit, int offset);
+
+    boolean updateStatus(String userId, String name);
 }

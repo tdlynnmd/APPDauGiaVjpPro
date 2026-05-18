@@ -86,4 +86,12 @@ public abstract class Item extends Entity implements Serializable {
     public String getImageUrl() {
         return imageUrl;
     }
+
+    public void setStatus(ItemStatus newStatus) {
+        this.status = status;
+    }
+
+    public Object getCreatedAt() {
+        return createdAt;
+    }
 }

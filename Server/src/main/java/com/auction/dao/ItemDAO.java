@@ -9,4 +9,6 @@ public interface ItemDAO {
     Optional<Item> findById(String id);
     List<Item> findBySellerId(String sellerId);
     boolean updateStatus(String itemId, String newStatus);
+
+    boolean updateItem(Item item);
 }

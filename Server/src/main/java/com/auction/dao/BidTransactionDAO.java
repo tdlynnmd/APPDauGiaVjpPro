@@ -11,5 +11,12 @@ public interface BidTransactionDAO {
 
     List<BidTransaction> findByAuctionIdPaged(String auctionId, int limit, int offset);
 
-    List<BidTransaction> findByBidderId(String bidderId);
+    List<BidTransaction> findByBidderIdPaged(String bidderId, int limit, int offset);
+
+    long getTotalBidCountByAuction(String auctionId);
+
+    long getTotalBidCountByBidder(String bidderId);
+
+    // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
+    boolean updateStatusToRefunded(String auctionId, String bidderId);
 }

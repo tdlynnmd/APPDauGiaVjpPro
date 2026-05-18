@@ -112,4 +112,8 @@ public abstract class User extends Entity {
     public String getPassword() {
         return this.password;
     }
+
+    public void setAvailableBalance(double availableBalance) {
+        this.availableBalance = availableBalance;
+    }
 }

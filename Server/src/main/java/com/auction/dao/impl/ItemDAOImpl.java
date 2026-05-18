@@ -139,6 +139,72 @@ public class ItemDAOImpl implements ItemDAO {
     }
 
     /**
+     * 🔥 HÀM MỚI BỔ SUNG: Cập nhật toàn bộ thông tin sửa đổi của vật phẩm
+     * Lưu ý: Không cho phép sửa đổi 'item_type', 'seller_id' và 'id' để đảm bảo tính toàn vẹn hệ thống.
+     */
+    @Override
+    public boolean updateItem(Item item) {
+        String sql = "UPDATE items SET name = ?, description = ?, starting_price = ?, year_created = ?, image_url = ?, status = ?, " +
+                "painter = ?, art_style = ?, brand = ?, warranty_months = ?, model = ?, km_age = ?, license_plate = ?, engine_type = ? " +
+                "WHERE id = ? AND deleted_at IS NULL";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            // 1. Gán giá trị cho các trường thông tin CHUNG
+            stmt.setString(1, item.getName());
+            stmt.setString(2, item.getDescription());
+            stmt.setDouble(3, item.getStartingPrice());
+
+            if (item.getYearCreated() > 0) {
+                stmt.setInt(4, item.getYearCreated());
+            } else {
+                stmt.setNull(4, Types.INTEGER);
+            }
+            stmt.setString(5, item.getImageUrl());
+            stmt.setString(6, item.getStatus().name());
+
+            // 2. Khởi tạo mặc định NULL cho toàn bộ các trường ĐẶC THÙ của các lớp con
+            stmt.setNull(7, Types.VARCHAR);  // painter
+            stmt.setNull(8, Types.VARCHAR);  // art_style
+            stmt.setNull(9, Types.VARCHAR);  // brand
+            stmt.setNull(10, Types.INTEGER); // warranty_months
+            stmt.setNull(11, Types.VARCHAR); // model
+            stmt.setNull(12, Types.DECIMAL); // km_age
+            stmt.setNull(13, Types.VARCHAR); // license_plate
+            stmt.setNull(14, Types.VARCHAR); // engine_type
+
+            // 3. Sử dụng switch pattern matching để ghi đè dữ liệu thực tế dựa trên kiểu thực thể
+            switch (item) {
+                case Art art -> {
+                    if (art.getPainter() != null) stmt.setString(7, art.getPainter());
+                    if (art.getArtStyle() != null) stmt.setString(8, art.getArtStyle());
+                }
+                case Electronics elec -> {
+                    if (elec.getBrand() != null) stmt.setString(9, elec.getBrand());
+                    if (elec.getWarrantyMonths() > 0) stmt.setInt(10, elec.getWarrantyMonths());
+                }
+                case Vehicle vehicle -> {
+                    if (vehicle.getModel() != null) stmt.setString(11, vehicle.getModel());
+                    if (vehicle.getKmAge() >= 0) stmt.setDouble(12, vehicle.getKmAge());
+                    if (vehicle.getLicensePlate() != null) stmt.setString(13, vehicle.getLicensePlate());
+                    if (vehicle.getEngineType() != null) stmt.setString(14, vehicle.getEngineType());
+                }
+                default -> {
+                }
+            }
+
+            // 4. Khớp điều kiện WHERE bằng ID của vật phẩm ở vị trí cuối cùng
+            stmt.setString(15, item.getId());
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Lỗi Update Toàn Bộ Thông Tin Item: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 🔥 Helper method: Xử lý Đa hình (Polymorphism) Hydration
      * Ánh xạ chính xác theo Constructor của Art, Electronics, Vehicle
      */

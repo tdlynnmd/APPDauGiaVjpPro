@@ -19,4 +19,9 @@ public interface AuctionDAO {
     boolean updateStatus(String auctionId, String status);
 
     List<Auction> findByStatuses(List<AuctionStatus> activeStatuses);
+
+    /**
+     * Tìm tất cả các phiên đấu giá do một Seller cụ thể tạo ra
+     */
+    List<Auction> findBySellerId(String sellerId);
 }

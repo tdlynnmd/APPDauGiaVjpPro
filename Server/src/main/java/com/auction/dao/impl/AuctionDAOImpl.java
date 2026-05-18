@@ -8,6 +8,7 @@ import com.auction.models.Auction.Auction;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,6 +74,40 @@ public class AuctionDAOImpl implements AuctionDAO {
             System.err.println("Lỗi Find Auction By Id: " + e.getMessage());
         }
         return Optional.empty();
+    }
+
+    /**
+     * 🔥 HÀM MỚI BỔ SUNG: Tìm tất cả các phiên đấu giá do một Seller cụ thể tạo ra
+     * Đảm bảo an toàn dữ liệu đầu vào, sắp xếp phiên mới nhất lên đầu (ORDER BY)
+     */
+    @Override
+    public List<Auction> findBySellerId(String sellerId) {
+        List<Auction> auctions = new ArrayList<>();
+
+        // Bảo vệ hệ thống: Kiểm tra dữ liệu đầu vào tránh truy vấn vô nghĩa
+        if (sellerId == null || sellerId.trim().isEmpty()) {
+            return auctions;
+        }
+
+        // Sắp xếp theo start_time giảm dần để Frontend hiển thị các phiên mới tạo lên trước
+        String sql = "SELECT * FROM auctions WHERE seller_id = ? ORDER BY start_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, sellerId);
+
+            // Sử dụng try-with-resources lồng nhau cho ResultSet để giải phóng bộ nhớ ngay lập tức
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    // Áp dụng SOLID (SRP): Tái sử dụng hàm map dữ liệu có sẵn để tránh lặp code
+                    auctions.add(mapResultSetToAuction(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi findBySellerId: " + e.getMessage());
+        }
+        return auctions;
     }
 
     @Override
@@ -141,24 +176,29 @@ public class AuctionDAOImpl implements AuctionDAO {
     @Override
     public List<Auction> findByStatuses(List<AuctionStatus> statuses) {
         List<Auction> auctions = new ArrayList<>();
-        if (statuses == null || statuses.isEmpty()) return auctions;
 
-        // Tạo chuỗi chấm hỏi (?,?,?) dựa trên số lượng status truyền vào
-        String placeholders = statuses.stream()
-                .map(s -> "?")
-                .collect(java.util.stream.Collectors.joining(","));
+        // Kiểm tra defensive chặt chẽ
+        if (statuses == null || statuses.isEmpty()) {
+            return auctions;
+        }
+
+        // TỐI ƯU: Thay vì dùng Stream.map phức tạp, dùng Collections.nCopies tạo thẳng danh sách "?"
+        // giúp tối ưu CPU và RAM hơn rất nhiều khi sinh chuỗi placeholders
+        String placeholders = String.join(",", Collections.nCopies(statuses.size(), "?"));
 
         String sql = "SELECT * FROM auctions WHERE status IN (" + placeholders + ")";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
+            // Bind các giá trị enum name vào đúng thứ tự các dấu ?
             for (int i = 0; i < statuses.size(); i++) {
                 stmt.setString(i + 1, statuses.get(i).name());
             }
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    // Áp dụng hàm map có sẵn của bạn
                     auctions.add(mapResultSetToAuction(rs));
                 }
             }

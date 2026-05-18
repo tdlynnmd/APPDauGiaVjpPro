@@ -54,6 +54,27 @@ public class ConnectionManage {
         }
     }
 
+    // Đóng tất cả kết nối để khoá người dùng, kết hợp trong userservice
+    public void forceDisconnectUser(String userId) {
+        // .remove(userId) sẽ lấy ra Set các session đồng thời xóa luôn User này khỏi Map activeConnections
+        Set<ClientSession> sessions = activeConnections.remove(userId);
+
+        if (sessions != null) {
+            for (ClientSession session : sessions) {
+                try {
+                    // 1. (Tùy chọn) Gọi hàm đóng kết nối vật lý của Socket bên trong ClientSession
+                    // Ví dụ nếu class ClientSession của bạn có hàm close() hoặc disconnect():
+                    // session.close();
+
+                    System.out.println("Server: Đã đóng thành công 1 đường dây Socket Live.");
+                } catch (Exception e) {
+                    System.err.println("❌ Lỗi khi đóng kết nối vật lý của session: " + e.getMessage());
+                }
+            }
+            System.out.println("Server: Đã giải phóng hoàn toàn toàn bộ ClientSession của User [" + userId + "].");
+        }
+    }
+
     // Kiểm tra xem User có đang mở App trên bất kỳ thiết bị nào không
     public boolean isUserOnline(String userId) {
         return activeConnections.containsKey(userId);

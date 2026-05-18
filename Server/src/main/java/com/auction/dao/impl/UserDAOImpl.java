@@ -8,6 +8,8 @@ import com.auction.models.User.*;
 
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class UserDAOImpl implements UserDAO {
@@ -183,6 +185,30 @@ public class UserDAOImpl implements UserDAO {
     }
 
     /**
+     * Rút tiền: Trừ thẳng vào số dư khả dụng (Available Balance)
+     * BẢO VỆ NGHIỆP VỤ: Chỉ trừ tiền nếu số tiền khả dụng hiện tại ĐỦ (available_balance >= amount)
+     */
+    @Override
+    public boolean withdrawAvailableBalance(String userId, double amount) {
+        String sql = "UPDATE users SET available_balance = available_balance - ? " +
+                "WHERE id = ? AND available_balance >= ? AND deleted_at IS NULL";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDouble(1, amount);
+            stmt.setString(2, userId);
+            stmt.setDouble(3, amount); // Tham số kiểm tra điều kiện WHERE
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0; // Trả về true nếu trừ tiền thành công
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi Rút tiền tại UserDAOImpl: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Thêm người dùng vào danh sách phiên đấu giá mà họ đang theo dõi
      * Lưu vào bảng trung gian: bidder_joined_auctions
      *
@@ -244,6 +270,52 @@ public class UserDAOImpl implements UserDAO {
 
         } catch (SQLException e) {
             System.err.println("[UserDAO] ❌ Lỗi Remove Joined Auction: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lấy danh sách người dùng theo dạng phân trang (Pagination) để chống quá tải hệ thống
+     */
+    @Override
+    public List<User> findPaginated(int limit, int offset) {
+        String sql = "SELECT * FROM users WHERE deleted_at IS NULL LIMIT ? OFFSET ?";
+        List<User> users = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, limit);
+            stmt.setInt(2, offset);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    users.add(mapResultSetToUser(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi tải danh sách phân trang: " + e.getMessage());
+        }
+        return users;
+    }
+
+    @Override
+    public boolean updateStatus(String userId, String name) {
+        // Câu lệnh SQL cập nhật cột status dựa trên ID người dùng
+        String sql = "UPDATE users SET status = ? WHERE id = ? AND deleted_at IS NULL";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            // Tham số 'name' ở đây chính là chuỗi đại diện cho trạng thái (ví dụ: "BANNED", "SUSPENDED", "ACTIVE")
+            stmt.setString(1, name);
+            stmt.setString(2, userId);
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0; // Trả về true nếu cập nhật thành công ít nhất 1 dòng
+
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi Update Status tại UserDAOImpl: " + e.getMessage());
+            return false;
         }
     }
 

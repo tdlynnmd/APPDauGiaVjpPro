@@ -58,7 +58,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     }
 
     /**
-     * 2. Lấy toàn bộ lịch sử đặt giá có phân trang (Dùng cho màn hình xem lại lịch sử)
+     * 2. Lấy toàn bộ lịch sử đặt giá có phân trang (Dùng cho màn hình xem lại lịch sử) -> Dùng cho Seller
      */
     @Override
     public List<BidTransaction> findByAuctionIdPaged(String auctionId, int limit, int offset) {
@@ -88,23 +88,78 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
      * 3. Lấy các lượt đặt giá của một người dùng (Dùng để xem "Lịch sử đi đấu giá" của tôi)
      */
     @Override
-    public List<BidTransaction> findByBidderId(String bidderId) {
+    public List<BidTransaction> findByBidderIdPaged(String bidderId, int limit, int offset) {
         List<BidTransaction> bids = new ArrayList<>();
-        String sql = "SELECT * FROM bid_transactions WHERE bidder_id = ? ORDER BY created_at DESC";
+        String sql = "SELECT * FROM bid_transactions WHERE bidder_id = ? " +
+                "ORDER BY created_at DESC LIMIT ? OFFSET ?"; // 🔥 Đã thêm phân trang an toàn
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, bidderId);
+            stmt.setInt(2, limit);
+            stmt.setInt(3, offset);
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     bids.add(mapResultSetToBid(rs));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi lấy lịch sử Bid của người dùng: " + e.getMessage());
+            System.err.println("❌ Lỗi lấy lịch sử Bid phân trang của user: " + e.getMessage());
         }
         return bids;
+    }
+
+    /**
+     * 🔥 HÀM BỔ SUNG PHỤC VỤ PHÂN TRANG 1: Đếm tổng số lượt đặt giá của một phiên (Dùng cho Seller/Admin)
+     */
+    @Override
+    public long getTotalBidCountByAuction(String auctionId) {
+        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE auction_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, auctionId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi đếm tổng số bid của phiên: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * 🔥 HÀM BỔ SUNG PHỤC VỤ PHÂN TRANG 2: Đếm tổng số lượt đặt giá của một người dùng (Dùng cho Bidder)
+     */
+    @Override
+    public long getTotalBidCountByBidder(String bidderId) {
+        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE bidder_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, bidderId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi đếm tổng số bid của user: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
+    @Override
+    public boolean updateStatusToRefunded(String auctionId, String bidderId) {
+        String sql = "UPDATE bid_transactions SET status = 'REFUNDED' " +
+                "WHERE auction_id = ? AND bidder_id = ? AND status = 'ACCEPTED'";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, auctionId);
+            stmt.setString(2, bidderId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) { return false; }
     }
 
     /**

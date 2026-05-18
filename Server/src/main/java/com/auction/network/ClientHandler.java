@@ -49,15 +49,9 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.out.println("[Server] Client ngắt kết nối đột ngột: " + e.getMessage());
         } finally {
-            // DỌN DẸP KHI CLIENT RỚT MẠNG
-            if (session != null) {
-                String userId = session.getUserId();
-                if (userId != null) {
-                    // Xóa khỏi danh bạ Online
-                    ConnectionManage.getInstance().removeConnection(userId, session);
-                }
-                session.close();
-            }
+            // 🔥 ĐÂY LÀ CHÌA KHÓA: Dù crash hay tắt app bình thường, block finally luôn chạy
+            System.out.println("Hệ thống: Tiến hành kích hoạt luồng dọn dẹp tự động...");
+            session.close();
         }
     }
 }

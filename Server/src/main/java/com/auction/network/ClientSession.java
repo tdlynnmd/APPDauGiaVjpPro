@@ -14,13 +14,18 @@ package com.auction.network;
  */
 
 import com.auction.enums.UserRole;
+import com.auction.manage.ConnectionManage;
+import com.auction.manage.LiveRoomManage;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 
 public class ClientSession {
     private String userId; // Ban đầu null, sau khi login mới có giá trị
     private UserRole role;      // Server luu role để kiểm tra quyền
+    private String username;     // 🔥 Bổ sung để hiển thị log/thông báo
+    private String currentAuctionId; // 🔥 Bổ sung: ID phiên đấu giá client đang xem trực tuyến
 
     private final Socket socket;
     private final PrintWriter out;
@@ -55,8 +60,29 @@ public class ClientSession {
         this.role = null;
     }
 
-    // Đóng luồng
+    /**
+     * 🔥 HÀM ĐÓNG KẾT NỐI AN TOÀN KHI CÓ SỰ CỐ ĐỨT MẠNG
+     * Tự động dọn dẹp sạch sẽ dấu vết của Client trên RAM Server
+     */
     public void close() {
-        // logic try-catch close socket...
+        // 1. Dọn dẹp trên các Manager hệ thống trước khi hủy Socket
+        if (userId != null) {
+            // Xóa thiết bị này khỏi danh sách quản lý kết nối online
+            ConnectionManage.getInstance().removeConnection(userId, this);
+
+            // Nếu đang xem một phòng đấu giá trực tuyến, ép out khỏi phòng real-time đó luôn
+            if (currentAuctionId != null) {
+                LiveRoomManage.getInstance().leaveRoom(currentAuctionId, this);
+            }
+        }
+
+        // 2. Đóng luồng mạng vật lý công khai
+        try {
+            if (out != null) out.close();
+            if (socket != null && !socket.isClosed()) socket.close();
+            System.out.println("Network: Đã đóng Socket và giải phóng tài nguyên an toàn.");
+        } catch (IOException e) {
+            System.err.println("❌ Lỗi khi đóng Socket vật lý: " + e.getMessage());
+        }
     }
 }
