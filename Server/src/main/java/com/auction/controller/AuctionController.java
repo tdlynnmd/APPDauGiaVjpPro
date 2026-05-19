@@ -112,7 +112,7 @@ public class AuctionController {
 
         /*
          * AuctionService.createAuction hiện có tham số startPrice,
-         * nhưng trong implementation hiện tại giá khởi điểm được lấy từ Item.
+         * nhưng implementation hiện tại giá khởi điểm được lấy từ Item.
          * Vì CreateAuctionRequest chưa có startPrice, ta truyền 0.0.
          * Nếu sau này service thật sự dùng startPrice, hãy thêm field startPrice vào DTO.
          */
@@ -215,7 +215,13 @@ public class AuctionController {
 
         Bidder bidder = getCurrentBidder(session);
 
-        boolean unsubscribed = auctionService.leaveAuction(
+        /*
+         * Sửa tại đây:
+         * AuctionService không có hàm leaveAuction().
+         * Với luồng UNSUBSCRIBE_AUCTION hiện tại, mục tiêu là rời phòng realtime,
+         * nên phải gọi leaveLiveRoom().
+         */
+        boolean unsubscribed = auctionService.leaveLiveRoom(
                 bidder,
                 request.getAuctionId(),
                 session
@@ -241,7 +247,13 @@ public class AuctionController {
     public Boolean cancelAuction(String bodyJson, ClientSession session) {
         CancelAuctionRequest request = parseBody(bodyJson, CancelAuctionRequest.class);
 
-        requireLoggedInUserId(session);
+        /*
+         * Sửa tại đây:
+         * AuctionService.cancelAuction cần biết user hiện tại là ai
+         * để ghi log người thực hiện hành động hủy phiên.
+         */
+        String userId = requireLoggedInUserId(session);
+
         requireText(request.getAuctionId(), "auctionId must not be empty.");
 
         String reason = request.getReason();
@@ -251,6 +263,7 @@ public class AuctionController {
 
         boolean canceled = auctionService.cancelAuction(
                 request.getAuctionId(),
+                userId,
                 reason
         );
 
