@@ -9,6 +9,7 @@ import com.auction.dto.RegisterRequest;
 import com.auction.dto.SocketRequest;
 import com.auction.dto.SocketResponse;
 import com.auction.dto.UserDTO;
+import com.auction.enums.ActionType;
 import com.auction.exception.AuthenticationException;
 import com.auction.manage.ConnectionManage;
 import com.auction.service.AuthorizationService;
@@ -51,7 +52,9 @@ public class RequestDispatcher {
                 return;
             }
 
+            ActionType actionType = parseAction(socketRequest.getAction());
             String action = socketRequest.getAction();
+
 
             if (!authorizationService.canAccess(action, session)) {
                 sendFailure(session, socketRequest,
@@ -60,7 +63,7 @@ public class RequestDispatcher {
                 return;
             }
 
-            switch (action) {
+            switch (actionType) {
                 case LOGIN:
                     handleLogin(socketRequest, session);
                     break;
@@ -352,8 +355,23 @@ public class RequestDispatcher {
         session.sendMessage(gson.toJson(response));
     }
 
+    /**
+     * Chuyển action string trong SocketRequest sang ActionType.
+     * Nếu Client gửi action không nằm trong enum, trả null để dispatcher báo lỗi rõ ràng.
+     */
+    private ActionType parseAction(String action) {
+        try {
+            return ActionType.valueOf(action.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Không dùng String.isBlank() để tránh lỗi nếu IDE compile nhầm language level thấp.
+     */
     private boolean isBlank(String value) {
-        return value == null || value.trim().isBlank();
+        return value == null || value.trim().isEmpty();
     }
 
 }

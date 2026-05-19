@@ -38,4 +38,43 @@ public class AuctionDetailDTO {
         this.sellerUsername = sellerUsername;
         this.bidHistory = bidHistory;
     }
+    public String getAuctionId() {
+        return auctionId;
+    }
+
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+
+    public double getStepPrice() {
+        return stepPrice;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getItemName() {
+        return itemName;
+    }
+
+    public String getItemDescription() {
+        return itemDescription;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getSellerUsername() {
+        return sellerUsername;
+    }
+
+    public List<BidTransactionDTO> getBidHistory() {
+        return bidHistory;
+    }
 }
