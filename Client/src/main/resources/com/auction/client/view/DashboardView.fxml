@@ -7,7 +7,6 @@
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
@@ -71,18 +70,18 @@
 
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Account" />
 
-                  <Button fx:id="auctionListButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Auction list" onAction="#handleAuctionList" />
+                  <Button fx:id="auctionListButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAuctionList" text="Auction list" />
 
-                  <Button fx:id="sellerManagementButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Seller management" onAction="#handleSellerManagement" />
+                  <Button fx:id="sellerManagementButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleSellerManagement" text="Seller management" />
 
-                  <Button fx:id="adminPanelButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Admin panel" onAction="#handleAdminPanel" />
+                  <Button fx:id="adminPanelButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAdminPanel" text="Admin panel" />
 
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Wallet" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Deposit history" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Transaction history" />
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Settings" />
 
-                  <Button fx:id="logoutButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Logout" onAction="#handleLogout" />
+                  <Button fx:id="logoutButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleLogout" text="Logout" />
 
                   <Region prefHeight="152.0" prefWidth="162.0" VBox.vgrow="ALWAYS" />
                </children>
@@ -99,14 +98,13 @@
             </ScrollPane>
          </center>
       </BorderPane>
-      <AnchorPane prefHeight="586.0" prefWidth="834.0">
-         <children>
-            <ToggleButton layoutX="757.0" layoutY="537.0" mnemonicParsing="false" text="🌙">
-               <font>
-                  <Font size="19.0" />
-               </font>
-            </ToggleButton>
-         </children>
-      </AnchorPane>
+      <ToggleButton mnemonicParsing="false" text="🌙" StackPane.alignment="BOTTOM_RIGHT">
+         <font>
+            <Font size="19.0" />
+         </font>
+         <StackPane.margin>
+            <Insets bottom="15.0" right="15.0" />
+         </StackPane.margin>
+      </ToggleButton>
    </children>
 </StackPane>

@@ -42,7 +42,7 @@
 
          <children>
 
-            <VBox alignment="CENTER" layoutX="257.0" layoutY="70.0" prefHeight="630.0" prefWidth="510.0" spacing="15.0" styleClass="login-card">
+            <VBox alignment="CENTER" layoutX="257.0" layoutY="68.0" prefHeight="630.0" prefWidth="510.0" spacing="15.0" styleClass="login-card">
 
                <children>
 
@@ -114,12 +114,13 @@
                       errorLabel dùng để hiển thị lỗi hoặc thông báo thành công.
                       Ban đầu ẩn, khi có lỗi RegisterController sẽ setVisible(true).
                   -->
-                  <Label fx:id="errorLabel" prefHeight="18.0" prefWidth="528.0" text="" visible="false" wrapText="true" />
+                  <Label fx:id="errorLabel" maxHeight="40.0" minHeight="40.0" prefHeight="40.0" text="" visible="false" wrapText="true" />
+                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" onAction="#goToLogin" prefHeight="24.0" prefWidth="267.0" styleClass="second_label" text="Already have an account?" textAlignment="JUSTIFY" />
 
                   <!--
                       Khi bấm Login?, JavaFX gọi RegisterController.goToLogin().
                   -->
-                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" onAction="#goToLogin" prefHeight="24.0" prefWidth="267.0" styleClass="second_label" text="already have an account?" textAlignment="JUSTIFY" />
+                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" onAction="#goToLogin" prefHeight="24.0" prefWidth="267.0" styleClass="second_label" text="Login?" textAlignment="JUSTIFY" />
 
                   <!--
                       Khi bấm Register, JavaFX gọi RegisterController.handleRegister().

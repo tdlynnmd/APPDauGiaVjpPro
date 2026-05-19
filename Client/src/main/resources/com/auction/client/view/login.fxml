@@ -52,9 +52,9 @@
                   <TextField fx:id="usernameField" prefHeight="47.0" prefWidth="313.0" promptText="Account" styleClass="text-input" />
                   <PasswordField fx:id="passwordField" prefHeight="47.0" prefWidth="313.0" promptText="Password" styleClass="text-input" />
                   <Label fx:id="errorLabel" prefHeight="18.0" prefWidth="470.0" text="" visible="false" wrapText="true" />
-                  <Hyperlink alignment="CENTER" prefHeight="24.0" prefWidth="116.0" styleClass="second_label" text="Forgot password?" textAlignment="CENTER" />
+                  <Hyperlink alignment="CENTER" onAction="#goToRegister" prefHeight="24.0" prefWidth="222.0" styleClass="second_label" text="Don't have an account?" textAlignment="CENTER" />
                   <!-- Khi bấm Register?, JavaFX gọi LoginController.goToRegister() -->
-                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" prefHeight="24.0" prefWidth="78.0" styleClass="second_label" text="Register?" textAlignment="JUSTIFY" onAction="#goToRegister" />
+                  <Hyperlink alignment="CENTER" contentDisplay="CENTER" onAction="#goToRegister" prefHeight="24.0" prefWidth="78.0" styleClass="second_label" text="Register?" textAlignment="JUSTIFY" />
                   <Button alignment="CENTER" mnemonicParsing="false" onAction="#handleLogin" prefHeight="31.0" prefWidth="211.0" text="Login" textAlignment="JUSTIFY" />
                </children>
                <padding>

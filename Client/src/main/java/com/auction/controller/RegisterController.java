@@ -85,7 +85,10 @@ public class RegisterController {
         roleComboBox.getItems().setAll(UserRole.BIDDER, UserRole.SELLER);
         roleComboBox.setValue(UserRole.BIDDER);
 
-        errorLabel.setVisible(false);
+        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
+        // Giữ setVisible(true) để chiếm sẵn không gian cố định, đặt chuỗi rỗng để giấu chữ ban đầu.
+        errorLabel.setVisible(true);
+        errorLabel.setText("");
     }
 
     /**
@@ -190,6 +193,9 @@ public class RegisterController {
      * Hiển thị lỗi lên label.
      */
     private void showError(String message) {
+        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
+        // Giữ hiển thị true cố định để không đẩy dịch layout dưới
+        errorLabel.setVisible(true);
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: red;");
     }
@@ -198,6 +204,9 @@ public class RegisterController {
      * Hiển thị thông báo thành công lên label.
      */
     private void showSuccess(String message) {
+        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
+        // Giữ hiển thị true cố định để không đẩy dịch layout dưới
+        errorLabel.setVisible(true);
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: green;");
     }
