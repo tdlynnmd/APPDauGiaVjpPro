@@ -16,11 +16,11 @@
 <?import javafx.scene.text.Font?>
 <?import org.controlsfx.control.textfield.CustomTextField?>
 
-<StackPane xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.DashboardController">
+<StackPane fx:id="rootContainer" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.DashboardController">
    <children>
-      <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="602.0" prefWidth="834.0">
+      <BorderPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" StackPane.alignment="CENTER">
          <top>
-            <HBox prefHeight="103.0" prefWidth="834.0" BorderPane.alignment="CENTER">
+            <HBox prefHeight="103.0" prefWidth="834.0" styleClass="top-bar-box" BorderPane.alignment="CENTER_LEFT">
                <children>
                   <ImageView fitHeight="74.0" fitWidth="152.0" pickOnBounds="true" preserveRatio="true">
                      <image>
@@ -30,30 +30,35 @@
                         <Insets left="10.0" top="14.0" />
                      </HBox.margin>
                   </ImageView>
-                  <CustomTextField fx:id="searchField" prefHeight="26.0" prefWidth="620.0" text="Search Bar">
+                  <CustomTextField fx:id="searchField" maxWidth="1.7976931348623157E308" minWidth="200.0" prefHeight="26.0" prefWidth="620.0" promptText="Search Bar" HBox.hgrow="ALWAYS">
                      <HBox.margin>
-                        <Insets left="50.0" top="60.0" />
+                        <Insets left="50.0" right="40.0" top="90.0" />
                      </HBox.margin>
                   </CustomTextField>
-                  <Region prefHeight="103.0" prefWidth="0.0" HBox.hgrow="ALWAYS" />
                   <VBox alignment="TOP_CENTER" prefHeight="103.0" prefWidth="238.0">
                      <children>
                         <StackPane prefHeight="62.0" prefWidth="75.0">
                            <children>
-                              <Circle fx:id="userAvatar" fill="DODGERBLUE" radius="35.0" stroke="#008cff" strokeType="INSIDE" />
+                              <Circle fx:id="avatarCircle" fill="#e4e4e4" radius="35.0" stroke="BLACK" strokeType="INSIDE" />
                            </children>
+                           <VBox.margin>
+                              <Insets />
+                           </VBox.margin>
                         </StackPane>
 
-                        <Label fx:id="welcomeLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="150.0" text="Username" textAlignment="CENTER">
+                        <Label fx:id="welcomeLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="150.0" styleClass="user-name-label" text="Username" textAlignment="CENTER">
                            <font>
                               <Font size="15.0" />
                            </font>
                         </Label>
 
-                        <Label fx:id="roleLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="150.0" text="Role" textAlignment="CENTER">
+                        <Label fx:id="roleLabel" alignment="CENTER" maxWidth="1.7976931348623157E308" prefHeight="19.0" prefWidth="0.0" styleClass="user-role-label" text="Role" textAlignment="CENTER">
                            <font>
                               <Font size="13.0" />
                            </font>
+                           <VBox.margin>
+                              <Insets bottom="20.0" top="4.0" />
+                           </VBox.margin>
                         </Label>
                      </children>
                      <HBox.margin>
@@ -64,41 +69,47 @@
             </HBox>
          </top>
          <left>
-            <VBox prefHeight="499.0" prefWidth="200.0" spacing="25.0" BorderPane.alignment="TOP_CENTER">
+            <VBox maxHeight="1.7976931348623157E308" maxWidth="250.0" prefHeight="806.0" prefWidth="180.0" spacing="50.0" BorderPane.alignment="TOP_CENTER">
                <children>
-                  <Label alignment="CENTER" prefHeight="18.0" prefWidth="197.0" text="AuctionVZ Menu " textAlignment="CENTER" />
+                  <Label alignment="CENTER" prefHeight="18.0" prefWidth="197.0" styleClass="menu-title" text="AuctionVZ Menu " textAlignment="CENTER">
+                     <VBox.margin>
+                        <Insets bottom="15.0" />
+                     </VBox.margin></Label>
 
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Account" />
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-menu" text="Account" />
 
-                  <Button fx:id="auctionListButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAuctionList" text="Auction list" />
+                  <Button fx:id="auctionListButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAuctionList" styleClass="button-menu" text="Auction list" />
 
-                  <Button fx:id="sellerManagementButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleSellerManagement" text="Seller management" />
+                  <Button fx:id="sellerManagementButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleSellerManagement" styleClass="button-menu" text="Seller management" />
 
-                  <Button fx:id="adminPanelButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAdminPanel" text="Admin panel" />
+                  <Button fx:id="adminPanelButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleAdminPanel" styleClass="button-menu" text="Admin panel" />
 
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Wallet" />
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Deposit history" />
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Transaction history" />
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Settings" />
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-menu" text="Wallet" />
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-menu" text="Deposit history" />
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-menu" text="Transaction history" />
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-menu" text="Settings" />
 
-                  <Button fx:id="logoutButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleLogout" text="Logout" />
+                  <Button fx:id="logoutButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleLogout" styleClass="button-logout" text="Logout" />
 
                   <Region prefHeight="152.0" prefWidth="162.0" VBox.vgrow="ALWAYS" />
                </children>
                <padding>
                   <Insets bottom="20.0" left="15.0" right="15.0" top="20.0" />
                </padding>
+               <BorderPane.margin>
+                  <Insets />
+               </BorderPane.margin>
             </VBox>
          </left>
          <center>
-            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+            <ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
                <content>
-                  <VBox prefHeight="498.0" prefWidth="672.0" />
+                  <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" styleClass="vbox" />
                </content>
             </ScrollPane>
          </center>
       </BorderPane>
-      <ToggleButton mnemonicParsing="false" text="🌙" StackPane.alignment="BOTTOM_RIGHT">
+      <ToggleButton mnemonicParsing="false" onAction="#toggleTheme" styleClass="button" text="🌙" StackPane.alignment="BOTTOM_RIGHT">
          <font>
             <Font size="19.0" />
          </font>

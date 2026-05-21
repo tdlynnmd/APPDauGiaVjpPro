@@ -80,3 +80,121 @@
     -fx-background-color: #F2F4F7; /* Màu nền khi di chuột qua */
     -fx-text-fill: #1D2939;
 }
+/* --- Phân tách vùng ScrollPane ở Chế độ Sáng --- */
+
+.scroll-pane {
+    -fx-background-color: #e0e0e0; /* Viền xám ngoài */
+    -fx-background: #ffffff;       /* Nền ruột màu trắng tinh nổi bật */
+    -fx-border-color: #e0e0e0;     /* Đường viền mảnh phân cách */
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: #ffffff;
+}
+
+.scroll-pane .vbox {
+    -fx-background-color: #ffffff;
+}
+/* ==========================================
+   CẤU HÌNH MENU BUTTONS - LIGHT MODE
+   ========================================== */
+
+/* Trạng thái các nút menu bình thường ở nền sáng */
+.button-menu {
+    -fx-background-color: #007bff; /* Đổi sang màu xanh dương công nghệ tinh tế cho nền sáng */
+    -fx-text-fill: #ffffff;         /* Chữ màu trắng nổi bật */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-transition: all 0.2s ease-in-out;
+}
+
+/* Hiệu ứng khi DI CHUỘT VÀO (Hover) */
+.button-menu:hover {
+    -fx-background-color: #0056b3; /* Xanh dương đậm hơn */
+    -fx-scale-x: 1.03;             /* Phóng to nhẹ 3% */
+    -fx-scale-y: 1.03;
+}
+
+/* Hiệu ứng khi ẤN GIỮ CHUỘT (Pressed) */
+.button-menu:armed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+
+/* --- CẤU HÌNH RIÊNG CHO NÚT LOGOUT (LIGHT MODE) --- */
+.button-logout {
+    -fx-background-color: transparent;
+    -fx-border-color: #dc3545;     /* Viền đỏ đô sang trọng */
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-text-fill: #dc3545;         /* Chữ đỏ */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-transition: all 0.2s ease-in-out;
+}
+
+/* Khi di chuột vào nút Logout */
+.button-logout:hover {
+    -fx-background-color: #dc3545; /* Rực đỏ hoàn toàn */
+    -fx-text-fill: #ffffff;         /* Chữ trắng */
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.button-logout:armed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+/* ==========================================
+   TIÊU ĐỀ AUCTION MENU - LIGHT MODE
+   ========================================== */
+.menu-title {
+    -fx-text-fill: #007bff;           /* Chữ màu xanh công nghệ đồng bộ với nút menu */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-letter-spacing: 1px;
+
+    /* Đường kẻ mờ màu xám nhạt dưới tiêu đề ở chế độ sáng */
+    -fx-border-color: transparent transparent #e0e0e0 transparent;
+    -fx-border-width: 1;
+    -fx-padding: 0 0 8 0;
+}
+/* ==========================================
+   THÔNG TIN USER PROFILE - LIGHT MODE
+   ========================================== */
+
+/* Cấu hình cho dòng chữ Tên người dùng */
+.user-name-label {
+    -fx-text-fill: #1a1a1a;           /* Màu đen xám đậm cực kỳ sắc nét trên nền sáng */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Cấu hình cho dòng chữ Role chức vụ */
+.user-role-label {
+    -fx-text-fill: #007bff;           /* Chữ Role màu xanh công nghệ đồng bộ */
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-background-color: #e6f2ff;    /* Nền tag màu xanh dương siêu nhạt cực sang */
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 4;
+}
+/* ==========================================
+   ĐƯỜNG PHÂN CÁCH TOPBAR - LIGHT MODE
+   ========================================== */
+.top-bar-box {
+    /* Đường kẻ màu xám khói nhã nhặn tinh tế */
+    -fx-border-color: transparent transparent #e0e0e0 transparent;
+    -fx-border-width: 0 0 1 0; /* Chỉ bật viền ở cạnh BOTTOM */
+
+    -fx-padding: 15 20 15 20;
+}

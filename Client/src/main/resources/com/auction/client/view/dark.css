@@ -82,3 +82,123 @@
     -fx-background-color: #444444; /* Màu khi di chuột qua các lựa chọn */
     -fx-text-fill: #FFFFFF;
 }
+/* --- Phân tách vùng ScrollPane ở Chế độ Tối --- */
+
+.scroll-pane {
+    -fx-background-color: #242424; /* Viền ngoài của ScrollPane */
+    -fx-background: #323232;       /* Ép màu nền lõi nhẹ hơn màu nền tổng của App một chút */
+    -fx-border-color: #3d3d3d;     /* Tạo một đường viền siêu mảnh bao quanh để phân tách */
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: #323232; /* Đồng bộ màu của viewport */
+}
+
+/* Đảm bảo tấm VBox chứa nội dung bên trong cũng ăn theo màu này */
+.scroll-pane .vbox {
+    -fx-background-color: #323232;
+}
+/* ==========================================
+   CẤU HÌNH MENU BUTTONS - DARK MODE
+   ========================================== */
+
+/* Trạng thái các nút menu bình thường (Trừ nút logout) */
+.button-menu {
+    -fx-background-color: #fca311; /* Màu cam hiện tại của bạn */
+    -fx-text-fill: #000000;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-cursor: hand; /* Con trỏ biến thành bàn tay khi di chuột vào */
+    -fx-transition: all 0.2s ease-in-out; /* Tạo hiệu ứng mượt mà */
+}
+
+/* Hiệu ứng khi DI CHUỘT VÀO (Hover) */
+.button-menu:hover {
+    -fx-background-color: #ffb703; /* Cam sáng rực lên */
+    -fx-scale-x: 1.03;             /* Phóng to nhẹ 3% tạo cảm giác nổi lên */
+    -fx-scale-y: 1.03;
+}
+
+/* Hiệu ứng khi ẤN GIỮ CHUỘT (Pressed) */
+.button-menu:armed {
+    -fx-scale-x: 0.98;             /* Nút hơi lún xuống nhẹ khi click */
+    -fx-scale-y: 0.98;
+}
+
+
+/* --- CẤU HÌNH RIÊNG CHO NÚT LOGOUT (DARK MODE) --- */
+.button-logout {
+    -fx-background-color: transparent;
+    -fx-border-color: #ff4d4d;     /* Viền đỏ mờ cảnh báo */
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-text-fill: #ff4d4d;         /* Chữ màu đỏ */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-transition: all 0.2s ease-in-out;
+}
+
+/* Khi di chuột vào nút Logout */
+.button-logout:hover {
+    -fx-background-color: #ff4d4d; /* Nút chuyển sang màu đỏ rực hoàn toàn */
+    -fx-text-fill: #ffffff;         /* Chữ chuyển sang màu trắng */
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.button-logout:armed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+/* ==========================================
+   TIÊU ĐỀ AUCTION MENU - DARK MODE
+   ========================================== */
+.menu-title {
+    -fx-text-fill: #ffffff;           /* Màu chữ trắng bạc nổi bật trên nền tối */
+    -fx-font-size: 14px;              /* Kích thước vừa phải, thanh lịch */
+    -fx-font-weight: bold;            /* Chữ in đậm đậm chất tiêu đề */
+    -fx-font-family: "Segoe UI", sans-serif; /* Font chữ hiện đại, bo góc mịn */
+    -fx-letter-spacing: 1px;          /* Giãn cách nhẹ giữa các chữ cái nhìn rất "Tây" */
+
+    /* Tạo hiệu ứng một đường kẻ mờ ở dưới chữ để phân tách danh mục */
+    -fx-border-color: transparent transparent #3d3d3d transparent;
+    -fx-border-width: 1;
+    -fx-padding: 0 0 8 0;             /* Tạo khoảng trống 8px giữa chữ và đường kẻ */
+}
+/* ==========================================
+   THÔNG TIN USER PROFILE - DARK MODE
+   ========================================== */
+
+/* Cấu hình cho dòng chữ Tên người dùng */
+.user-name-label {
+    -fx-text-fill: #ffffff;           /* Màu trắng tinh khôi nổi bật */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;            /* Nét chữ đậm đà chắc chắn */
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Cấu hình cho dòng chữ Role chức vụ */
+.user-role-label {
+    -fx-text-fill: #a0a0a0;           /* Màu xám bạc nhẹ tinh tế */
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-background-color: #3d3d3d;    /* Tạo một lớp nền tag nhỏ bọc quanh chữ */
+    -fx-padding: 2 8 2 8;             /* Khoảng đệm cho tag */
+    -fx-background-radius: 4;         /* Bo góc tag mềm mại */
+}
+/* ==========================================
+   ĐƯỜNG PHÂN CÁCH TOPBAR - DARK MODE
+   ========================================== */
+.top-bar-box {
+    /* Tạo đường kẻ mảnh 1px màu xám đậm tinh tế ngay dưới đáy thanh HBox */
+    -fx-border-color: transparent transparent #3d3d3d transparent;
+    -fx-border-width: 0 0 1 0; /* Chỉ bật viền ở cạnh BOTTOM (Dưới cùng) */
+
+    /* Đảm bảo khoảng cách từ chữ/ô tìm kiếm xuống đường kẻ không bị dính */
+    -fx-padding: 15 20 15 20;
+}
