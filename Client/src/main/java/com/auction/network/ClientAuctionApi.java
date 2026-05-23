@@ -95,7 +95,7 @@ public class ClientAuctionApi {
      */
     public SocketResponse subscribeAuction(String auctionId) {
         AuctionSubscriptionRequest request = new AuctionSubscriptionRequest(auctionId);
-        return sendRequest(ActionType.SUBSCRIBE_AUCTION, request);
+        return sendRequest(ActionType.AUCTION_SUBSCRIBED, request);
     }
 
     /**
@@ -103,7 +103,7 @@ public class ClientAuctionApi {
      */
     public SocketResponse unsubscribeAuction(String auctionId) {
         AuctionSubscriptionRequest request = new AuctionSubscriptionRequest(auctionId);
-        return sendRequest(ActionType.UNSUBSCRIBE_AUCTION, request);
+        return sendRequest(ActionType.AUCTION_UNSUBSCRIBED, request);
     }
 
     /**

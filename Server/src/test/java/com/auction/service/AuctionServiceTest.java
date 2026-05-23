@@ -98,7 +98,7 @@ public class AuctionServiceTest {
         });
 
         // Kiểm tra xem mã lỗi ném ra có đúng là do User đang ngoại tuyến (Offline) hay không
-        assertEquals(AuctionErrorCode.BIDDER_NOT_ONLINE, exception.getErrorCode());
+        assertEquals("AUC_ROOM_007", exception.getErrorCode());
     }
 
     @Test

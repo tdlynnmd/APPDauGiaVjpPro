@@ -3,6 +3,7 @@ package com.auction.models.Auction;
 import com.auction.enums.AuctionStatus;
 import com.auction.enums.BidStatus;
 import com.auction.enums.UserRole;
+import com.auction.exception.AuctionException;
 import com.auction.models.User.Bidder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,16 +58,23 @@ public class AuctionTest {
     @Test
     @DisplayName("Test tu choi: Nguoi ban tu dat gia")
     void testPlaceBid_RejectSeller() {
-        BidTransaction result = auction.placeBid(sellerActingAsBidder, 150.0, "bid_01");
-        assertEquals(BidStatus.REJECTED, result.getStatus());
-        assertEquals(100.0, auction.getCurrentPrice());
+        AuctionException exception = assertThrows(AuctionException.class, () -> {
+            BidTransaction result = auction.placeBid(sellerActingAsBidder, 150.0, "bid_01");
+        });
+
+        // Kiểm tra xem mã lỗi ném ra có đúng là do người bán không được phép đặt giá hay không
+        assertEquals("AUC_ROOM_008", exception.getErrorCode());
     }
 
     @Test
     @DisplayName("Test tu choi: Gia dat thap hon buoc gia")
     void testPlaceBid_RejectLowAmount() {
-        BidTransaction result = auction.placeBid(validBidder, 105.0, "bid_02");
-        assertEquals(BidStatus.REJECTED, result.getStatus());
+        AuctionException exception = assertThrows(AuctionException.class, () -> {
+            BidTransaction result = auction.placeBid(validBidder, 105.0, "bid_02");
+        });
+
+        // Kiểm tra xem mã lỗi ném ra có đúng là do người bán không được phép đặt giá hay không
+        assertEquals("AUC_ROOM_004", exception.getErrorCode());
     }
 
     @Test

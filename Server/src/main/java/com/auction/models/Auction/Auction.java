@@ -95,6 +95,10 @@ public class Auction extends Entity implements Serializable {
             throw new AuctionException(AuctionErrorCode.ITEM_NOT_FOUND, "Bidder data integrity violation.");
         }
 
+        if (bidder.getId().equals(this.sellerId)) {
+            throw new AuctionException(AuctionErrorCode.BIDDER_IS_SELLER);
+        }
+
         // 3. Kiểm tra bước giá đặt hợp lệ
         if ((amount - currentPrice) < stepPrice) {
             throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);

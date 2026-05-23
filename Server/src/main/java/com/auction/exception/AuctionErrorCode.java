@@ -9,6 +9,7 @@ public enum AuctionErrorCode {
     CANNOT_UNWATCH_LEADING_AUCTION("AUC_ROOM_005", "You cannot unsubscribe from a live room where you are currently the highest bidder"),
     SUBSCRIBE_FAILED("AUC_ROOM_006", "Failed to register connection to this live auction room"),
     BIDDER_NOT_ONLINE("AUC_ROOM_007", "User must be online to perform bidding actions"), // 🔥 BỔ SUNG
+    BIDDER_IS_SELLER("AUC_ROOM_008", "You cannot bid on your own product item"), // 🔥 BỔ SUNG
 
     // ===== ITEM / PRODUCT ERRORS =====
     ITEM_NOT_FOUND("AUC_ITEM_001", "Product item does not exist in the warehouse"),
