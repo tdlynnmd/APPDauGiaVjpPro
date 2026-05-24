@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane fx:id="introRoot" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: linear-gradient(to bottom right, #1e293b, #0f172a, #020617);" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.IntroController">
+    <children>
+        <VBox alignment="CENTER" spacing="30.0">
+            <children>
+                <ImageView fitHeight="150.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true">
+                    <image>
+                        <Image url="@../../../../image/LOGO.png" />
+                    </image>
+                </ImageView>
+
+                <ProgressIndicator fx:id="loadingIndicator" maxHeight="50.0" maxWidth="50.0" style="-fx-progress-color: #d4af37; -fx-background-color: transparent;" />
+
+                <VBox alignment="CENTER" spacing="8.0">
+                    <children>
+                        <Label fx:id="statusLabel" text="Khởi động App Đấu Giá Vjp Pro" textFill="#f1f5f9">
+                            <font>
+                                <Font name="System Bold Italic" size="16.0" />
+                            </font>
+                        </Label>
+                        <Label text="Vui lòng đợi trong giây lát" textFill="#94a3b8">
+                            <font>
+                                <Font size="13.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+
+        <Label text="© 2024 AUCTION VZ - APPDauGiaVjpPro Premium Edition" textFill="#475569" StackPane.alignment="BOTTOM_CENTER">
+            <StackPane.margin>
+                <Insets bottom="25.0" />
+            </StackPane.margin>
+            <font>
+                <Font name="System Bold" size="10.0" />
+            </font>
+        </Label>
+    </children>
+</StackPane>
