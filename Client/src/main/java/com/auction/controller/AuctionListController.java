@@ -124,39 +124,6 @@ public class AuctionListController {
     }
 
     /**
-     * Đổi theme sáng/tối cho màn hình Auction List dựa theo cơ chế đồng bộ toàn app của nhóm.
-     * Logic giữ nguyên từ LoginController nhưng không can thiệp thay đổi giao diện/chữ của nút bấm.
-     */
-    @FXML
-    public void toggleTheme(javafx.event.ActionEvent event) {
-        if (rootPane == null) return;
-
-        // 1. Xóa sạch các file CSS cũ đang áp trên màn hình này
-        rootPane.getStylesheets().clear();
-
-        // 2. Đọc trạng thái từ SceneNavigator để xác định file CSS cần nạp (Giống hệt Login)
-        String path = com.auction.util.SceneNavigator.isAppDarkMode
-                ? "/com/auction/client/view/light.css"
-                : "/com/auction/client/view/dark.css";
-
-        try {
-            // 3. Nạp file CSS mới vào bộ nhớ và áp lên tấm nền rootPane
-            String css = java.util.Objects.requireNonNull(getClass().getResource(path)).toExternalForm();
-            rootPane.getStylesheets().add(css);
-
-            // 4. Đảo ngược trạng thái toàn cục để hệ thống đồng bộ (Giống hệt Login)
-            com.auction.util.SceneNavigator.isAppDarkMode = !com.auction.util.SceneNavigator.isAppDarkMode;
-
-            // 5. Cập nhật lại giao diện Placeholder tương ứng với trạng thái Theme vừa đổi
-            updateTablePlaceholder(com.auction.util.SceneNavigator.isAppDarkMode);
-
-        } catch (Exception e) {
-            System.out.println("Không tìm thấy file CSS tại " + path);
-            e.printStackTrace();
-        }
-    }
-
-    /**
      * Hàm bổ trợ cập nhật Placeholder dựa trên Theme để tách biệt "vibe" hiển thị.
      * Đã được tối ưu hóa thẩm mỹ: Đồng bộ font nghiêng (italic), độ đậm và phối màu chuẩn Vibe Ngày/Đêm.
      */

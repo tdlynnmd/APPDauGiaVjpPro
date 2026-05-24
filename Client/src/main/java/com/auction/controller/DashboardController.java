@@ -101,33 +101,6 @@ public class DashboardController {
         showButtonsByRole(role);
     }
 
-    /**
-     * Đổi theme sáng/tối cho màn hình Dashboard.
-     * Đây chỉ là xử lý giao diện, không liên quan đến nghiệp vụ.
-     */
-    @FXML
-    public void toggleTheme(ActionEvent event) {
-        if (rootContainer != null) {
-            rootContainer.getStylesheets().clear();
-
-            // Đọc trạng thái từ SceneNavigator thay vì biến cục bộ để đồng bộ toàn app
-            String path = SceneNavigator.isAppDarkMode
-                    ? "/com/auction/client/view/light.css"
-                    : "/com/auction/client/view/dark.css";
-
-            try {
-                String css = Objects.requireNonNull(getClass().getResource(path)).toExternalForm();
-                rootContainer.getStylesheets().add(css);
-
-                // Cập nhật lại trạng thái tổng của toàn App để các màn hình khác dùng chung
-                SceneNavigator.isAppDarkMode = !SceneNavigator.isAppDarkMode;
-            } catch (Exception e) {
-                System.out.println("Không tìm thấy file CSS tại " + path);
-                e.printStackTrace();
-            }
-        }
-    }
-
     private void hideAllRoleButtons() {
         setButtonVisible(auctionListButton, false);
         setButtonVisible(sellerManagementButton, false);
