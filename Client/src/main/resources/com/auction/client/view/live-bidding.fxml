@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<StackPane fx:id="rootPane" prefHeight="720.0" prefWidth="1280.0" styleClass="main-container" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.LiveBiddingController">
+    <children>
+        <VBox spacing="0.0">
+            <children>
+                <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="15.0" styleClass="top-bar-box">
+                    <children>
+                        <Button mnemonicParsing="false" onAction="#handleBack" prefHeight="35.0" prefWidth="90.0" styleClass="btn-secondary" text="⬅ Quay lại" />
+                        <Label styleClass="section-title" text="PHÒNG ĐẤU GIÁ TRỰC TIẾP">
+                            <font>
+                                <Font name="System Bold" size="18.0" />
+                            </font>
+                        </Label>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="viewerCountLabel" styleClass="viewer-count-label" text="Người xem: 0" />
+                        <Button mnemonicParsing="false" onAction="#handleRefresh" prefHeight="35.0" prefWidth="100.0" styleClass="btn-primary" text="🔄 Làm mới" />
+                    </children>
+                    <padding>
+                        <Insets left="20.0" right="20.0" />
+                    </padding>
+                </HBox>
+
+                <HBox spacing="25.0" styleClass="content-pane" VBox.vgrow="ALWAYS">
+                    <children>
+                        <VBox maxWidth="850.0" spacing="20.0" HBox.hgrow="ALWAYS">
+                            <children>
+                                <VBox spacing="5.0">
+                                    <children>
+                                        <Label fx:id="itemNameLabel" styleClass="welcome-text" text="Tên vật phẩm đang đấu giá..." wrapText="true">
+                                            <font>
+                                                <Font name="System Bold" size="32.0" />
+                                            </font>
+                                        </Label>
+                                        <Label fx:id="sellerLabel" styleClass="user-role-label" text="Người bán: --" />
+                                    </children>
+                                </VBox>
+
+                                <StackPane prefHeight="300.0" style="-fx-background-color: #242526; -fx-background-radius: 15; -fx-border-color: #3d3d3d; -fx-border-radius: 15;">
+                                    <children>
+                                        <Label text="[ HÌNH ẢNH VẬT PHẨM ]" textFill="#555555" />
+                                    </children>
+                                </StackPane>
+
+                                <GridPane hgap="30.0" vgap="15.0">
+                                    <columnConstraints>
+                                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                    </columnConstraints>
+                                    <rowConstraints>
+                                        <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                                        <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                                    </rowConstraints>
+                                    <children>
+                                        <VBox spacing="5.0">
+                                            <children>
+                                                <Label styleClass="status-message-label" text="Giá hiện tại" />
+                                                <Label fx:id="currentPriceLabel" styleClass="second_label" text="0 VNĐ">
+                                                    <font>
+                                                        <Font name="System Bold" size="24.0" />
+                                                    </font>
+                                                </Label>
+                                            </children>
+                                        </VBox>
+                                        <VBox spacing="5.0" GridPane.columnIndex="1">
+                                            <children>
+                                                <Label styleClass="status-message-label" text="Bước giá tối thiểu" />
+                                                <Label fx:id="stepPriceLabel" styleClass="label" text="0 VNĐ">
+                                                    <font>
+                                                        <Font name="System Bold" size="20.0" />
+                                                    </font>
+                                                </Label>
+                                            </children>
+                                        </VBox>
+                                        <VBox spacing="5.0" GridPane.rowIndex="1">
+                                            <children>
+                                                <Label styleClass="status-message-label" text="Đang dẫn đầu" />
+                                                <Label fx:id="highestBidderLabel" styleClass="user-name-label" text="Chưa có" />
+                                            </children>
+                                        </VBox>
+                                        <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                            <children>
+                                                <Label styleClass="status-message-label" text="Trạng thái phiên" />
+                                                <Label fx:id="statusLabel" styleClass="label" text="--" />
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </GridPane>
+
+                                <Separator opacity="0.1" prefWidth="200.0" />
+
+                                <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                    <children>
+                                        <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                            <children>
+                                                <Label styleClass="status-message-label" text="Nhập số tiền bạn muốn trả:" />
+                                                <TextField fx:id="bidAmountField" prefHeight="50.0" promptText="Ví dụ: 1000000" styleClass="bid-amount-field" />
+                                            </children>
+                                        </VBox>
+                                        <Button fx:id="placeBidButton" mnemonicParsing="false" onAction="#handlePlaceBid" prefHeight="50.0" prefWidth="180.0" styleClass="place-bid-button" text="ĐẶT GIÁ NGAY 🔨" translateY="10.0" />
+                                    </children>
+                                </HBox>
+
+                                <Label fx:id="messageLabel" styleClass="status-message-label" text="Sẵn sàng đặt giá..." wrapText="true" />
+                            </children>
+                        </VBox>
+
+                        <VBox prefWidth="350.0" spacing="15.0">
+                            <children>
+                                <VBox alignment="CENTER" prefHeight="120.0" spacing="10.0" style="-fx-background-color: #242526; -fx-background-radius: 15; -fx-border-color: #ff4d4d; -fx-border-width: 0.5;">
+                                    <children>
+                                        <Label text="THỜI GIAN CÒN LẠI" textFill="#ff4d4d">
+                                            <font>
+                                                <Font name="System Bold" size="12.0" />
+                                            </font>
+                                        </Label>
+                                        <Label fx:id="timeRemainingLabel" styleClass="time-remaining-label" text="00:00:00">
+                                            <font>
+                                                <Font size="36.0" />
+                                            </font>
+                                        </Label>
+                                        <Label fx:id="endTimeLabel" opacity="0.6" styleClass="status-message-label" text="Kết thúc: --" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="10.0" VBox.vgrow="ALWAYS">
+                                    <children>
+                                        <Label maxWidth="Infinity" styleClass="menu-title" text="LỊCH SỬ ĐẶT GIÁ" />
+                                        <TableView fx:id="bidHistoryTable" prefHeight="200.0" styleClass="bid-history-table" VBox.vgrow="ALWAYS">
+                                            <columns>
+                                                <TableColumn fx:id="bidderNameColumn" prefWidth="120.0" text="Người đặt" />
+                                                <TableColumn fx:id="bidAmountColumn" prefWidth="110.0" text="Số tiền" />
+                                                <TableColumn fx:id="bidTimeColumn" prefWidth="100.0" text="Lúc" />
+                                                <TableColumn fx:id="bidStatusColumn" prefWidth="80.0" text="Stt" visible="false" />
+                                            </columns>
+                                            <columnResizePolicy>
+                                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                            </columnResizePolicy>
+                                        </TableView>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                    <padding>
+                        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+                    </padding>
+                </HBox>
+            </children>
+        </VBox>
+    </children>
+</StackPane>

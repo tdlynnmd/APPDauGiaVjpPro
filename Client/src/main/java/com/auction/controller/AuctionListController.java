@@ -333,7 +333,6 @@ public class AuctionListController {
          */
         auctionItems.setAll(auctions);
 
-        /*
         // =========================================================================
         // ĐOẠN CHÈN ĐỂ TEST: Bơm dữ liệu giả vào bảng
         // =========================================================================
@@ -344,7 +343,6 @@ public class AuctionListController {
             auctionItems.add(new AuctionSummaryDTO("3", "Bức tranh quý của danh họa VjpPro", 1200.0, "FINISHED", java.time.LocalDateTime.now().minusMinutes(30)));
         }
         // =========================================================================
-        */
 
         if (auctionItems.isEmpty()) {
             showMessage("Hiện chưa có phiên đấu giá nào đang hoạt động.");
