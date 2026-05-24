@@ -80,6 +80,13 @@ public class ClientSocketService {
         if (instance == null) {
             instance = new ClientSocketService();
         }
+        // === CẬP NHẬT MỚI ===
+        // Neu service cu da tung bi dung (do bam nút logout), ta phai tao moi lai hoan toan
+        // de kich hoat lai luong Thread doc socket moi cho phien dang nhap moi.
+        else if (!instance.running) {
+            System.out.println("[Service] ClientSocketService cu da dung. Dang tai tao phien dich vu moi...");
+            instance = new ClientSocketService();
+        }
 
         return instance;
     }
@@ -367,6 +374,16 @@ public class ClientSocketService {
                 "ClientSocketService da dung.",
                 "SOCKET_SERVICE_STOPPED"
         );
+    }
+
+    // === CẬP NHẬT MỚI ===
+    // Ham don dep triet de, dung luong doc ngam va giai phong thuc the Singleton tren RAM
+    public static synchronized void reset() {
+        if (instance != null) {
+            instance.stop(); // Goi ham stop co san cua ban de tat flag running va lam sach pending request
+            instance = null; // Ep thuc the cu ve null de xoa khoi bo nho
+            System.out.println("[Service] Da don dep sach thuc the ClientSocketService.");
+        }
     }
 
     /**
