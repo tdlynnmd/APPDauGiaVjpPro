@@ -140,7 +140,7 @@ class ItemFactoryTest {
     void createItemShouldThrowExceptionWhenTypeIsNull() {
         Map<String, Object> data = electronicsData();
 
-        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(null, data));
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem((ItemType) null, data));
     }
 
     @Test
