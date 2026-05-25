@@ -5,7 +5,6 @@ import com.auction.enums.ItemType;
 import com.auction.models.Entity.Entity;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public abstract class Item extends Entity implements Serializable {

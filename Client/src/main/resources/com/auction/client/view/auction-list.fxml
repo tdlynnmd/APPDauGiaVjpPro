@@ -10,7 +10,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<StackPane fx:id="rootPane" styleClass="rootPane" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AuctionListController">
+<StackPane fx:id="rootPane" styleClass="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AuctionListController">
    <children>
       <VBox prefHeight="600.0" prefWidth="800.0" spacing="15.0" styleClass="content-pane">
           <padding>

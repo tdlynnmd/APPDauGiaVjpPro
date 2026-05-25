@@ -1,7 +1,6 @@
 package com.auction.dao;
 
 import com.auction.models.User.User;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +18,7 @@ public interface UserDAO {
     boolean freezeMoney(String userId, double amount);
 
     // 2. Giải phóng tiền (Từ Frozen -> Available)
-    boolean unfreezeMoney(String userId, double amount);
+    void unfreezeMoney(String userId, double amount);
 
     // 3. Khấu trừ tiền thắng cuộc (Trừ hẳn khỏi Frozen)
     boolean deductFrozenMoney(String userId, double amount);

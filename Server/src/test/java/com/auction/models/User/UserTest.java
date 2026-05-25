@@ -10,7 +10,6 @@ class UserTest {
 
     /**
      * Test constructor của User thông qua class con Bidder.
-     *
      * Vì User là abstract class nên không thể new User() trực tiếp.
      * Ta tạo Bidder để kiểm tra các thông tin chung của User:
      * - username
@@ -399,7 +398,7 @@ class UserTest {
 
     /**
      * Test setAvailableBalance().
-     *
+     * <p>
      * Method này thay thế trực tiếp availableBalance.
      * Thường dùng khi DAO load dữ liệu từ database hoặc cập nhật số dư.
      */

@@ -130,7 +130,7 @@ public class AuctionDAOImpl implements AuctionDAO {
     }
 
     @Override
-    public boolean updateStatus(String auctionId, String status) {
+    public void updateStatus(String auctionId, String status) {
         String sql = "UPDATE auctions SET status = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -138,10 +138,9 @@ public class AuctionDAOImpl implements AuctionDAO {
             stmt.setString(1, status);
             stmt.setString(2, auctionId);
 
-            return stmt.executeUpdate() > 0;
+            stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Lỗi cập nhật trạng thái Auction: " + e.getMessage());
-            return false;
         }
     }
 
@@ -206,5 +205,28 @@ public class AuctionDAOImpl implements AuctionDAO {
             System.err.println("Lỗi findByStatuses: " + e.getMessage());
         }
         return auctions;
+    }
+
+    @Override
+    public boolean updateAuctionStatusAndBidding(Auction auction) {
+        // Gom tất cả các trường có khả năng biến động trên RAM vào 1 câu lệnh UPDATE duy nhất
+        String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = ?, " +
+                "current_winning_bid_id = ?, status = ?, updated_at = NOW() WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDouble(1, auction.getCurrentPrice());
+            stmt.setString(2, auction.getHighestBidderId());
+            stmt.setString(3, auction.getCurrentWinningBidId());
+            stmt.setString(4, auction.getStatus().name());
+            stmt.setString(5, auction.getId());
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi nghiêm trọng khi ép đồng bộ trạng thái phiên "
+                    + auction.getId() + " xuống DB: " + e.getMessage());
+            return false;
+        }
     }
 }

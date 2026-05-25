@@ -5,7 +5,7 @@ import com.auction.models.Auction.BidTransaction;
 import java.util.List;
 
 public interface BidTransactionDAO {
-    public boolean insertBid(BidTransaction bid);
+    boolean insertBid(BidTransaction bid);
 
     List<BidTransaction> findTopByAuctionId(String auctionId, int limit);
 
@@ -18,5 +18,5 @@ public interface BidTransactionDAO {
     long getTotalBidCountByBidder(String bidderId);
 
     // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
-    boolean updateStatusToRefunded(String auctionId, String bidderId);
+    void updateStatusToRefunded(String auctionId, String bidderId);
 }

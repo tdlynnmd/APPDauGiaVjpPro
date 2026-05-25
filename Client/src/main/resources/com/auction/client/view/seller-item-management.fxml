@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<StackPane fx:id="rootContainer" prefHeight="720.0" prefWidth="1280.0" styleClass="sim-root-container" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
+<StackPane fx:id="rootContainer" prefHeight="720.0" prefWidth="1280.0" styleClass="sim-root-container" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
     <children>
         <VBox spacing="0.0" styleClass="sim-card-main" StackPane.alignment="CENTER">
             <children>

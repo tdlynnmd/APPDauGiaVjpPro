@@ -2,6 +2,7 @@ package com.auction.manage;
 
 import com.auction.network.ClientSession;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -104,5 +105,52 @@ public class ConnectionManage {
                 removeConnection(userId, session);
             }
         }
+    }
+
+    /**
+     * 🔥 THỰC THI CLOSE ALL: Cưỡng chế ngắt toàn bộ kết nối Socket trên toàn Server
+     * Được gọi duy nhất từ luồng ServerBootstrap khi hệ thống thực hiện hạ cánh an toàn.
+     */
+    public void closeAllConnections() {
+        System.out.println("[ConnectionManage] ⏳ Đang kích hoạt tiến trình giải phóng toàn bộ kết nối mạng...");
+
+        if (activeConnections.isEmpty()) {
+            System.out.println("[ConnectionManage] ℹ️ Không có thiết bị nào đang kết nối. Bỏ qua.");
+            return;
+        }
+
+        int totalClosedDevices = 0;
+        int totalUsers = activeConnections.size();
+
+        // 1. Duyệt qua toàn bộ các Set kết nối của từng User đang online
+        // Sử dụng entrySet() giúp ta bốc được cả thông tin UserId để in nhật ký (Log) chính xác
+        for (Map.Entry<String, Set<ClientSession>> entry : activeConnections.entrySet()) {
+            String userId = entry.getKey();
+            Set<ClientSession> sessions = entry.getValue();
+
+            if (sessions != null) {
+                // 2. Quét qua từng thiết bị (Session) của User đó để giật phích cắm Socket vật lý
+                for (ClientSession session : sessions) {
+                    try {
+                        if (session != null) {
+                            // Gọi hàm đóng an toàn của bạn (hàm này sẽ close InputStream, OutputStream và Socket)
+                            session.close();
+                            totalClosedDevices++;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[ConnectionManage] ❌ Lỗi khi cưỡng chế đóng Socket của User ["
+                                + userId + "]: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        // 3. CHỐT CHẶN TỐI CAO: Xóa sạch sành sanh mọi dữ liệu trong ConcurrentHashMap
+        // Cắt đứt hoàn toàn liên kết tham chiếu để giải phóng RAM ngay lập tức cho JVM
+        activeConnections.clear();
+
+        System.out.println("[ConnectionManage] ✅ ĐÃ GIẢI PHÓNG TOÀN DIỆN MẠNG!");
+        System.out.println("[ConnectionManage] 👉 Kết quả: Đã đóng an toàn "
+                + totalClosedDevices + " thiết bị thuộc " + totalUsers + " người dùng.");
     }
 }

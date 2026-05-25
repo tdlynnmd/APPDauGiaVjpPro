@@ -15,7 +15,7 @@ public class LogDAOImpl implements LogDAO {
      * Cột created_at sẽ được Database tự động sinh thời gian thực (TIMESTAMP)
      */
     @Override
-    public boolean insertLog(String logId, String adminId, String actionDetail, String targetType, String targetId) {
+    public void insertLog(String logId, String adminId, String actionDetail, String targetType, String targetId) {
         String sql = "INSERT INTO action_logs (id, admin_id, action_detail, target_type, target_id) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -27,10 +27,9 @@ public class LogDAOImpl implements LogDAO {
             stmt.setString(4, targetType);
             stmt.setString(5, targetId);
 
-            return stmt.executeUpdate() > 0;
+            stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("❌ Lỗi Insert Log: " + e.getMessage());
-            return false;
         }
     }
 

@@ -129,7 +129,7 @@ public class UserDAOImpl implements UserDAO {
     /**
      * Giải phóng tiền: Trả tiền từ đóng băng về lại khả dụng (khi bị outbid)
      */
-    public boolean unfreezeMoney(String userId, double amount) {
+    public void unfreezeMoney(String userId, double amount) {
         String sql = "UPDATE users SET available_balance = available_balance + ?, " +
                 "frozen_balance = frozen_balance - ? " +
                 "WHERE id = ? AND frozen_balance >= ? AND deleted_at IS NULL";
@@ -141,9 +141,8 @@ public class UserDAOImpl implements UserDAO {
             stmt.setString(3, userId);
             stmt.setDouble(4, amount);
 
-            return stmt.executeUpdate() > 0;
+            stmt.executeUpdate();
         } catch (SQLException e) {
-            return false;
         }
     }
 

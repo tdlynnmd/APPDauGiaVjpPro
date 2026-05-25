@@ -10,13 +10,10 @@ class UserFactoryTest {
 
     /**
      * Hàm này chạy trước mỗi test.
-     *
      * UserFactory của project dùng registry:
      * Map<UserRole, UserFactory>
-     *
      * Muốn createUser() hoạt động,
      * ta phải đăng ký factory cho từng role trước.
-     *
      * Trong Main.java server cũng làm tương tự:
      * BIDDER -> BidderFactory
      * SELLER -> SellerFactory
@@ -31,10 +28,8 @@ class UserFactoryTest {
 
     /**
      * Test UserFactory tạo Bidder.
-     *
      * Khi gọi:
      * UserFactory.createUser(UserRole.BIDDER, ...)
-     *
      * Expected:
      * object tạo ra phải là Bidder
      * username/email đúng
@@ -66,7 +61,6 @@ class UserFactoryTest {
 
     /**
      * Test UserFactory tạo Seller.
-     *
      * Khi role là SELLER,
      * factory phải trả về object Seller.
      */
@@ -96,7 +90,6 @@ class UserFactoryTest {
 
     /**
      * Test UserFactory tạo Admin.
-     *
      * Khi role là ADMIN,
      * factory phải trả về object Admin.
      */
@@ -126,10 +119,8 @@ class UserFactoryTest {
 
     /**
      * Test password có được hash hay không.
-     *
      * Trong UserFactory.createUser(),
      * password plain text được hash bằng BCrypt trước khi tạo user.
-     *
      * Vì vậy password lưu trong user không được bằng password gốc.
      */
     @Test
@@ -154,10 +145,8 @@ class UserFactoryTest {
 
     /**
      * Test checkPassword() với password đúng.
-     *
      * UserFactory hash password khi tạo user.
      * User.checkPassword() dùng BCrypt để verify plain password với hash.
-     *
      * Nếu nhập đúng password gốc,
      * checkPassword() phải trả về true.
      */
@@ -176,7 +165,6 @@ class UserFactoryTest {
 
     /**
      * Test checkPassword() với password sai.
-     *
      * Nếu nhập sai password,
      * BCrypt verify phải thất bại và trả về false.
      */
@@ -195,21 +183,17 @@ class UserFactoryTest {
 
     /**
      * Test createUser() với role null.
-     *
      * Khi role null, registry.get(null) sẽ không tìm được factory.
      * Code hiện tại sẽ throw IllegalArgumentException.
-     *
      * Test này đảm bảo hệ thống không tạo user với role không hợp lệ.
      */
     @Test
     void createUserShouldThrowExceptionWhenRoleIsNull() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            UserFactory.createUser(
-                    null,
-                    "user1",
-                    "user1@example.com",
-                    "Password@123"
-            );
-        });
+        assertThrows(IllegalArgumentException.class, () -> UserFactory.createUser(
+                null,
+                "user1",
+                "user1@example.com",
+                "Password@123"
+        ));
     }
 }

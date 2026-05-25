@@ -12,13 +12,10 @@ class SellerTest {
 
     /**
      * Test constructor đăng ký mới của Seller.
-     *
      * Trong Seller.java, constructor:
      * public Seller(String username, String email, String password)
-     *
      * gọi:
      * super(username, email, password, UserRole.SELLER);
-     *
      * Vì vậy Seller mới tạo phải có role SELLER.
      */
     @Test
@@ -38,10 +35,8 @@ class SellerTest {
 
     /**
      * Test rating ban đầu của Seller.
-     *
      * Trong constructor Seller mới, code có:
      * this.rating = 0;
-     *
      * Vì vậy seller mới tạo phải có rating bằng 0.
      */
     @Test
@@ -58,7 +53,6 @@ class SellerTest {
 
     /**
      * Test số dư ban đầu của Seller.
-     *
      * Vì Seller kế thừa User,
      * constructor User sẽ set:
      * availableBalance = 0
@@ -81,7 +75,6 @@ class SellerTest {
 
     /**
      * Test status mặc định của Seller mới.
-     *
      * Vì Seller gọi constructor User,
      * mà User set status mặc định là ACTIVE.
      */
@@ -99,13 +92,11 @@ class SellerTest {
 
     /**
      * Test Seller có thể dùng các method ví tiền kế thừa từ User.
-     *
      * Seller cũng là User, nên có:
      * addAvailableBalance()
      * freeze()
      * unfreeze()
      * deductFrozen()
-     *
      * Ở đây test nhanh một flow:
      * nạp 300
      * freeze 100
@@ -137,10 +128,8 @@ class SellerTest {
 
     /**
      * Test constructor thứ 2 của Seller: constructor load từ DB.
-     *
      * Constructor này nhận đủ dữ liệu từ database,
      * gồm cả rating.
-     *
      * Mục tiêu:
      * đảm bảo Seller load từ DB giữ đúng username, email, password,
      * role, balance, status và rating.

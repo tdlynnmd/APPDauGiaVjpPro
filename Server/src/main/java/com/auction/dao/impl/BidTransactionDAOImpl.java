@@ -151,15 +151,16 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
 
     // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
     @Override
-    public boolean updateStatusToRefunded(String auctionId, String bidderId) {
+    public void updateStatusToRefunded(String auctionId, String bidderId) {
         String sql = "UPDATE bid_transactions SET status = 'REFUNDED' " +
                 "WHERE auction_id = ? AND bidder_id = ? AND status = 'ACCEPTED'";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, auctionId);
             stmt.setString(2, bidderId);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { return false; }
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+        }
     }
 
     /**

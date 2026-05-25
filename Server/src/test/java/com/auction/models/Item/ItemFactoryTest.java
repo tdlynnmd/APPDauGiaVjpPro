@@ -2,6 +2,7 @@ package com.auction.models.Item;
 
 import com.auction.enums.ItemType;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -12,36 +13,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class ItemFactoryTest {
 
     /**
-     * Hàm này chạy trước mỗi test.
-     *
-     * ItemFactory dùng registry:
-     * Map<String, ItemFactory>
-     *
-     * Muốn gọi ItemFactory.createItem(type, data),
-     * ta phải đăng ký factory cho từng type trước.
+     * Hàm chạy thiết lập trước mỗi Test Case.
+     * 🔥 ĐỒNG BỘ MỚI: Khóa đăng ký (Registry Key) đã được chuyển đổi từ String sang ItemType Enum chuẩn hóa.
      */
     @BeforeEach
     void setUp() {
-        ItemFactory.register("ART", new ArtFactory());
-        ItemFactory.register("VEHICLE", new VehicleFactory());
-        ItemFactory.register("ELECTRONICS", new ElectronicsFactory());
+        ItemFactory.register(ItemType.ART, new ArtFactory());
+        ItemFactory.register(ItemType.VEHICLES, new VehicleFactory()); // Giả sử Enum của bạn là VEHICLES hoặc VEHICLE
+        ItemFactory.register(ItemType.ELECTRONICS, new ElectronicsFactory());
     }
 
-    /**
-     * Tạo dữ liệu chung cho Electronics.
-     *
-     * ElectronicsFactory cần các field bắt buộc:
-     * - name
-     * - startingPrice
-     * - yearCreated
-     * - sellerId
-     * - brand
-     * - warrantyMonths
-     */
     private Map<String, Object> electronicsData() {
         Map<String, Object> data = new HashMap<>();
         data.put("name", "Laptop Dell");
-        data.put("startingPrice", 12000000);
+        data.put("startingPrice", 12000000.0);
         data.put("description", "Laptop văn phòng");
         data.put("yearCreated", 2022);
         data.put("sellerId", "seller-1");
@@ -51,21 +36,10 @@ class ItemFactoryTest {
         return data;
     }
 
-    /**
-     * Tạo dữ liệu chung cho Art.
-     *
-     * ArtFactory cần các field bắt buộc:
-     * - name
-     * - startingPrice
-     * - yearCreated
-     * - sellerId
-     * - painter
-     * - artStyle
-     */
     private Map<String, Object> artData() {
         Map<String, Object> data = new HashMap<>();
         data.put("name", "Mona Lisa");
-        data.put("startingPrice", 50000000);
+        data.put("startingPrice", 50000000.0);
         data.put("description", "Tranh nổi tiếng");
         data.put("yearCreated", 1503);
         data.put("sellerId", "seller-2");
@@ -75,23 +49,10 @@ class ItemFactoryTest {
         return data;
     }
 
-    /**
-     * Tạo dữ liệu chung cho Vehicle.
-     *
-     * VehicleFactory cần các field bắt buộc:
-     * - name
-     * - startingPrice
-     * - yearCreated
-     * - sellerId
-     * - model
-     * - engineType
-     * - licensePlate
-     * - kmAge
-     */
     private Map<String, Object> vehicleData() {
         Map<String, Object> data = new HashMap<>();
         data.put("name", "Toyota Camry");
-        data.put("startingPrice", 600000000);
+        data.put("startingPrice", 600000000.0);
         data.put("description", "Xe còn mới");
         data.put("yearCreated", 2020);
         data.put("sellerId", "seller-3");
@@ -103,89 +64,65 @@ class ItemFactoryTest {
         return data;
     }
 
-    /**
-     * Test factory tạo Electronics.
-     *
-     * Khi type là ELECTRONICS,
-     * ItemFactory phải trả về object Electronics.
-     */
     @Test
+    @DisplayName("Test tạo thành công thực thể đồ điện tử từ Factory")
     void createItemShouldCreateElectronicsWhenTypeIsElectronics() {
-        Item item = ItemFactory.createItem("ELECTRONICS", electronicsData());
+        // 🔥 ĐỒNG BỘ MỚI: Gọi hàm bằng ItemType.ELECTRONICS Enum thay vì chuỗi "ELECTRONICS"
+        Item item = ItemFactory.createItem(ItemType.ELECTRONICS, electronicsData());
 
-        // Object tạo ra phải đúng kiểu Electronics
         assertInstanceOf(Electronics.class, item);
-
         Electronics electronics = (Electronics) item;
 
-        // Kiểm tra dữ liệu chung
         assertEquals("Laptop Dell", electronics.getName());
-        assertEquals(12000000, electronics.getStartingPrice());
+        assertEquals(12000000.0, electronics.getStartingPrice());
         assertEquals("Laptop văn phòng", electronics.getDescription());
         assertEquals(2022, electronics.getYearCreated());
         assertEquals("seller-1", electronics.getSellerId());
         assertEquals("dell.png", electronics.getImageUrl());
         assertEquals(ItemType.ELECTRONICS, electronics.getItemType());
 
-        // Kiểm tra dữ liệu riêng
         assertEquals("Dell", electronics.getBrand());
         assertEquals(24, electronics.getWarrantyMonths());
     }
 
-    /**
-     * Test factory tạo Art.
-     *
-     * Khi type là ART,
-     * ItemFactory phải trả về object Art.
-     */
     @Test
+    @DisplayName("Test tạo thành công thực thể tác phẩm nghệ thuật từ Factory")
     void createItemShouldCreateArtWhenTypeIsArt() {
-        Item item = ItemFactory.createItem("ART", artData());
+        // 🔥 ĐỒNG BỘ MỚI: Gọi hàm bằng ItemType.ART Enum thay vì chuỗi "ART"
+        Item item = ItemFactory.createItem(ItemType.ART, artData());
 
-        // Object tạo ra phải đúng kiểu Art
         assertInstanceOf(Art.class, item);
-
         Art art = (Art) item;
 
-        // Kiểm tra dữ liệu chung
         assertEquals("Mona Lisa", art.getName());
-        assertEquals(50000000, art.getStartingPrice());
+        assertEquals(50000000.0, art.getStartingPrice());
         assertEquals("Tranh nổi tiếng", art.getDescription());
         assertEquals(1503, art.getYearCreated());
         assertEquals("seller-2", art.getSellerId());
         assertEquals("mona-lisa.png", art.getImageUrl());
         assertEquals(ItemType.ART, art.getItemType());
 
-        // Kiểm tra dữ liệu riêng
         assertEquals("Leonardo da Vinci", art.getPainter());
         assertEquals("Renaissance", art.getArtStyle());
     }
 
-    /**
-     * Test factory tạo Vehicle.
-     *
-     * Khi type là VEHICLE,
-     * ItemFactory phải trả về object Vehicle.
-     */
     @Test
+    @DisplayName("Test tạo thành công thực thể phương tiện giao thông từ Factory")
     void createItemShouldCreateVehicleWhenTypeIsVehicle() {
-        Item item = ItemFactory.createItem("VEHICLE", vehicleData());
+        // 🔥 ĐỒNG BỘ MỚI: Gọi hàm bằng ItemType.VEHICLES Enum thay vì chuỗi "VEHICLE"
+        Item item = ItemFactory.createItem(ItemType.VEHICLES, vehicleData());
 
-        // Object tạo ra phải đúng kiểu Vehicle
         assertInstanceOf(Vehicle.class, item);
-
         Vehicle vehicle = (Vehicle) item;
 
-        // Kiểm tra dữ liệu chung
         assertEquals("Toyota Camry", vehicle.getName());
-        assertEquals(600000000, vehicle.getStartingPrice());
+        assertEquals(600000000.0, vehicle.getStartingPrice());
         assertEquals("Xe còn mới", vehicle.getDescription());
         assertEquals(2020, vehicle.getYearCreated());
         assertEquals("seller-3", vehicle.getSellerId());
         assertEquals("camry.png", vehicle.getImageUrl());
         assertEquals(ItemType.VEHICLES, vehicle.getItemType());
 
-        // Kiểm tra dữ liệu riêng
         assertEquals("Camry 2.5Q", vehicle.getModel());
         assertEquals("Gasoline", vehicle.getEngineType());
         assertEquals("30A-12345", vehicle.getLicensePlate());
@@ -193,191 +130,92 @@ class ItemFactoryTest {
     }
 
     /**
-     * Test type không phân biệt chữ hoa/thường.
-     *
-     * Trong ItemFactory.register():
-     * registry.put(type.toUpperCase(), factory);
-     *
-     * Trong createItem():
-     * registry.get(type.toUpperCase());
-     *
-     * Vì vậy "electronics", "ELECTRONICS", "Electronics"
-     * đều phải hoạt động như nhau.
+     * 🔥 CHÚ Ý REFACTOR: Test Case "createItemShouldIgnoreCaseOfType" CŨ ĐÃ BỊ LOẠI BỎ.
+     * Vì hệ thống hiện tại ép kiểu tham số đầu vào bắt buộc phải là Enum Type-safe,
+     * việc truyền chuỗi thường "electronics" không thể xảy ra ở tầng Compile nữa.
+     * Thay vào đó, ta viết ca kiểm thử đảm bảo lỗi quăng ra chuẩn khi truyền null hoặc lỗi nạp thiếu loại hỗ trợ.
      */
     @Test
-    void createItemShouldIgnoreCaseOfType() {
-        Item item = ItemFactory.createItem("electronics", electronicsData());
-
-        // Dù type viết thường, factory vẫn tạo Electronics
-        assertInstanceOf(Electronics.class, item);
-    }
-
-    /**
-     * Test type không được hỗ trợ.
-     *
-     * Nếu type chưa đăng ký trong registry,
-     * ItemFactory.createItem() phải ném IllegalArgumentException.
-     */
-    @Test
-    void createItemShouldThrowExceptionWhenTypeIsUnsupported() {
+    @DisplayName("Test quăng lỗi quăng Exception khi truyền loại Item rỗng (null)")
+    void createItemShouldThrowExceptionWhenTypeIsNull() {
         Map<String, Object> data = electronicsData();
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ItemFactory.createItem("BOOK", data);
-        });
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(null, data));
     }
 
-    /**
-     * Test thiếu field bắt buộc.
-     *
-     * ElectronicsFactory bắt buộc có field "name".
-     * Nếu thiếu name, getRequiredString() phải ném IllegalArgumentException.
-     */
     @Test
+    @DisplayName("Test thiếu trường dữ liệu chữ (String) bắt buộc")
     void createElectronicsShouldThrowExceptionWhenRequiredStringIsMissing() {
         Map<String, Object> data = electronicsData();
-
-        // Xóa field bắt buộc name
         data.remove("name");
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ItemFactory.createItem("ELECTRONICS", data);
-        });
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(ItemType.ELECTRONICS, data));
     }
 
-    /**
-     * Test field String bắt buộc nhưng chỉ chứa dấu cách.
-     *
-     * getRequiredString() có trim().isEmpty(),
-     * nên chuỗi "   " phải bị coi là không hợp lệ.
-     */
     @Test
+    @DisplayName("Test trường dữ liệu bắt buộc bị để trống hoặc chứa toàn ký tự trắng")
     void createElectronicsShouldThrowExceptionWhenRequiredStringIsBlank() {
         Map<String, Object> data = electronicsData();
-
-        // name chỉ toàn dấu cách
         data.put("name", "   ");
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ItemFactory.createItem("ELECTRONICS", data);
-        });
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(ItemType.ELECTRONICS, data));
     }
 
-    /**
-     * Test field double sai định dạng.
-     *
-     * startingPrice là double bắt buộc.
-     * Nếu truyền "abc", getRequiredDouble() phải ném IllegalArgumentException.
-     */
     @Test
+    @DisplayName("Test trường kiểu số thực (Double) nhận dữ liệu sai định dạng")
     void createElectronicsShouldThrowExceptionWhenRequiredDoubleIsInvalid() {
         Map<String, Object> data = electronicsData();
-
-        // startingPrice sai định dạng số
         data.put("startingPrice", "abc");
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ItemFactory.createItem("ELECTRONICS", data);
-        });
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(ItemType.ELECTRONICS, data));
     }
 
-    /**
-     * Test field int sai định dạng.
-     *
-     * yearCreated là int bắt buộc.
-     * Nếu truyền "abc", getRequiredInt() phải ném IllegalArgumentException.
-     */
     @Test
+    @DisplayName("Test trường kiểu số nguyên (Int) nhận dữ liệu sai định dạng")
     void createElectronicsShouldThrowExceptionWhenRequiredIntIsInvalid() {
         Map<String, Object> data = electronicsData();
-
-        // yearCreated sai định dạng số nguyên
         data.put("yearCreated", "abc");
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ItemFactory.createItem("ELECTRONICS", data);
-        });
+        assertThrows(IllegalArgumentException.class, () -> ItemFactory.createItem(ItemType.ELECTRONICS, data));
     }
 
-    /**
-     * Test optional field description.
-     *
-     * ElectronicsFactory dùng:
-     * getOptionalString(data, "description", "Không có mô tả")
-     *
-     * Nếu không gửi description,
-     * object tạo ra phải có description mặc định.
-     */
     @Test
+    @DisplayName("Test sử dụng chuỗi mô tả mặc định khi trường optional bị khuyết thiếu")
     void createElectronicsShouldUseDefaultDescriptionWhenDescriptionIsMissing() {
         Map<String, Object> data = electronicsData();
-
-        // Xóa description optional
         data.remove("description");
 
-        Electronics item = (Electronics) ItemFactory.createItem("ELECTRONICS", data);
-
-        // Kỳ vọng dùng description mặc định
+        Electronics item = (Electronics) ItemFactory.createItem(ItemType.ELECTRONICS, data);
         assertEquals("Không có mô tả", item.getDescription());
     }
 
-    /**
-     * Test optional field imageUrl.
-     *
-     * ElectronicsFactory dùng:
-     * getOptionalString(data, "imageUrl", "default_electronics.png")
-     *
-     * Nếu không gửi imageUrl,
-     * object tạo ra phải có imageUrl mặc định.
-     */
     @Test
+    @DisplayName("Test sử dụng đường dẫn ảnh mặc định khi trường ảnh optional bị khuyết thiếu")
     void createElectronicsShouldUseDefaultImageUrlWhenImageUrlIsMissing() {
         Map<String, Object> data = electronicsData();
-
-        // Xóa imageUrl optional
         data.remove("imageUrl");
 
-        Electronics item = (Electronics) ItemFactory.createItem("ELECTRONICS", data);
-
-        // Kỳ vọng dùng image mặc định của Electronics
+        Electronics item = (Electronics) ItemFactory.createItem(ItemType.ELECTRONICS, data);
         assertEquals("default_electronics.png", item.getImageUrl());
     }
 
-    /**
-     * Test getRequiredDouble() nhận được String số.
-     *
-     * Trong factory, startingPrice có thể đến từ JSON hoặc form dưới dạng String.
-     * Nếu là "12000000", factory phải parse được sang double.
-     */
     @Test
+    @DisplayName("Test khả năng tự động bốc ép kiểu dữ liệu từ chuỗi String sang Double hợp lệ")
     void createElectronicsShouldParseDoubleFromString() {
         Map<String, Object> data = electronicsData();
-
-        // Truyền startingPrice dưới dạng String
         data.put("startingPrice", "12000000");
 
-        Electronics item = (Electronics) ItemFactory.createItem("ELECTRONICS", data);
-
-        // Kỳ vọng parse thành số thành công
-        assertEquals(12000000, item.getStartingPrice());
+        Electronics item = (Electronics) ItemFactory.createItem(ItemType.ELECTRONICS, data);
+        assertEquals(12000000.0, item.getStartingPrice());
     }
 
-    /**
-     * Test getRequiredInt() nhận được String số.
-     *
-     * yearCreated có thể được gửi dưới dạng "2022".
-     * Factory phải parse được sang int.
-     */
     @Test
+    @DisplayName("Test khả năng tự động bốc ép kiểu dữ liệu từ chuỗi String sang Integer hợp lệ")
     void createElectronicsShouldParseIntFromString() {
         Map<String, Object> data = electronicsData();
-
-        // Truyền yearCreated dưới dạng String
         data.put("yearCreated", "2022");
 
-        Electronics item = (Electronics) ItemFactory.createItem("ELECTRONICS", data);
-
-        // Kỳ vọng parse thành int thành công
+        Electronics item = (Electronics) ItemFactory.createItem(ItemType.ELECTRONICS, data);
         assertEquals(2022, item.getYearCreated());
     }
 }

@@ -1,5 +1,7 @@
 package com.auction.manage;
 
+import com.auction.dao.AuctionDAO;
+import com.auction.dao.impl.AuctionDAOImpl;
 import com.auction.enums.AuctionStatus;
 import com.auction.models.Auction.Auction;
 import com.auction.event.AuctionEvent;
@@ -177,5 +179,73 @@ public class AuctionManage {
                 AuctionEventType.STATUS_CHANGED,
                 statusPayload
         );
+    }
+
+    /**
+     * 🔥 THỰC THI FORCE SYNC TOÀN DIỆN: Đẩy toàn bộ dữ liệu từ RAM xuống MySQL
+     * Chốt chặn tối cao bảo vệ an toàn tài sản và số dư của khách hàng khi tắt Server.
+     */
+    public void forceSyncRamToDatabase() {
+        System.out.println("[AuctionManage] 💾 Đang kích hoạt tiến trình đồng bộ khẩn cấp RAM -> Database...");
+
+        // Defensive check: Nếu RAM trống thì không cần tốn tài nguyên mở kết nối DB
+        if (activeAuctions.isEmpty()) {
+            System.out.println("[AuctionManage] ℹ️ Không có phiên đấu giá nào trên RAM cần đồng bộ.");
+            return;
+        }
+
+        int successCount = 0;
+        int totalCount = activeAuctions.size();
+
+        // Sử dụng values() chạy trên ConcurrentHashMap an toàn đa luồng.
+        // Kể cả khi có luồng khác đang đọc ghi, tiến trình quét này vẫn không bị dính ConcurrentModificationException
+        for (Auction auction : activeAuctions.values()) {
+            // Tối ưu hóa: Sử dụng kỹ thuật cô lập lỗi (Error Isolation).
+            // Nếu 1 phiên bị lỗi dữ liệu, hệ thống vẫn phải tiếp tục ghi nhận các phiên tiếp theo, không được phép sập luồng ngắt quãng.
+            try {
+                AuctionDAO auctionDAO = new AuctionDAOImpl();
+                boolean isSynced = auctionDAO.updateAuctionStatusAndBidding(auction);
+                if (isSynced) {
+                    successCount++;
+                } else {
+                    System.err.println("[AuctionManage] ⚠️ Phiên đấu giá " + auction.getId()
+                            + " không thể cập nhật (Có thể do Id không tồn tại dưới DB).");
+                }
+            } catch (Exception e) {
+                System.err.println("[AuctionManage] ❌ Lỗi đột biến khi đồng bộ phiên "
+                        + auction.getId() + ": " + e.getMessage());
+            }
+        }
+
+        System.out.println("[AuctionManage] 🎉 HOÀN TẤT ĐỒNG BỘ NỀN KHẨN CẤP!");
+        System.out.println("[AuctionManage] 👉 Kết quả: Đã ép bảo vệ thành công "
+                + successCount + "/" + totalCount + " phiên đấu giá an toàn xuống MySQL.");
+    }
+
+    /**
+     * 🔥 CƠ CHẾ ĐÓNG AN TOÀN LUỒNG NGẦM: Tắt bộ quét vòng đời hệ thống
+     * Được gọi duy nhất khi Server nhận tín hiệu đóng cửa (Shutdown Hook).
+     */
+    public void stopScheduler() {
+        System.out.println("[AuctionManage] ⏳ Đang tiến hành đóng băng luồng đếm giây ngầm...");
+
+        // 1. Ra lệnh không tiếp nhận chu kỳ quét mới nữa
+        scheduler.shutdown();
+
+        try {
+            // 2. Chờ tối đa 3 giây cho lượt quét hiện tại (nếu đang chạy dở) kịp kết thúc an toàn
+            if (!scheduler.awaitTermination(3, TimeUnit.SECONDS)) {
+                // Nếu quá 3 giây mà luồng vẫn cố tình treo, cưỡng chế hủy diệt lập tức
+                scheduler.shutdownNow();
+                System.out.println("[AuctionManage] ⚠️ Luồng ngầm không chịu dừng, đã cưỡng chế hủy (ShutdownNow).");
+            } else {
+                System.out.println("[AuctionManage] ✅ Bộ quét luồng ngầm đã hạ cánh an toàn.");
+            }
+        } catch (InterruptedException e) {
+            // Bị ngắt quãng trong quá trình đợi, cưỡng chế dừng luôn
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt(); // Khôi phục lại trạng thái ngắt quãng của Thread
+            System.err.println("[AuctionManage] ❌ Quá trình đóng luồng bị ngắt quãng, cưỡng chế dừng.");
+        }
     }
 }
