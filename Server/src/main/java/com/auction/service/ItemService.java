@@ -15,6 +15,7 @@ import com.auction.models.Item.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +25,7 @@ public class ItemService {
     private final ProductManage productManage = ProductManage.getInstance();
 
     public ItemDetailDTO addItem(String type, Map<String, Object> data) {
-        return addItem(ItemFactory.parseItemType(type), data);
+        return addItem(parseItemType(type), data);
     }
 
     public ItemDetailDTO addItem(ItemType type, Map<String, Object> data) {
@@ -51,7 +52,7 @@ public class ItemService {
     }
 
     public ItemDetailDTO updateItemInfo(String itemId, String type, Map<String, Object> incomingData) {
-        return updateItemInfo(itemId, ItemFactory.parseItemType(type), incomingData);
+        return updateItemInfo(itemId, parseItemType(type), incomingData);
     }
 
     public ItemDetailDTO updateItemInfo(String itemId, ItemType type, Map<String, Object> incomingData) {
@@ -68,15 +69,13 @@ public class ItemService {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Mâu thuẫn loại vật phẩm. Không thể thay đổi loại của vật phẩm đang tồn tại.");
         }
 
-        ItemFactory.createItem(type, incomingData);
-
         synchronized (liveItem.getId().intern()) {
             if (liveItem.getStatus() != ItemStatus.ACTIVE) {
                 throw new AuctionException(AuctionErrorCode.ITEM_IS_LOCKED);
             }
 
+            validateMergedItemData(liveItem, type, incomingData);
             updateLiveItemFields(liveItem, incomingData);
-            updateSubClassFields(liveItem, type, incomingData);
 
             boolean isUpdatedDB = itemDAO.updateItem(liveItem);
             if (!isUpdatedDB) {
@@ -85,36 +84,6 @@ public class ItemService {
 
             productManage.updateProduct(itemId, liveItem);
             return toItemDetailDTO(liveItem);
-        }
-    }
-
-    private void updateSubClassFields(Item liveItem, ItemType type, Map<String, Object> incomingData) {
-        switch (type) {
-            case ELECTRONICS:
-                if (liveItem instanceof Electronics electronics) {
-                    electronics.setBrand((String) incomingData.get("brand"));
-                    if (incomingData.get("warrantyMonths") instanceof Number number) {
-                        electronics.setWarrantyMonths(number.intValue());
-                    }
-                }
-                break;
-
-            case ART:
-                if (liveItem instanceof Art art) {
-                    art.setPainter((String) incomingData.get("painter"));
-                    art.setArtStyle((String) incomingData.get("artStyle"));
-                }
-                break;
-
-            case VEHICLES:
-                if (liveItem instanceof Vehicle vehicle) {
-                    vehicle.setModel((String) incomingData.get("model"));
-                    vehicle.setLicensePlate((String) incomingData.get("licensePlate"));
-                    if (incomingData.get("kmAge") instanceof Number number) {
-                        vehicle.setKmAge(number.doubleValue());
-                    }
-                }
-                break;
         }
     }
 
@@ -238,6 +207,67 @@ public class ItemService {
                 licensePlate,
                 kmAge
         );
+    }
+
+    private ItemType parseItemType(String type) {
+        try {
+            return ItemFactory.parseItemType(type);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, e.getMessage());
+        }
+    }
+
+    private void validateMergedItemData(Item liveItem, ItemType type, Map<String, Object> incomingData) {
+        Map<String, Object> mergedData = toItemDataMap(liveItem);
+        mergedData.putAll(incomingData);
+
+        try {
+            ItemFactory.createItem(type, mergedData);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Factory payload evaluation error: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Object> toItemDataMap(Item item) {
+        Map<String, Object> data = new HashMap<>();
+
+        putIfPresent(data, "sellerId", item.getSellerId());
+        putIfPresent(data, "name", item.getName());
+        data.put("startingPrice", item.getStartingPrice());
+        putIfPresent(data, "description", item.getDescription());
+        data.put("yearCreated", item.getYearCreated());
+        putIfPresent(data, "imageUrl", item.getImageUrl());
+
+        switch (item) {
+            case Art art -> {
+                putIfPresent(data, "painter", art.getPainter());
+                putIfPresent(data, "artStyle", art.getArtStyle());
+            }
+            case Electronics electronics -> {
+                putIfPresent(data, "brand", electronics.getBrand());
+                data.put("warrantyMonths", electronics.getWarrantyMonths());
+            }
+            case Vehicle vehicle -> {
+                putIfPresent(data, "model", vehicle.getModel());
+                putIfPresent(data, "engineType", vehicle.getEngineType());
+                putIfPresent(data, "licensePlate", vehicle.getLicensePlate());
+                data.put("kmAge", vehicle.getKmAge());
+            }
+            default -> {
+            }
+        }
+
+        return data;
+    }
+
+    private void putIfPresent(Map<String, Object> data, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof String text && text.trim().isEmpty()) {
+            return;
+        }
+        data.put(key, value);
     }
 
     private void updateLiveItemFields(Item liveItem, Map<String, Object> incomingData) {

@@ -34,8 +34,6 @@ public class AuthorizationService {
      */
     private static final Set<String> LOGIN_REQUIRED_ACTIONS = Set.of(
             ActionType.LOGOUT.name(),
-            ActionType.GET_SELLER_ITEMS.name(),
-            ActionType.GET_ITEM_DETAIL.name(),
             ActionType.GET_ACTIVE_AUCTIONS.name(),
             ActionType.GET_AUCTION_DETAIL.name(),
             ActionType.AUCTION_SUBSCRIBED.name(),
@@ -50,6 +48,8 @@ public class AuthorizationService {
             ActionType.CREATE_ITEM.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
             ActionType.UPDATE_ITEM.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
             ActionType.DELETE_ITEM.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
+            ActionType.GET_SELLER_ITEMS.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
+            ActionType.GET_ITEM_DETAIL.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
 
             ActionType.CREATE_AUCTION.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
             ActionType.CANCEL_AUCTION.name(), Set.of(UserRole.SELLER, UserRole.ADMIN),
