@@ -11,6 +11,11 @@ public enum ActionType {
     LOGIN,
     REGISTER,
     LOGOUT,
+    CREATE_ITEM,
+    UPDATE_ITEM,
+    DELETE_ITEM,
+    GET_SELLER_ITEMS,
+    GET_ITEM_DETAIL,
     GET_ACTIVE_AUCTIONS,        // lấy danh sách các phiên đáu giá đang mở hoặc đang chạy.
     GET_AUCTION_DETAIL,         // lấy chi tiết 1 phiên đáu giá theo auctioId
     CREATE_AUCTION,             // tạo phiên đấu giá mới, chỉ seller và admin được gọi

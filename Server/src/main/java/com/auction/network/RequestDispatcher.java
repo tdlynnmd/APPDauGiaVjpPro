@@ -2,6 +2,7 @@ package com.auction.network;
 
 import com.auction.controller.AuctionController;
 import com.auction.controller.AuthController;
+import com.auction.controller.ItemController;
 import com.auction.dto.*;
 import com.auction.enums.ActionType;
 import com.auction.exception.BaseException;
@@ -28,6 +29,7 @@ public class RequestDispatcher {
 
     private final AuthController authController = new AuthController();
     private final AuctionController auctionController = new AuctionController();
+    private final ItemController itemController = new ItemController();
     private final AuthorizationService authorizationService = new AuthorizationService();
 
     // 🔥 TỐI ƯU HIỆU NĂNG NHÁNH: Tạo Thread Pool riêng chuyên trách các tác vụ nặng (Database, Synchronized Block).
@@ -76,6 +78,26 @@ public class RequestDispatcher {
 
                     case LOGOUT:
                         handleLogout(socketRequest, session);
+                        break;
+
+                    case CREATE_ITEM:
+                        handleCreateItem(socketRequest, session);
+                        break;
+
+                    case UPDATE_ITEM:
+                        handleUpdateItem(socketRequest, session);
+                        break;
+
+                    case DELETE_ITEM:
+                        handleDeleteItem(socketRequest, session);
+                        break;
+
+                    case GET_SELLER_ITEMS:
+                        handleGetSellerItems(socketRequest, session);
+                        break;
+
+                    case GET_ITEM_DETAIL:
+                        handleGetItemDetail(socketRequest, session);
                         break;
 
                     case GET_ACTIVE_AUCTIONS:
@@ -192,6 +214,46 @@ public class RequestDispatcher {
         authController.logout(userId);
         sendSuccess(session, socketRequest, "Đăng xuất thành công.", null);
         session.close();
+    }
+
+    /**
+     * Routes item creation through the item controller so the client never calls service/DAO directly.
+     */
+    private void handleCreateItem(SocketRequest socketRequest, ClientSession session) {
+        Object result = itemController.createItem(socketRequest.getBody(), session);
+        sendSuccess(session, socketRequest, "Tao san pham thanh cong.", result);
+    }
+
+    /**
+     * Routes item update and returns the refreshed detail DTO to the client.
+     */
+    private void handleUpdateItem(SocketRequest socketRequest, ClientSession session) {
+        Object result = itemController.updateItem(socketRequest.getBody(), session);
+        sendSuccess(session, socketRequest, "Cap nhat san pham thanh cong.", result);
+    }
+
+    /**
+     * Routes item deletion as a status change instead of letting the client touch persistence.
+     */
+    private void handleDeleteItem(SocketRequest socketRequest, ClientSession session) {
+        itemController.deleteItem(socketRequest.getBody(), session);
+        sendSuccess(session, socketRequest, "Xoa san pham thanh cong.", null);
+    }
+
+    /**
+     * Returns the item list owned by the current seller session.
+     */
+    private void handleGetSellerItems(SocketRequest socketRequest, ClientSession session) {
+        Object result = itemController.getSellerItems(session);
+        sendSuccess(session, socketRequest, "Lay danh sach san pham thanh cong.", result);
+    }
+
+    /**
+     * Returns a detail DTO for the requested item.
+     */
+    private void handleGetItemDetail(SocketRequest socketRequest, ClientSession session) {
+        Object result = itemController.getItemDetail(socketRequest.getBody(), session);
+        sendSuccess(session, socketRequest, "Lay chi tiet san pham thanh cong.", result);
     }
 
     /**

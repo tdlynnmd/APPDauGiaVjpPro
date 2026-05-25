@@ -1,8 +1,12 @@
 package com.auction.controller;
 
+import com.auction.dto.CreateItemRequest;
+import com.auction.dto.ItemDetailDTO;
 import com.auction.dto.ItemSummaryDTO;
 import com.auction.dto.SocketResponse;
+import com.auction.dto.UpdateItemRequest;
 import com.auction.network.ClientAuctionApi;
+import com.auction.network.ClientItemApi;
 import com.auction.util.SceneNavigator;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -13,6 +17,7 @@ import javafx.scene.layout.StackPane;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -40,6 +45,7 @@ import java.util.Objects;
  */
 public class SellerItemController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
+    private final ClientItemApi itemApi = new ClientItemApi();
 
     /*
      * selectedItem lưu vật phẩm được chọn từ màn hình danh sách item.
@@ -108,6 +114,28 @@ public class SellerItemController {
 
     @FXML
     private Button btnSubmit;
+
+    /**
+     * Optional FXML bindings for the item-management form.
+     * Current FXML may not declare these fields yet, so every handler checks null before use.
+     */
+    @FXML private TextField itemTypeField;
+    @FXML private TextField itemNameField;
+    @FXML private TextField startingPriceField;
+    @FXML private TextField descriptionField;
+    @FXML private TextField yearCreatedField;
+    @FXML private TextField imageUrlField;
+    @FXML private TextField painterField;
+    @FXML private TextField artStyleField;
+    @FXML private TextField brandField;
+    @FXML private TextField warrantyMonthsField;
+    @FXML private TextField modelField;
+    @FXML private TextField engineTypeField;
+    @FXML private TextField licensePlateField;
+    @FXML private TextField kmAgeField;
+    @FXML private TextField updateItemIdField;
+    @FXML private TextField deleteItemIdField;
+    @FXML private TextField detailItemIdField;
 
     /**
      * initialize() được JavaFX tự động gọi sau khi load FXML.
@@ -194,6 +222,117 @@ public class SellerItemController {
      * 3. Gửi CREATE_AUCTION sang Server.
      * 4. Hiển thị kết quả trả về từ Server.
      */
+    /**
+     * Optional FXML action for loading items owned by the logged-in seller.
+     */
+    @FXML
+    private void handleLoadSellerItems() {
+        SocketResponse response = itemApi.getSellerItems();
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        List<ItemSummaryDTO> items = itemApi.parseItemSummaryList(response);
+        if (!items.isEmpty()) {
+            setSelectedItem(items.getFirst());
+        }
+        showMessage("Da tai " + items.size() + " san pham cua nguoi ban.");
+    }
+
+    /**
+     * Optional FXML action for creating a new item before creating an auction.
+     */
+    @FXML
+    private void handleCreateItem() {
+        CreateItemRequest request = buildCreateItemRequest();
+        if (request == null) {
+            return;
+        }
+
+        SocketResponse response = itemApi.createItem(request);
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        ItemDetailDTO createdItem = itemApi.parseItemDetail(response);
+        if (createdItem != null) {
+            setSelectedItem(createdItem.toSummaryDTO());
+        }
+        showInfo(response.getMessage());
+        showMessage("Tao san pham thanh cong.");
+    }
+
+    /**
+     * Optional FXML action for updating the currently selected item.
+     */
+    @FXML
+    private void handleUpdateItem() {
+        UpdateItemRequest request = buildUpdateItemRequest();
+        if (request == null) {
+            return;
+        }
+
+        SocketResponse response = itemApi.updateItem(request);
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        ItemDetailDTO updatedItem = itemApi.parseItemDetail(response);
+        if (updatedItem != null) {
+            setSelectedItem(updatedItem.toSummaryDTO());
+        }
+        showInfo(response.getMessage());
+        showMessage("Cap nhat san pham thanh cong.");
+    }
+
+    /**
+     * Optional FXML action for hiding/deleting an item through the server contract.
+     */
+    @FXML
+    private void handleDeleteItem() {
+        String itemId = firstNonBlank(readText(deleteItemIdField), readItemId());
+        if (isBlank(itemId)) {
+            showError("Vui long nhap itemId can xoa.");
+            return;
+        }
+
+        SocketResponse response = itemApi.deleteItem(itemId, "Deleted from seller item controller.");
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        showInfo(response.getMessage());
+        showMessage("Da xoa/an san pham: " + itemId);
+    }
+
+    /**
+     * Optional FXML action for fetching item detail into the controller state.
+     */
+    @FXML
+    private void handleLoadItemDetail() {
+        String itemId = firstNonBlank(readText(detailItemIdField), readItemId());
+        if (isBlank(itemId)) {
+            showError("Vui long nhap itemId can xem chi tiet.");
+            return;
+        }
+
+        SocketResponse response = itemApi.getItemDetail(itemId);
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        ItemDetailDTO itemDetail = itemApi.parseItemDetail(response);
+        if (itemDetail != null) {
+            setSelectedItem(itemDetail.toSummaryDTO());
+            showMessage("Da tai chi tiet san pham: " + safeText(itemDetail.getItemName()));
+        }
+    }
+
     @FXML
     private void handleCreateAuction() {
         String itemId = readItemId();
@@ -254,6 +393,174 @@ public class SellerItemController {
      * - Nếu đã có selectedItem thì lấy từ selectedItem.
      * - Nếu chưa có selectedItem thì lấy từ itemIdField.
      */
+    private CreateItemRequest buildCreateItemRequest() {
+        String itemType = readText(itemTypeField);
+        String name = readText(itemNameField);
+
+        if (isBlank(itemType)) {
+            showError("Vui long nhap loai san pham.");
+            return null;
+        }
+        if (isBlank(name)) {
+            showError("Vui long nhap ten san pham.");
+            return null;
+        }
+
+        Double startingPrice = readRequiredPositiveDouble(startingPriceField, "gia khoi diem");
+        if (startingPrice == null) {
+            return null;
+        }
+
+        Integer yearCreated = readRequiredInteger(yearCreatedField, "nam tao/san xuat");
+        if (yearCreated == null) {
+            return null;
+        }
+
+        Integer warrantyMonths = readOptionalInteger(warrantyMonthsField, "so thang bao hanh");
+        Double kmAge = readOptionalPositiveDouble(kmAgeField, "so km da di");
+        if (hasInvalidOptionalNumber(warrantyMonthsField, warrantyMonths)
+                || hasInvalidOptionalNumber(kmAgeField, kmAge)) {
+            return null;
+        }
+
+        return new CreateItemRequest(
+                itemType,
+                name,
+                startingPrice,
+                readText(descriptionField),
+                yearCreated,
+                readText(imageUrlField),
+                readText(painterField),
+                readText(artStyleField),
+                readText(brandField),
+                warrantyMonths,
+                readText(modelField),
+                readText(engineTypeField),
+                readText(licensePlateField),
+                kmAge
+        );
+    }
+
+    private UpdateItemRequest buildUpdateItemRequest() {
+        String itemId = firstNonBlank(readText(updateItemIdField), readItemId());
+        if (isBlank(itemId)) {
+            showError("Vui long nhap itemId can cap nhat.");
+            return null;
+        }
+
+        String itemType = firstNonBlank(
+                readText(itemTypeField),
+                selectedItem == null ? null : selectedItem.getItemType()
+        );
+        if (isBlank(itemType)) {
+            showError("Vui long nhap loai san pham de server xac thuc.");
+            return null;
+        }
+
+        Double startingPrice = readOptionalPositiveDouble(startingPriceField, "gia khoi diem");
+        Integer yearCreated = readOptionalInteger(yearCreatedField, "nam tao/san xuat");
+        Integer warrantyMonths = readOptionalInteger(warrantyMonthsField, "so thang bao hanh");
+        Double kmAge = readOptionalPositiveDouble(kmAgeField, "so km da di");
+
+        if (hasInvalidOptionalNumber(startingPriceField, startingPrice)
+                || hasInvalidOptionalNumber(yearCreatedField, yearCreated)
+                || hasInvalidOptionalNumber(warrantyMonthsField, warrantyMonths)
+                || hasInvalidOptionalNumber(kmAgeField, kmAge)) {
+            return null;
+        }
+
+        return new UpdateItemRequest(
+                itemId,
+                itemType,
+                readText(itemNameField),
+                startingPrice,
+                readText(descriptionField),
+                yearCreated,
+                readText(imageUrlField),
+                readText(painterField),
+                readText(artStyleField),
+                readText(brandField),
+                warrantyMonths,
+                readText(modelField),
+                readText(engineTypeField),
+                readText(licensePlateField),
+                kmAge
+        );
+    }
+
+    private boolean isSuccessful(SocketResponse response) {
+        return response != null && response.isSuccess();
+    }
+
+    private String readText(TextField field) {
+        return field == null ? null : field.getText();
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return isBlank(first) ? second : first;
+    }
+
+    private Double readRequiredPositiveDouble(TextField field, String fieldName) {
+        String value = readText(field);
+        if (isBlank(value)) {
+            showError("Vui long nhap " + fieldName + ".");
+            return null;
+        }
+        return parsePositiveDouble(value, fieldName);
+    }
+
+    private Double readOptionalPositiveDouble(TextField field, String fieldName) {
+        String value = readText(field);
+        if (isBlank(value)) {
+            return null;
+        }
+        return parsePositiveDouble(value, fieldName);
+    }
+
+    private Double parsePositiveDouble(String value, String fieldName) {
+        try {
+            double number = Double.parseDouble(value.trim().replace(",", "."));
+            if (number < 0) {
+                showError(fieldName + " phai lon hon hoac bang 0.");
+                return null;
+            }
+            return number;
+        } catch (NumberFormatException e) {
+            showError(fieldName + " khong hop le.");
+            return null;
+        }
+    }
+
+    private Integer readRequiredInteger(TextField field, String fieldName) {
+        String value = readText(field);
+        if (isBlank(value)) {
+            showError("Vui long nhap " + fieldName + ".");
+            return null;
+        }
+        return parseInteger(value, fieldName);
+    }
+
+    private Integer readOptionalInteger(TextField field, String fieldName) {
+        String value = readText(field);
+        if (isBlank(value)) {
+            return null;
+        }
+        return parseInteger(value, fieldName);
+    }
+
+    private Integer parseInteger(String value, String fieldName) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            showError(fieldName + " khong hop le.");
+            return null;
+        }
+    }
+
+    private boolean hasInvalidOptionalNumber(TextField field, Number parsedValue) {
+        return field != null && !isBlank(field.getText()) && parsedValue == null;
+    }
+
     private String readItemId() {
         if (selectedItem != null && !isBlank(selectedItem.getItemId())) {
             return selectedItem.getItemId();

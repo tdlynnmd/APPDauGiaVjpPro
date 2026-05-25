@@ -3,6 +3,10 @@ package com.auction;
 import com.auction.exception.AuthenticationException;
 import com.auction.enums.UserRole;
 import com.auction.manage.LiveRoomManage;
+import com.auction.models.Item.ArtFactory;
+import com.auction.models.Item.ElectronicsFactory;
+import com.auction.models.Item.ItemFactory;
+import com.auction.models.Item.VehicleFactory;
 import com.auction.models.User.AdminFactory;
 import com.auction.models.User.BidderFactory;
 import com.auction.models.User.SellerFactory;
@@ -19,6 +23,7 @@ public class Main {
         setRegistry(com.auction.enums.UserRole.BIDDER, new BidderFactory());
         setRegistry(com.auction.enums.UserRole.SELLER, new SellerFactory());
         setRegistry(com.auction.enums.UserRole.ADMIN, new AdminFactory());
+        registerItemFactories();
 
         System.out.println("=== HỆ THỐNG SERVER ===");
         System.out.println("[Server] Đang khởi động...");
@@ -40,6 +45,16 @@ public class Main {
 
         SocketServer socketServer = new SocketServer();
         socketServer.start();
+    }
+
+    /**
+     * Registers concrete item factories once when the server starts.
+     */
+    private static void registerItemFactories() {
+        ItemFactory.register("ART", new ArtFactory());
+        ItemFactory.register("ELECTRONICS", new ElectronicsFactory());
+        ItemFactory.register("VEHICLES", new VehicleFactory());
+        ItemFactory.register("VEHICLE", new VehicleFactory());
     }
 
     private static void seedUsersForTesting() {

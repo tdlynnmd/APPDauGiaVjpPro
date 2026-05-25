@@ -14,18 +14,31 @@ public abstract class ItemFactory {
     }*/
 
     public static void register(String type, ItemFactory factory) {
-        registry.put(type.toUpperCase(), factory);
+        registry.put(normalizeType(type), factory);
     }
 
     // Factory method cốt lõi
     protected abstract Item createItem(Map<String, Object> data);
 
     public static Item createItem(String type, Map<String, Object> data) {
-        ItemFactory factory = registry.get(type.toUpperCase());
+        String normalizedType = normalizeType(type);
+        ItemFactory factory = registry.get(normalizedType);
         if (factory == null) {
             throw new IllegalArgumentException("Lỗi: Không hỗ trợ loại vật phẩm [" + type + "]");
         }
         return factory.createItem(data);
+    }
+
+    /**
+     * Keeps product type names consistent across Client DTO, Server enum, and database values.
+     */
+    private static String normalizeType(String type) {
+        if (type == null || type.trim().isEmpty()) {
+            throw new IllegalArgumentException("Item type must not be empty.");
+        }
+
+        String normalizedType = type.trim().toUpperCase();
+        return "VEHICLE".equals(normalizedType) ? "VEHICLES" : normalizedType;
     }
 
     // =========================================================

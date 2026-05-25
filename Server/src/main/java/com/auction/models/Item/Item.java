@@ -91,7 +91,7 @@ public abstract class Item extends Entity implements Serializable {
         this.status = newStatus;
     }
 
-    public Object getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
