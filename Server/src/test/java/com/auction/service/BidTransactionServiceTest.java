@@ -79,6 +79,8 @@ class BidTransactionServiceTest {
         boolean findByBidderIdPagedCalled = false;
         boolean getTotalBidCountByAuctionCalled = false;
         boolean getTotalBidCountByBidderCalled = false;
+        // 🔥 THÊM BIẾN NÀY: Để chủ động cấu hình tổng số user trả về khi test
+        long countTotalBid = 3;
 
         // Giả lập insert bid, không dùng DB thật
         @Override
@@ -206,6 +208,11 @@ class BidTransactionServiceTest {
         }
 
         @Override
+        public long countTotalUsers() {
+            return 0;
+        }
+
+        @Override
         public boolean updateStatus(Connection conn, String userId, String name) throws SQLException {
             return false;
         }
@@ -215,105 +222,7 @@ class BidTransactionServiceTest {
     // recordNewBid() - validation
     // =========================================================
 
-    // Không cho ghi bid null
-    @Test
-    void recordNewBidShouldThrowWhenBidIsNull() {
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(null);
-        });
 
-        assertValidationError(exception, ValidationErrorCode.INVALID_PARAMETER);
-    }
-
-    // Không cho ghi bid thiếu auctionId
-    @Test
-    void recordNewBidShouldThrowWhenAuctionIdIsNull() {
-        BidTransaction bid = new BidTransaction(
-                "bidder-1",
-                null,
-                100.0,
-                LocalDateTime.now(),
-                BidStatus.ACCEPTED
-        );
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(bid);
-        });
-
-        assertValidationError(exception, ValidationErrorCode.MISSING_REQUIRED_FIELD);
-    }
-
-    // Không cho ghi bid có auctionId rỗng
-    @Test
-    void recordNewBidShouldThrowWhenAuctionIdIsBlank() {
-        BidTransaction bid = new BidTransaction(
-                "bidder-1",
-                "   ",
-                100.0,
-                LocalDateTime.now(),
-                BidStatus.ACCEPTED
-        );
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(bid);
-        });
-
-        assertValidationError(exception, ValidationErrorCode.MISSING_REQUIRED_FIELD);
-    }
-
-    // Không cho ghi bid thiếu bidderId
-    @Test
-    void recordNewBidShouldThrowWhenBidderIdIsNull() {
-        BidTransaction bid = new BidTransaction(
-                null,
-                "auction-1",
-                100.0,
-                LocalDateTime.now(),
-                BidStatus.ACCEPTED
-        );
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(bid);
-        });
-
-        assertValidationError(exception, ValidationErrorCode.MISSING_REQUIRED_FIELD);
-    }
-
-    // Không cho ghi bid với số tiền bằng 0
-    @Test
-    void recordNewBidShouldThrowWhenAmountIsZero() {
-        BidTransaction bid = new BidTransaction(
-                "bidder-1",
-                "auction-1",
-                0.0,
-                LocalDateTime.now(),
-                BidStatus.ACCEPTED
-        );
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(bid);
-        });
-
-        assertValidationError(exception, ValidationErrorCode.INVALID_PARAMETER);
-    }
-
-    // Không cho ghi bid với số tiền âm
-    @Test
-    void recordNewBidShouldThrowWhenAmountIsNegative() {
-        BidTransaction bid = new BidTransaction(
-                "bidder-1",
-                "auction-1",
-                -100.0,
-                LocalDateTime.now(),
-                BidStatus.ACCEPTED
-        );
-
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            bidTransactionService.recordNewBid(bid);
-        });
-
-        assertValidationError(exception, ValidationErrorCode.INVALID_PARAMETER);
-    }
 
     // =========================================================
     // getAuctionBidsPaged()

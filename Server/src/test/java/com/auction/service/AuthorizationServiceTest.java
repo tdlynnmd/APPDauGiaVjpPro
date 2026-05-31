@@ -262,7 +262,7 @@ class AuthorizationServiceTest {
         ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
 
         assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.CANCEL_AUCTION.name(), session);
+            authorizationService.canAccess(ActionType.CMD_ADMIN_CANCEL_AUCTION.name(), session);
         });
     }
 
@@ -271,7 +271,7 @@ class AuthorizationServiceTest {
         ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
 
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.CANCEL_AUCTION.name(), session);
+            authorizationService.canAccess(ActionType.SELLER_CANCEL_AUCTION.name(), session);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
