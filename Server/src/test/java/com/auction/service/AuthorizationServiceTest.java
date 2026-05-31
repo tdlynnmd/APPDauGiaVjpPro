@@ -176,12 +176,14 @@ class AuthorizationServiceTest {
     }
 
     @Test
-    void canAccessShouldAllowAdminToCreateItem() {
+    void canAccessShouldDenyAdminToCreateItem() { // 🔥 SỬA: Đổi từ Allow sang Deny để khớp Whitelist mới
         ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
 
-        assertDoesNotThrow(() -> {
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             authorizationService.canAccess(ActionType.CREATE_ITEM.name(), session);
         });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
     }
 
     @Test
@@ -238,12 +240,14 @@ class AuthorizationServiceTest {
     }
 
     @Test
-    void canAccessShouldAllowAdminToCreateAuction() {
+    void canAccessShouldDenyAdminToCreateAuction() { // 🔥 SỬA: Đổi từ Allow sang Deny để khớp Whitelist mới
         ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
 
-        assertDoesNotThrow(() -> {
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             authorizationService.canAccess(ActionType.CREATE_AUCTION.name(), session);
         });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
     }
 
     @Test
@@ -267,14 +271,12 @@ class AuthorizationServiceTest {
     }
 
     @Test
-    void canAccessShouldDenySellerToCancelAuction() {
+    void canAccessShouldAllowSellerToCancelAuction() { // 🔥 SỬA: Seller ĐƯỢC PHÉP tự hủy phòng chính chủ
         ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
 
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+        assertDoesNotThrow(() -> {
             authorizationService.canAccess(ActionType.SELLER_CANCEL_AUCTION.name(), session);
         });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
     }
 
     // =========================================================
