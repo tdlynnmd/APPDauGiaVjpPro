@@ -20,6 +20,8 @@ import javafx.scene.paint.ImagePattern;
 import javafx.scene.control.ScrollPane;
 import java.io.IOException;
 import java.util.Objects;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 public class DashboardController {
 
@@ -128,12 +130,26 @@ public class DashboardController {
         }
 
         // --- CẬP NHẬT HIỂN THỊ SỐ DƯ MẪU CHO CARD VÍ (Sau này kết nối API nạp dữ liệu thật) ---
-        if (miniBalanceLabel != null) {
-            miniBalanceLabel.setText("$1,500.00");
-        }
+        updateMiniBalance();
+
 
         hideAllRoleButtons();
         showButtonsByRole(role);
+    }
+
+    private void updateMiniBalance() {          // lay so du tai khoan (cap nhat tu ClientSession)
+        if (miniBalanceLabel == null || ClientSession.getCurrentUser() == null) {
+            return;
+        }
+
+        double availableBalance = ClientSession.getCurrentUser().getAvailableBalance();
+        miniBalanceLabel.setText(formatMoney(availableBalance));
+    }
+
+    private String formatMoney(double amount) {
+        return NumberFormat
+                .getCurrencyInstance(new Locale("vi", "VN"))
+                .format(amount);
     }
 
     private void hideAllRoleButtons() {
@@ -158,8 +174,6 @@ public class DashboardController {
             setCardVisible(walletMiniCard, true); // Hiện thẻ ví cho khách đấu giá nhìn số dư công khai
         } else if (role == UserRole.SELLER) {
             setElementVisible(sellerManagementButton, sellerManagementSpacer, true);
-            setButtonVisible(walletButton, true);
-            setCardVisible(walletMiniCard, true); // Hiện thẻ ví cho người bán theo dõi doanh thu phiên
         } else if (role == UserRole.ADMIN) {
             setElementVisible(adminPanelButton, adminPanelSpacer, true);
             setCardVisible(walletMiniCard, false); // Admin không cần thẻ ví cá nhân, ẩn đi cho gọn gàng
@@ -276,7 +290,7 @@ public class DashboardController {
 
     @FXML
     private void handleWallet() {
-        System.out.println("Mở màn hình Ví & Lịch sử giao dịch...");
+        SceneNavigator.showWallet();
     }
 
     private void showInfo(String message) {
