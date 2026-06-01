@@ -38,28 +38,31 @@ class ConnectionManageTest {
         return (ConcurrentHashMap<String, Set<ClientSession>>) field.get(connectionManage);
     }
 
-    // Tạo fake session để kiểm tra sendMessage và close
+    // Tạo fake session để không cần socket thật
     private FakeClientSession fakeSession() {
         return new FakeClientSession();
     }
 
-    // Fake ClientSession để không cần socket thật
+    // Fake ClientSession để kiểm tra sendMessage và close
     private static class FakeClientSession extends ClientSession {
         boolean closed = false;
+        boolean sendSuccess = true;
         List<String> receivedMessages = new ArrayList<>();
 
         FakeClientSession() {
             super((Socket) null, new PrintWriter(System.out));
         }
 
-        // Ghi lại message thay vì gửi socket thật
         @Override
         public boolean sendMessage(String jsonMessage) {
+            if (!sendSuccess) {
+                return false;
+            }
+
             receivedMessages.add(jsonMessage);
-            return false;
+            return true;
         }
 
-        // Ghi lại close thay vì đóng socket thật
         @Override
         public void close() {
             closed = true;
@@ -211,7 +214,7 @@ class ConnectionManageTest {
         assertEquals(1, connectionManage.getOnlineCount());
     }
 
-    // removeConnection với userId null hiện tại có thể lỗi vì ConcurrentHashMap không nhận null key
+    // removeConnection userId null hiện tại có thể lỗi vì ConcurrentHashMap không nhận null key
     @Test
     void removeConnectionShouldThrowWhenUserIdIsNull() {
         assertThrows(NullPointerException.class, () -> {
@@ -219,7 +222,7 @@ class ConnectionManageTest {
         });
     }
 
-    // removeConnection với session null sẽ không xóa session thật
+    // removeConnection session null sẽ xóa không được session thật
     @Test
     void removeConnectionShouldNotRemoveRealSessionWhenSessionIsNull() {
         FakeClientSession session = fakeSession();
@@ -249,7 +252,7 @@ class ConnectionManageTest {
         assertFalse(connectionManage.isUserOnline("missing-user"));
     }
 
-    // isUserOnline(null) hiện tại có thể lỗi vì ConcurrentHashMap không nhận null key
+    // isUserOnline(null) hiện tại lỗi vì ConcurrentHashMap không nhận null key
     @Test
     void isUserOnlineShouldThrowWhenUserIdIsNull() {
         assertThrows(NullPointerException.class, () -> {
@@ -306,7 +309,7 @@ class ConnectionManageTest {
         });
     }
 
-    // sendMessageToUser với userId null hiện tại có thể lỗi vì ConcurrentHashMap không nhận null key
+    // sendMessageToUser userId null hiện tại lỗi vì ConcurrentHashMap không nhận null key
     @Test
     void sendMessageToUserShouldThrowWhenUserIdIsNull() {
         assertThrows(NullPointerException.class, () -> {
@@ -314,7 +317,7 @@ class ConnectionManageTest {
         });
     }
 
-    // sendMessageToUser vẫn gửi được message null
+    // sendMessageToUser vẫn gửi được message null nếu session send thành công
     @Test
     void sendMessageToUserShouldAllowNullMessage() {
         FakeClientSession session = fakeSession();
@@ -324,6 +327,45 @@ class ConnectionManageTest {
 
         assertEquals(1, session.receivedMessages.size());
         assertNull(session.receivedMessages.get(0));
+    }
+
+    // sendMessageToUser nếu một session gửi thất bại thì tự remove session đó
+    @Test
+    void sendMessageToUserShouldRemoveFailedSession() {
+        FakeClientSession failedSession = fakeSession();
+        failedSession.sendSuccess = false;
+
+        FakeClientSession normalSession = fakeSession();
+
+        connectionManage.registerConnection("user-1", failedSession);
+        connectionManage.registerConnection("user-1", normalSession);
+
+        connectionManage.sendMessageToUser("user-1", "hello");
+
+        assertTrue(failedSession.closed);
+        assertTrue(failedSession.receivedMessages.isEmpty());
+
+        assertEquals(List.of("hello"), normalSession.receivedMessages);
+
+        assertTrue(connectionManage.isUserOnline("user-1"));
+        assertEquals(1, connectionManage.getOnlineUserCount());
+        assertEquals(1, connectionManage.getOnlineCount());
+    }
+
+    // sendMessageToUser nếu session cuối cùng gửi thất bại thì user offline
+    @Test
+    void sendMessageToUserShouldMakeUserOfflineWhenLastSessionFails() {
+        FakeClientSession failedSession = fakeSession();
+        failedSession.sendSuccess = false;
+
+        connectionManage.registerConnection("user-1", failedSession);
+
+        connectionManage.sendMessageToUser("user-1", "hello");
+
+        assertTrue(failedSession.closed);
+        assertFalse(connectionManage.isUserOnline("user-1"));
+        assertEquals(0, connectionManage.getOnlineUserCount());
+        assertEquals(0, connectionManage.getOnlineCount());
     }
 
     // =========================================================
@@ -355,7 +397,7 @@ class ConnectionManageTest {
         });
     }
 
-    // forceDisconnectUser(null) hiện tại có thể lỗi vì ConcurrentHashMap không nhận null key
+    // forceDisconnectUser null hiện tại lỗi vì ConcurrentHashMap không nhận null key
     @Test
     void forceDisconnectUserShouldThrowWhenUserIdIsNull() {
         assertThrows(NullPointerException.class, () -> {
