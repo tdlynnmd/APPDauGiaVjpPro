@@ -16,7 +16,7 @@ public class LogDAOImpl implements LogDAO {
      */
     @Override
     public void insertLog(Connection conn, String logId, String adminId, String actionDetail, String targetType, String targetId) throws SQLException {
-        String sql = "INSERT INTO action_logs (id, admin_id, action_detail, target_type, target_id) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO action_logs (id, admin_id, action_detail, target_type, target_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, UUID_TO_BIN(?, 1))";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, logId);
@@ -35,7 +35,7 @@ public class LogDAOImpl implements LogDAO {
      */
     @Override
     public List<ActionLogDTO> findPaginatedLogs(int limit, int offset) {
-        String sql = "SELECT id, admin_id, action_detail, target_type, target_id, created_at " +
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(admin_id, 1) AS admin_id, action_detail, target_type, BIN_TO_UUID(target_id, 1) AS target_id, created_at " +
                 "FROM action_logs " +
                 "ORDER BY created_at DESC " +
                 "LIMIT ? OFFSET ?";

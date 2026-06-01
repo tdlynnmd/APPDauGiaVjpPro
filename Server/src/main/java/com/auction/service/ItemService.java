@@ -1,5 +1,8 @@
 package com.auction.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.dao.ItemDAO;
 import com.auction.dao.LogDAO;
 import com.auction.dao.impl.ItemDAOImpl;
@@ -25,6 +28,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ItemService {
+    private static final Logger log = LoggerFactory.getLogger(ItemService.class);
+
     private final ItemDAO itemDAO = new ItemDAOImpl();
     private final ProductManage productManage = ProductManage.getInstance();
     private final LogDAO logDAO = new LogDAOImpl();
@@ -240,7 +245,7 @@ public class ItemService {
             // Kiểm tra trạng thái: Nếu vật phẩm đã bán (SOLD), từ chối gỡ bỏ để bảo vệ lịch sử hóa đơn tài sản
             if (item.getStatus() == ItemStatus.INACTIVE) {
                 // Tùy theo rule dự án của Sơn, nếu INACTIVE (đang live trên sàn) vẫn cho Admin cưỡng chế gỡ thì bỏ qua check này
-                System.out.println("[Admin Censor] ⚠️ Vật phẩm đang nằm trong phiên đấu giá. Thực hiện cưỡng chế gỡ bỏ...");
+                log.warn("[Admin Censor] ⚠️ Vật phẩm đang nằm trong phiên đấu giá. Thực hiện cưỡng chế gỡ bỏ...");
             }
 
             // 3. Mạch xử lý kết nối tập trung bọc lót Commit/Rollback Transaction an toàn dữ liệu
@@ -262,16 +267,16 @@ public class ItemService {
                 logDAO.insertLog(conn, logId, adminId, actionDetail, "ITEM", itemId);
 
                 conn.commit(); // Chốt hạ lưu trữ vĩnh viễn cả 2 hành động xuống đĩa cứng
-                System.out.println("[DB Transaction] ✅ Cưỡng chế xóa vật phẩm và lưu Audit Log thành công.");
+                log.info("[DB Transaction] ✅ Cưỡng chế xóa vật phẩm và lưu Audit Log thành công.");
 
             } catch (SQLException e) {
                 // Trạm cứu hộ lỗi hạ tầng: Quay xe dữ liệu về trạng thái sạch nếu có biến cố đĩa cứng / kết nối
                 if (conn != null) {
                     try {
                         conn.rollback();
-                        System.err.println("[DB Transaction] ❌ Gãy mạch xóa vật phẩm. Đã rollback DB nguyên trạng!");
+                        log.error("[DB Transaction] ❌ Gãy mạch xóa vật phẩm. Đã rollback DB nguyên trạng!");
                     } catch (SQLException ex) {
-                        System.err.println("[DB Transaction] 🚨 Lỗi khẩn cấp không thể rollback: " + ex.getMessage());
+                        log.error("[DB Transaction] 🚨 Lỗi khẩn cấp không thể rollback: {}", ex.getMessage(), ex);
                     }
                 }
                 throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Censorship transaction failed: " + e.getMessage());
@@ -281,14 +286,14 @@ public class ItemService {
                         conn.setAutoCommit(true);
                         conn.close();
                     } catch (SQLException ex) {
-                        ex.printStackTrace();
+                        log.error("[DB Transaction] Đóng kết nối thất bại: {}", ex.getMessage(), ex);
                     }
                 }
             }
 
             // 4. ĐỒNG BỘ LÊN RAM: Trục xuất sản phẩm rác khỏi bộ đệm ProductManage live ngay lập tức
             productManage.deleteProduct(itemId);
-            System.out.println("[Cache Item] 🧹 Đã trục xuất hoàn toàn vật phẩm vi phạm khỏi RAM: " + itemId);
+            log.info("[Cache Item] 🧹 Đã trục xuất hoàn toàn vật phẩm vi phạm khỏi RAM: {}", itemId);
         }
     }
 

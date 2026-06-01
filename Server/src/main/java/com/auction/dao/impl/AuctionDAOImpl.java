@@ -19,7 +19,7 @@ public class AuctionDAOImpl implements AuctionDAO {
     @Override
     public boolean insertAuction(Connection conn, Auction auction) throws SQLException {
         String sql = "INSERT INTO auctions (id, item_id, seller_id, current_price, step_price, start_time, end_time, status) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, ?, ?, ?)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, auction.getId());
@@ -39,8 +39,8 @@ public class AuctionDAOImpl implements AuctionDAO {
     // 🔥 SỬA: Thêm throws SQLException, bóc gỡ try-catch để lộ lỗi phục vụ rollback ở Service
     @Override
     public boolean updatePriceAndWinner(Connection conn, String auctionId, double newPrice, String newWinnerId, String winningBidId, LocalDateTime endTime, double liveStepPrice) throws SQLException {
-        String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = ?, " +
-                "current_winning_bid_id = ?, end_time = ?, step_price = ?, updated_at = NOW() WHERE id = ?";
+        String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = UUID_TO_BIN(?, 1), " +
+                "current_winning_bid_id = UUID_TO_BIN(?, 1), end_time = ?, step_price = ?, updated_at = NOW() WHERE id = UUID_TO_BIN(?, 1)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, newPrice);
@@ -56,7 +56,7 @@ public class AuctionDAOImpl implements AuctionDAO {
 
     @Override
     public Optional<Auction> findById(String id) {
-        String sql = "SELECT * FROM auctions WHERE id = ?";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE id = UUID_TO_BIN(?, 1)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -80,7 +80,7 @@ public class AuctionDAOImpl implements AuctionDAO {
             return auctions;
         }
 
-        String sql = "SELECT * FROM auctions WHERE seller_id = ? ORDER BY start_time DESC";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE seller_id = UUID_TO_BIN(?, 1) ORDER BY start_time DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -101,7 +101,7 @@ public class AuctionDAOImpl implements AuctionDAO {
     @Override
     public List<Auction> findRunningAuctionsPastEndTime() {
         List<Auction> expiredAuctions = new ArrayList<>();
-        String sql = "SELECT * FROM auctions WHERE status = 'RUNNING' AND end_time <= NOW()";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE status = 'RUNNING' AND end_time <= NOW()";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -119,7 +119,7 @@ public class AuctionDAOImpl implements AuctionDAO {
     // 🔥 SỬA: Hàm ghi dữ liệu tham gia chốt phiên bắt buộc phải ném SQLException ra ngoài
     @Override
     public void updateStatus(Connection conn, String auctionId, String status) throws SQLException {
-        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
+        String sql = "UPDATE auctions SET status = ? WHERE id = UUID_TO_BIN(?, 1)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, status);
             stmt.setString(2, auctionId);
@@ -165,7 +165,7 @@ public class AuctionDAOImpl implements AuctionDAO {
         }
 
         String placeholders = String.join(",", Collections.nCopies(statuses.size(), "?"));
-        String sql = "SELECT * FROM auctions WHERE status IN (" + placeholders + ")";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE status IN (" + placeholders + ")";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < statuses.size(); i++) {
@@ -189,8 +189,8 @@ public class AuctionDAOImpl implements AuctionDAO {
     // 🔥 SỬA: Hàm ép đồng bộ định kỳ lúc tắt Server, ném thẳng lỗi SQLException lên luồng chính xử lý
     @Override
     public boolean updateAuctionStatusAndBidding(Auction auction) throws SQLException {
-        String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = ?, " +
-                "current_winning_bid_id = ?, status = ?, updated_at = NOW() WHERE id = ?";
+        String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = UUID_TO_BIN(?, 1), " +
+                "current_winning_bid_id = UUID_TO_BIN(?, 1), status = ?, updated_at = NOW() WHERE id = UUID_TO_BIN(?, 1)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

@@ -17,7 +17,7 @@ public class ItemDAOImpl implements ItemDAO {
     public boolean insertItem(Connection conn, Item item) throws SQLException {
         String sql = "INSERT INTO items (id, item_type, seller_id, name, description, starting_price, year_created, image_url, status, " +
                 "painter, art_style, brand, warranty_months, model, km_age, license_plate, engine_type) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (UUID_TO_BIN(?, 1), ?, UUID_TO_BIN(?, 1), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -81,7 +81,7 @@ public class ItemDAOImpl implements ItemDAO {
      */
     @Override
     public Optional<Item> findById(String id) {
-        String sql = "SELECT * FROM items WHERE id = ? AND deleted_at IS NULL";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, item_type, BIN_TO_UUID(seller_id, 1) AS seller_id, name, description, starting_price, year_created, image_url, status, painter, art_style, brand, warranty_months, model, km_age, license_plate, engine_type, created_at FROM items WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -101,7 +101,7 @@ public class ItemDAOImpl implements ItemDAO {
     @Override
     public List<Item> findBySellerId(String sellerId) {
         List<Item> items = new ArrayList<>();
-        String sql = "SELECT * FROM items WHERE seller_id = ? AND deleted_at IS NULL ORDER BY created_at DESC";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, item_type, BIN_TO_UUID(seller_id, 1) AS seller_id, name, description, starting_price, year_created, image_url, status, painter, art_style, brand, warranty_months, model, km_age, license_plate, engine_type, created_at FROM items WHERE seller_id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL ORDER BY created_at DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -120,7 +120,7 @@ public class ItemDAOImpl implements ItemDAO {
     // 🔥 SỬA: Loại bỏ khối try-catch nuốt lỗi, ném trực tiếp lỗi ra ngoài Service phục vụ rollback chuỗi Transaction
     @Override
     public boolean updateStatus(Connection conn, String itemId, String newStatus) throws SQLException {
-        String sql = "UPDATE items SET status = ? WHERE id = ?";
+        String sql = "UPDATE items SET status = ? WHERE id = UUID_TO_BIN(?, 1)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, newStatus);
             stmt.setString(2, itemId);
@@ -133,7 +133,7 @@ public class ItemDAOImpl implements ItemDAO {
     public boolean updateItem(Connection conn, Item item) throws SQLException {
         String sql = "UPDATE items SET name = ?, description = ?, starting_price = ?, year_created = ?, image_url = ?, status = ?, " +
                 "painter = ?, art_style = ?, brand = ?, warranty_months = ?, model = ?, km_age = ?, license_plate = ?, engine_type = ? " +
-                "WHERE id = ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 

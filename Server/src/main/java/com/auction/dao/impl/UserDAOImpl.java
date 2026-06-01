@@ -17,7 +17,7 @@ public class UserDAOImpl implements UserDAO {
     // 🔥 SỬA: Nhận Connection từ ngoài truyền vào và ném SQLException lên Service điều phối
     @Override
     public boolean insertUser(Connection conn, User user) throws SQLException {
-        String sql = "INSERT INTO users (id, user_type, username, email, password_hash, available_balance, frozen_balance, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (id, user_type, username, email, password_hash, available_balance, frozen_balance, status) VALUES (UUID_TO_BIN(?, 1), ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getId());
@@ -38,7 +38,7 @@ public class UserDAOImpl implements UserDAO {
      */
     @Override
     public Optional<User> findById(String id) {
-        String sql = "SELECT * FROM users WHERE id = ? AND deleted_at IS NULL";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -68,10 +68,10 @@ public class UserDAOImpl implements UserDAO {
         }
 
         String placeholders = ids.stream()
-                .map(id -> "?")
+                .map(id -> "UUID_TO_BIN(?, 1)")
                 .collect(Collectors.joining(", "));
 
-        String sql = "SELECT id, username FROM users WHERE id IN (" + placeholders + ") AND deleted_at IS NULL";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, username FROM users WHERE id IN (" + placeholders + ") AND deleted_at IS NULL";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -98,7 +98,7 @@ public class UserDAOImpl implements UserDAO {
      */
     @Override
     public Optional<User> findByUsername(String username) {
-        String sql = "SELECT * FROM users WHERE username = ? AND deleted_at IS NULL";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE username = ? AND deleted_at IS NULL";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -121,7 +121,7 @@ public class UserDAOImpl implements UserDAO {
      */
     @Override
     public Optional<User> findByEmail(String email) {
-        String sql = "SELECT * FROM users WHERE email = ? AND deleted_at IS NULL";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE email = ? AND deleted_at IS NULL";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -145,7 +145,7 @@ public class UserDAOImpl implements UserDAO {
     public boolean freezeMoney(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET available_balance = available_balance - ?, " +
                 "frozen_balance = frozen_balance + ? " +
-                "WHERE id = ? AND available_balance >= ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND available_balance >= ? AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, amount);
@@ -161,7 +161,7 @@ public class UserDAOImpl implements UserDAO {
     public void unfreezeMoney(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET available_balance = available_balance + ?, " +
                 "frozen_balance = frozen_balance - ? " +
-                "WHERE id = ? AND frozen_balance >= ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND frozen_balance >= ? AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, amount);
@@ -176,7 +176,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public boolean deductFrozenMoney(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET frozen_balance = frozen_balance - ? " +
-                "WHERE id = ? AND frozen_balance >= ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND frozen_balance >= ? AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, amount);
@@ -190,7 +190,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public boolean addAvailableBalance(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET available_balance = available_balance + ? " +
-                "WHERE id = ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, amount);
@@ -204,7 +204,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public boolean withdrawAvailableBalance(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET available_balance = available_balance - ? " +
-                "WHERE id = ? AND available_balance >= ? AND deleted_at IS NULL";
+                "WHERE id = UUID_TO_BIN(?, 1) AND available_balance >= ? AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, amount);
@@ -218,7 +218,7 @@ public class UserDAOImpl implements UserDAO {
     // 🔥 SỬA: Loại bỏ khối try-catch, ném SQLException ra ngoài Service bọc lót Transaction
     @Override
     public boolean addJoinedAuction(Connection conn, String userId, String auctionId) throws SQLException {
-        String sql = "INSERT INTO bidder_joined_auctions (user_id, auction_id) VALUES (?, ?)";
+        String sql = "INSERT INTO bidder_joined_auctions (user_id, auction_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1))";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
@@ -231,7 +231,7 @@ public class UserDAOImpl implements UserDAO {
     // 🔥 SỬA: Nhận Connection từ ngoài truyền vào, loại bỏ khối try-catch, ném SQLException lên trên
     @Override
     public void removeJoinedAuction(Connection conn, String userId, String auctionId) throws SQLException {
-        String sql = "DELETE FROM bidder_joined_auctions WHERE user_id = ? AND auction_id = ?";
+        String sql = "DELETE FROM bidder_joined_auctions WHERE user_id = UUID_TO_BIN(?, 1) AND auction_id = UUID_TO_BIN(?, 1)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
@@ -245,7 +245,7 @@ public class UserDAOImpl implements UserDAO {
      */
     @Override
     public List<User> findPaginated(int limit, int offset) {
-        String sql = "SELECT * FROM users WHERE deleted_at IS NULL LIMIT ? OFFSET ?";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE deleted_at IS NULL LIMIT ? OFFSET ?";
         List<User> users = new ArrayList<>();
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -288,7 +288,7 @@ public class UserDAOImpl implements UserDAO {
     // 🔥 SỬA: Nhận Connection từ ngoài truyền vào (để bọc lót Transaction cưỡng chế Kick/Ban từ Admin), ném SQLException ra ngoài
     @Override
     public boolean updateStatus(Connection conn, String userId, String name) throws SQLException {
-        String sql = "UPDATE users SET status = ? WHERE id = ? AND deleted_at IS NULL";
+        String sql = "UPDATE users SET status = ? WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, name);

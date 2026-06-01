@@ -1,5 +1,8 @@
 package com.auction.network;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.controller.*;
 import com.auction.dto.*;
 import com.auction.enums.ActionType;
@@ -17,6 +20,7 @@ import java.util.List;
  * =========================================================================
  */
 public class RequestDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(RequestDispatcher.class);
     private static volatile RequestDispatcher instance;
     private final com.google.gson.Gson gson = GsonProvider.getGson();
 
@@ -28,7 +32,7 @@ public class RequestDispatcher {
     private final AuthorizationService authorizationService = new AuthorizationService();
 
     private RequestDispatcher() {
-        System.out.println("[RequestDispatcher] 🚀 Khởi tạo trung tâm điều phối hệ thống thành công.");
+        log.info("[RequestDispatcher] 🚀 Khởi tạo trung tâm điều phối hệ thống thành công.");
     }
 
     public static RequestDispatcher getInstance() {
@@ -132,12 +136,11 @@ public class RequestDispatcher {
             } catch (JsonSyntaxException e) {
                 sendFailure(session, socketRequest, "JSON request không hợp lệ.", "INVALID_JSON");
             } catch (BaseException e) {
-                System.err.println("[Central Guard] 🚨 Lỗi nghiệp vụ xảy ra lúc [" + e.getTimestamp()
-                        + "] | Code: " + e.getErrorCode() + " | Chi tiết: " + e.getMessage());
+                log.warn("[Central Guard] 🚨 Lỗi nghiệp vụ xảy ra lúc [{}] | Code: {} | Chi tiết: {}", 
+                        e.getTimestamp(), e.getErrorCode(), e.getMessage());
                 sendFailure(session, socketRequest, e.getMessage(), e.getErrorCode());
             } catch (Exception e) {
-                System.err.println("[Fatal System Error] 💥 Sự cố hệ thống nghiêm trọng:");
-                e.printStackTrace();
+                log.error("[Fatal System Error] 💥 Sự cố hệ thống nghiêm trọng:", e);
                 sendFailure(session, socketRequest, "Lỗi xử lý hệ thống.", "SERVER_ERROR");
             }
         });

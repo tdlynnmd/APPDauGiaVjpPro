@@ -1,5 +1,8 @@
 package com.auction.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.dao.UserDAO;
 import com.auction.dao.LogDAO;
 import com.auction.dao.impl.UserDAOImpl;
@@ -30,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
     private final UserDAO userDAO = new UserDAOImpl(); // Đổi sang Interface UserDAO cho chuẩn Loose Coupling
     private final LogDAO logDAO = new LogDAOImpl();
     private final UserManage userManage = UserManage.getInstance();
@@ -223,17 +227,17 @@ public class UserService {
                 logDAO.insertLog(conn, logId, adminId, actionDetail, "USER", cleanUserId);
 
                 conn.commit();
-                System.out.println("[DB Transaction] ✅ Khóa tài khoản và ghi Audit Log thành công.");
+                log.info("[DB Transaction] ✅ Khóa tài khoản và ghi Audit Log thành công.");
 
             } catch (Exception e) {
                 if (conn != null) {
-                    try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+                    try { conn.rollback(); } catch (SQLException ex) { log.error("[DB Transaction] Rollback thất bại: {}", ex.getMessage(), ex); }
                 }
                 if (e instanceof com.auction.exception.BaseException) throw (com.auction.exception.BaseException) e;
                 throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
             } finally {
                 if (conn != null) {
-                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { log.error("[DB Transaction] Đóng kết nối thất bại: {}", ex.getMessage(), ex); }
                 }
             }
 
@@ -259,16 +263,16 @@ public class UserService {
                     try {
                         // Nếu sau 300ms mà Client vẫn chưa tự ngắt kết nối (hoặc cố tình lỳ ra)
                         if (connectionManage.isUserOnline(cleanUserId)) {
-                            System.out.println("[Security Guard] 🚨 Client không tự đóng, tiến hành cưỡng chế rút phích cắm: " + cleanUserId);
+                            log.warn("[Security Guard] 🚨 Client không tự đóng, tiến hành cưỡng chế rút phích cắm: {}", cleanUserId);
                             connectionManage.forceDisconnectUser(cleanUserId);
                         }
 
                         // Dọn dẹp dứt điểm bộ nhớ RAM Cache của User này
                         userManage.deleteUser(cleanUserId);
-                        System.out.println("[Security Guard] 🎯 Đã dọn dẹp sạch sẽ session và bộ nhớ của user bị ban: " + cleanUserId);
+                        log.info("[Security Guard] 🎯 Đã dọn dẹp sạch sẽ session và bộ nhớ của user bị ban: {}", cleanUserId);
 
                     } catch (Exception e) {
-                        System.err.println("[Security Guard] Lỗi khi thực thi bọc hậu ngắt socket: " + e.getMessage());
+                        log.error("[Security Guard] Lỗi khi thực thi bọc hậu ngắt socket: {}", e.getMessage(), e);
                     }
                 }, 300, TimeUnit.MILLISECONDS); // 300ms là quá đủ cho gói tin TCP truyền đi thành công
             }

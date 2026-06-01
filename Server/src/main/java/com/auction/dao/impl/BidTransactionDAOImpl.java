@@ -14,7 +14,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public boolean insertBid(Connection conn, BidTransaction bid) throws SQLException {
         String sql = "INSERT INTO bid_transactions (id, bidder_id, auction_id, amount, status, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+                "VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, ?)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bid.getId());
@@ -35,7 +35,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public List<BidTransaction> findTopByAuctionId(String auctionId, int limit) {
         List<BidTransaction> bids = new ArrayList<>();
-        String sql = "SELECT * FROM bid_transactions WHERE auction_id = ? AND status = 'ACCEPTED' " +
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(bidder_id, 1) AS bidder_id, BIN_TO_UUID(auction_id, 1) AS auction_id, amount, status, created_at FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1) AND status = 'ACCEPTED' " +
                 "ORDER BY created_at DESC LIMIT ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -61,7 +61,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public List<BidTransaction> findByAuctionIdPaged(String auctionId, int limit, int offset) {
         List<BidTransaction> bids = new ArrayList<>();
-        String sql = "SELECT * FROM bid_transactions WHERE auction_id = ? " +
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(bidder_id, 1) AS bidder_id, BIN_TO_UUID(auction_id, 1) AS auction_id, amount, status, created_at FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1) " +
                 "ORDER BY created_at DESC LIMIT ? OFFSET ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -88,7 +88,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public List<BidTransaction> findByBidderIdPaged(String bidderId, int limit, int offset) {
         List<BidTransaction> bids = new ArrayList<>();
-        String sql = "SELECT * FROM bid_transactions WHERE bidder_id = ? " +
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(bidder_id, 1) AS bidder_id, BIN_TO_UUID(auction_id, 1) AS auction_id, amount, status, created_at FROM bid_transactions WHERE bidder_id = UUID_TO_BIN(?, 1) " +
                 "ORDER BY created_at DESC LIMIT ? OFFSET ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -114,7 +114,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
      */
     @Override
     public long getTotalBidCountByAuction(String auctionId) {
-        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE auction_id = ?";
+        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -133,7 +133,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
      */
     @Override
     public long getTotalBidCountByBidder(String bidderId) {
-        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE bidder_id = ?";
+        String sql = "SELECT COUNT(*) FROM bid_transactions WHERE bidder_id = UUID_TO_BIN(?, 1)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -152,7 +152,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public void updateStatusToRefunded(Connection conn, String auctionId, String bidderId) throws SQLException {
         String sql = "UPDATE bid_transactions SET status = 'REFUNDED' " +
-                "WHERE auction_id = ? AND bidder_id = ? AND status = 'ACCEPTED'";
+                "WHERE auction_id = UUID_TO_BIN(?, 1) AND bidder_id = UUID_TO_BIN(?, 1) AND status = 'ACCEPTED'";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, auctionId);

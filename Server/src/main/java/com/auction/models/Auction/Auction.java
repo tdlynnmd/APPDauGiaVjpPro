@@ -1,5 +1,8 @@
 package com.auction.models.Auction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.enums.AuctionStatus;
 import com.auction.enums.BidStatus;
 import com.auction.exception.AuctionErrorCode;
@@ -13,6 +16,8 @@ import java.util.PriorityQueue;
 import java.util.Comparator;
 
 public class Auction extends Entity implements Serializable {
+    private static final Logger log = LoggerFactory.getLogger(Auction.class);
+
     public static final Comparator<AutoBid> AUTO_BID_PRIORITY =
             Comparator.comparingDouble(AutoBid::getMaxBid).reversed()
                     .thenComparing(AutoBid::getCreatedAt);
@@ -106,9 +111,9 @@ public class Auction extends Entity implements Serializable {
                 // 🔥 YÊU CẦU CỦA BẠN: Chỉ nhân giá sau 3 lần gia hạn đầu tiên công bằng
                 if (this.extensionCount > 3) {
                     this.liveStepPrice = this.liveStepPrice * 2; // Nhân đôi bước giá live
-                    System.out.println("[Anti-Sniping] 🚨 Cảnh báo Bot/Spam! Bước giá live tăng lũy tiến lên: " + this.liveStepPrice);
+                    log.warn("[Anti-Sniping] 🚨 Cảnh báo Bot/Spam! Bước giá live tăng lũy tiến lên: {}", this.liveStepPrice);
                 } else {
-                    System.out.println("[Anti-Sniping] ⏱️ Gia hạn lành mạnh lần thứ " + this.extensionCount + ". Bước giá giữ nguyên.");
+                    log.debug("[Anti-Sniping] ⏱️ Gia hạn lành mạnh lần thứ {}. Bước giá giữ nguyên.", this.extensionCount);
                 }
             } else {
                 // Đóng bẫy giây cuối: Ép về mốc trần cứng cao nhất để chốt hạ phòng
@@ -116,7 +121,7 @@ public class Auction extends Entity implements Serializable {
                     this.endTime = hardCapEndTime;
                     this.extensionCount++;
                     this.liveStepPrice = this.liveStepPrice * 5; // Lần cuối ép giá cực đại để kết thúc cuộc chơi
-                    System.out.println("[Anti-Sniping] 🛑 Chạm trần cứng bảo mật! Ép bước giá gấp 5 lần để dứt điểm phiên.");
+                    log.warn("[Anti-Sniping] 🛑 Chạm trần cứng bảo mật! Ép bước giá gấp 5 lần để dứt điểm phiên.");
                 }
             }
         }

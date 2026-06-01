@@ -1,5 +1,8 @@
 package com.auction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.network.SocketServer;
 
 /**
@@ -12,6 +15,7 @@ import com.auction.network.SocketServer;
  * - Chỉ đóng vai trò là "chìa khóa vặn nổ máy" kích hoạt chuỗi vòng đời hệ thống.
  */
 public class Main {
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
         System.out.println("=========================================================");
@@ -21,14 +25,13 @@ public class Main {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.start();
 
-        System.out.println("\n[Main] 🔌 Kích hoạt cổng mạng Socket vật lý...");
+        log.info("[Main] 🔌 Kích hoạt cổng mạng Socket vật lý...");
 
         try {
             SocketServer socketServer = new SocketServer();
             socketServer.start();
         } catch (Exception e) {
-            System.err.println("[Main] 💥 SỰ CỐ MẠNG NGHIÊM TRỌNG! Không thể mở cổng Socket Server.");
-            e.printStackTrace();
+            log.error("[Main] 💥 SỰ CỐ MẠNG NGHIÊM TRỌNG! Không thể mở cổng Socket Server.", e);
             System.exit(1);
         }
     }

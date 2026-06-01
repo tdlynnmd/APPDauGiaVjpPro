@@ -1,5 +1,8 @@
 package com.auction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.enums.ItemType;
 import com.auction.enums.UserRole;
 import com.auction.event.AuctionEventBus;
@@ -29,12 +32,13 @@ import static com.auction.models.User.UserFactory.setRegistry;
  * =========================================================================
  */
 public class ServerBootstrap {
+    private static final Logger log = LoggerFactory.getLogger(ServerBootstrap.class);
 
     private final AuctionDAO auctionDAO = new AuctionDAOImpl();
     private final ItemDAO itemDAO = new ItemDAOImpl();
 
     public void start() {
-        System.out.println("[Bootstrap] 🚀 Bắt đầu quy trình khởi tạo hệ thống chuyên nghiệp...");
+        log.info("[Bootstrap] 🚀 Bắt đầu quy trình khởi tạo hệ thống chuyên nghiệp...");
 
         try {
             // 🔥 THÊM MỚI BƯỚC 0: Ép cả Server chạy chuẩn múi giờ Việt Nam, bất kể deploy ở Mỹ hay Singapore
@@ -56,17 +60,16 @@ public class ServerBootstrap {
             hydrateMemoryCache();
 
             // Bước 7: KÍCH HOẠT SCHEDULER: Cho phép bộ máy quét thời gian thực trên RAM vào guồng chạy
-            System.out.println("[Bootstrap] 7. Kích hoạt bộ quét vòng đời tự động trên RAM (Every 1 Second)...");
+            log.info("[Bootstrap] 7. Kích hoạt bộ quét vòng đời tự động trên RAM (Every 1 Second)...");
             AuctionManage.getInstance().startLifecycleMonitor();
 
             // Bước 8: Đăng ký khiên bảo vệ tối cao Graceful Shutdown Hook với cấu trúc giải phóng triệt để
             registerGracefulShutdownHook();
 
-            System.out.println("[Bootstrap] 🎉 HẠ TẦNG SẴN SÀNG 100%! Server có thể mở cổng đón Socket kết nối.");
+            log.info("[Bootstrap] 🎉 HẠ TẦNG SẴN SÀNG 100%! Server có thể mở cổng đón Socket kết nối.");
 
         } catch (Exception e) {
-            System.err.println("[Bootstrap] 💥 KHỞI ĐỘNG THẤT BẠI! Hệ thống sẽ cưỡng chế dừng lại.");
-            e.printStackTrace();
+            log.error("[Bootstrap] 💥 KHỞI ĐỘNG THẤT BẠI! Hệ thống sẽ cưỡng chế dừng lại.", e);
             System.exit(1);
         }
     }
@@ -75,7 +78,7 @@ public class ServerBootstrap {
      * Bước 0: Đồng bộ múi giờ hệ thống
      */
     private void setupSystemTimezone() {
-        System.out.println("[Bootstrap] 0. Thiết lập cấu hình múi giờ chuẩn hệ thống (Asia/Ho_Chi_Minh)...");
+        log.info("[Bootstrap] 0. Thiết lập cấu hình múi giờ chuẩn hệ thống (Asia/Ho_Chi_Minh)...");
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
     }
 
@@ -83,7 +86,7 @@ public class ServerBootstrap {
      * 1. Gom toàn bộ logic đăng ký Factory vào đây
      */
     private void initializeFactories() {
-        System.out.println("[Bootstrap] 1. Đăng ký các User và Item Factories vào hệ thống...");
+        log.info("[Bootstrap] 1. Đăng ký các User và Item Factories vào hệ thống...");
 
         // Đăng ký User Factories
         setRegistry(UserRole.BIDDER, new BidderFactory());
@@ -94,17 +97,16 @@ public class ServerBootstrap {
         ItemFactory.register(ItemType.ART, new com.auction.models.Item.ArtFactory());
         ItemFactory.register(ItemType.VEHICLES, new com.auction.models.Item.VehicleFactory());
 
-
-        System.out.println("[Bootstrap]    -> Thành công: Hoàn tất cấu hình Polymorphic Factories.");
+        log.info("[Bootstrap]    -> Thành công: Hoàn tất cấu hình Polymorphic Factories.");
     }
 
     private void initializeDatabasePool() throws SQLException {
-        System.out.println("[Bootstrap] 2. Khởi tạo kết nối Database Pool...");
+        log.info("[Bootstrap] 2. Khởi tạo kết nối Database Pool...");
         DatabaseConnection.getConnection();
     }
 
     private void wireInternalEventSystem() {
-        System.out.println("[Bootstrap] 3. Tiến hành kết nối hệ thống Event-Driven...");
+        log.info("[Bootstrap] 3. Tiến hành kết nối hệ thống Event-Driven...");
         AuctionEventBus.getInstance().attach(LiveRoomManage.getInstance());
     }
 
@@ -113,17 +115,17 @@ public class ServerBootstrap {
      * Thực hiện ngay lúc bật Server để tránh nạp dữ liệu rác/quá hạn lên RAM.
      */
     private void cleanupExpiredAuctionsOnStartup() {
-        System.out.println("[Bootstrap] 3.5 Đang kiểm tra cứu hộ các phiên đấu giá dính sự cố sập nguồn cũ...");
+        log.info("[Bootstrap] 3.5 Đang kiểm tra cứu hộ các phiên đấu giá dính sự cố sập nguồn cũ...");
 
         // 1. Mò xuống DB hỏi: "Có ông RUNNING nào đáng lẽ phải kết thúc lúc Server đang sập không?"
         List<Auction> expiredAuctions = auctionDAO.findRunningAuctionsPastEndTime();
 
         if (expiredAuctions.isEmpty()) {
-            System.out.println("[Bootstrap]    -> Tuyệt vời: Không có phiên đấu giá nào bị treo quá hạn.");
+            log.info("[Bootstrap]    -> Tuyệt vời: Không có phiên đấu giá nào bị treo quá hạn.");
             return;
         }
 
-        System.out.println("[Bootstrap]    🚨 Phát hiện " + expiredAuctions.size() + " phiên bị treo trạng thái RUNNING do sập nguồn!");
+        log.warn("[Bootstrap]    🚨 Phát hiện {} phiên bị treo trạng thái RUNNING do sập nguồn!", expiredAuctions.size());
 
         // Gọi Service nghiệp vụ xử lý tổng kết, chuyển khoản tiền cọc và ăn chia tài sản trực tiếp dưới DB
         AuctionService auctionService = new AuctionService();
@@ -131,31 +133,30 @@ public class ServerBootstrap {
 
         for (Auction auction : expiredAuctions) {
             try {
-                System.out.println("[Bootstrap]    -> Tiến hành cưỡng chế đóng và chốt số liệu cho phiên: " + auction.getId());
+                log.info("[Bootstrap]    -> Tiến hành cưỡng chế đóng và chốt số liệu cho phiên: {}", auction.getId());
 
                 // Thực thi hàm kế toán chốt phiên vĩnh viễn dưới DB
                 auctionService.finalizeAuction(auction.getId());
                 cleanupCount++;
 
             } catch (Exception e) {
-                System.err.println("[Bootstrap]    ❌ Lỗi khi xử lý cứu hộ phiên " + auction.getId() + ": " + e.getMessage());
+                log.error("[Bootstrap]    ❌ Lỗi khi xử lý cứu hộ phiên {}: {}", auction.getId(), e.getMessage(), e);
             }
         }
 
-        System.out.println("[Bootstrap]    -> Hoàn tất cứu hộ: Đã đóng thành công " + cleanupCount + " phiên quá hạn ngầm dưới DB.");
+        log.info("[Bootstrap]    -> Hoàn tất cứu hộ: Đã đóng thành công {} phiên quá hạn ngầm dưới DB.", cleanupCount);
     }
 
     private void hydrateMemoryCache() {
        AuctionService auctionService = new AuctionService();
        auctionService.loadAuctionsToRAM();
-
     }
 
     private void registerGracefulShutdownHook() {
-        System.out.println("[Bootstrap] 6. Đăng ký cơ chế dọn rác hệ thống (Graceful Shutdown)...");
+        log.info("[Bootstrap] 6. Đăng ký cơ chế dọn rác hệ thống (Graceful Shutdown)...");
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("\n[Shutdown Hook] 🛑 Cảnh báo: JVM đang nhận lệnh tắt Server!");
+            log.info("\n[Shutdown Hook] 🛑 Cảnh báo: JVM đang nhận lệnh tắt Server!");
             try {
                 // 🏁 BƯỚC 1: Dừng máy phát điện (Ngắt luồng quét ngầm trước để RAM đứng im, không biến động nữa)
                 AuctionManage.getInstance().stopScheduler();
@@ -169,9 +170,9 @@ public class ServerBootstrap {
                 // 🗄️ BƯỚC 4: Khóa kho (Đóng toàn bộ Pool kết nối hướng về MySQL)
                 DatabaseConnection.closePool();
 
-                System.out.println("[Shutdown Hook] 🏁 Hệ thống đã đóng cửa an toàn tuyệt đối. Tạm biệt!");
+                log.info("[Shutdown Hook] 🏁 Hệ thống đã đóng cửa an toàn tuyệt đối. Tạm biệt!");
             } catch (Exception e) {
-                System.err.println("[Shutdown Hook] ❌ Lỗi khi dọn dẹp: " + e.getMessage());
+                log.error("[Shutdown Hook] ❌ Lỗi khi dọn dẹp: {}", e.getMessage(), e);
             }
         }));
     }

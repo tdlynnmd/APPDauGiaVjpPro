@@ -1,5 +1,8 @@
 package com.auction.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.dao.*;
 import com.auction.dao.impl.*;
 import com.auction.dto.AuctionDetailDTO;
@@ -32,6 +35,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class AuctionService {
+    private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
     private final AuctionManage auctionManage = AuctionManage.getInstance();
     private final ConnectionManage connectionManage = ConnectionManage.getInstance();
     private final ProductManage productManage = ProductManage.getInstance();
@@ -246,18 +250,17 @@ public class AuctionService {
                 break;
             }
 
-            // Thực thi đặt giá cho Challenger
             try {
                 Bidder challengerBidder = getBidderContext(challenger.getUserId());
                 executeBidInternal(challengerBidder, auction, bidAmount);
             } catch (Exception e) {
-                System.err.println("[Auto-Bidding] ❌ Lượt thầu tự động của user " + challenger.getUserId() + " thất bại: " + e.getMessage());
+                log.warn("[Auto-Bidding] ❌ Lượt thầu tự động của user {} thất bại: {}", challenger.getUserId(), e.getMessage());
                 // Vô hiệu hóa auto bid nếu xảy ra lỗi (ví dụ không đủ tiền) để tránh spam
                 challenger.setActive(false);
                 try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                     autoBidDAO.disableAutoBid(conn, challenger.getId());
                 } catch (SQLException ex) {
-                    ex.printStackTrace();
+                    log.error("[Auto-Bidding] Lỗi khi disable AutoBid trong DB: {}", ex.getMessage(), ex);
                 }
                 auction.removeAutoBidInRam(challenger.getUserId());
             }
@@ -446,7 +449,7 @@ public class AuctionService {
             }
             resultList.sort((a, b) -> b.getStatus().compareTo(a.getStatus()));
         } catch (SQLException e) {
-            System.err.println("[Central Guard] ❌ Lỗi kết nối Database khi tải danh sách: " + e.getMessage());
+            log.error("[Central Guard] ❌ Lỗi kết nối Database khi tải danh sách: {}", e.getMessage(), e);
             for (Auction ramAuction : auctionManage.getAllActive()) {
                 resultList.add(convertToSummaryDTO(ramAuction));
             }
@@ -469,9 +472,9 @@ public class AuctionService {
                 
                 auctionManage.addAuction(auction);
             }
-            System.out.println("Hệ thống: Đã nạp thành công " + activeAuctionsFromDb.size() + " phiên đấu giá lên RAM.");
+            log.info("Hệ thống: Đã nạp thành công {} phiên đấu giá lên RAM.", activeAuctionsFromDb.size());
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi nghiêm trọng khi khởi động nạp dữ liệu lên RAM: " + e.getMessage());
+            log.error("❌ Lỗi nghiêm trọng khi khởi động nạp dữ liệu lên RAM: {}", e.getMessage(), e);
         }
     }
 
@@ -853,7 +856,7 @@ public class AuctionService {
 
             // Sync RAM
             auction.removeAutoBidInRam(bidder.getId());
-            System.out.println("[Auto-Bidding] ❌ Đã hủy Auto-Bid cho User: " + bidder.getUsername());
+            log.info("[Auto-Bidding] ❌ Đã hủy Auto-Bid cho User: {}", bidder.getUsername());
         }
     }
 }

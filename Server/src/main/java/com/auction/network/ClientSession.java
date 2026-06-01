@@ -1,17 +1,7 @@
 package com.auction.network;
 
-/**
- ClientSession là "Hồ sơ tạm thời" của Client đang kết nối
-
- Nhiệm vụ: quản lý
- - Client này đã đăng nhập chưa?
- - userId là gì?
- - username là gì?
- - role là BIDDER, SELLER hay ADMIN?
- - socket nào đang thuộc về client này?
- - client đang xem phiên đấu giá nào?
- - Giúp Server kiem tra phân quyền trước khi xử lí action
- */
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.auction.enums.UserRole;
 import com.auction.manage.ConnectionManage;
@@ -27,6 +17,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ClientSession {
+    private static final Logger log = LoggerFactory.getLogger(ClientSession.class);
+
     private String userId; // Ban đầu null, sau khi login mới có giá trị
     private UserRole role;      // Server luu role để kiểm tra quyền
     private String username;     // 🔥 Bổ sung để hiển thị log/thông báo
@@ -124,7 +116,7 @@ public class ClientSession {
             closed = true; // Đóng dấu chủ quyền: Session này chính thức ngừng hoạt động
         }
 
-        System.out.println("[Network Guard] ⏳ Tiến hành đóng kết nối Idempotent cho User: " + username);
+        log.debug("[Network Guard] ⏳ Tiến hành đóng kết nối Idempotent cho User: {}", username);
 
         // 🔥 TỐI ƯU 2: B bọc toàn bộ luồng nghiệp vụ dọn dẹp bộ nhớ và ngắt Socket vào try/finally
         try {
@@ -142,7 +134,7 @@ public class ClientSession {
             }
         } catch (Exception e) {
             // Cô lập lỗi logic: Nếu dọn dẹp RAM bị crash, in lỗi ra log chứ không được phép làm nghẽn luồng hạ cánh Socket
-            System.err.println("[Network Guard] ⚠️ Có gợn lỗi khi dọn dẹp RAM: " + e.getMessage());
+            log.error("[Network Guard] ⚠️ Có gợn lỗi khi dọn dẹp RAM: {}", e.getMessage(), e);
         } finally {
 
             // 🔥 CHỐT CHẶN TỐI CAO TRONG FINALLY: Bắt buộc luôn luôn được thực thi kể cả khi đoạn code trên bị sập!
@@ -156,9 +148,9 @@ public class ClientSession {
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
                 }
-                System.out.println("[Network Guard] ✅ Đã giải phóng hoàn toàn hạ tầng Socket vật lý và Executor.");
+                log.debug("[Network Guard] ✅ Đã giải phóng hoàn toàn hạ tầng Socket vật lý và Executor.");
             } catch (IOException ex) {
-                System.err.println("[Network Guard] ❌ Lỗi khi dập phích cắm Socket: " + ex.getMessage());
+                log.error("[Network Guard] ❌ Lỗi khi dập phích cắm Socket: {}", ex.getMessage(), ex);
             }
         }
     }

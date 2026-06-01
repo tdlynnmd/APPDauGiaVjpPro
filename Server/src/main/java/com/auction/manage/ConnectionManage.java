@@ -1,5 +1,8 @@
 package com.auction.manage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.network.ClientSession;
 
 import java.util.Map;
@@ -8,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 public class ConnectionManage {
+    private static final Logger log = LoggerFactory.getLogger(ConnectionManage.class);
 
     // 1. Singleton An toàn đa luồng (Double-Checked Locking)
     private static volatile ConnectionManage instance;
@@ -36,7 +40,7 @@ public class ConnectionManage {
         if (userId != null && session != null) {
             // Nếu chưa có user trong Map thì tạo một Set mới (dùng CopyOnWriteArraySet để an toàn đa luồng)
             activeConnections.computeIfAbsent(userId, k -> new CopyOnWriteArraySet<>()).add(session);
-            System.out.println("Server: Thiết bị mới của User [" + userId + "] đã kết nối.");
+            log.info("Server: Thiết bị mới của User [{}] đã kết nối.", userId);
         }
     }
 
@@ -45,12 +49,12 @@ public class ConnectionManage {
         Set<ClientSession> userSessions = activeConnections.get(userId);
         if (userSessions != null) {
             userSessions.remove(session);
-            System.out.println("Server: 1 thiết bị của User [" + userId + "] đã ngắt kết nối.");
+            log.info("Server: 1 thiết bị của User [{}] đã ngắt kết nối.", userId);
 
             // Nếu user đã tắt hết tất cả các máy (Set rỗng), mới chính thức coi là Offline
             if (userSessions.isEmpty()) {
                 activeConnections.remove(userId);
-                System.out.println("Server: User [" + userId + "] đã hoàn toàn Offline.");
+                log.info("Server: User [{}] đã hoàn toàn Offline.", userId);
             }
         }
     }
@@ -66,12 +70,12 @@ public class ConnectionManage {
                     // 1. (Tùy chọn) Gọi hàm đóng kết nối vật lý của Socket bên trong ClientSession
                     // Ví dụ nếu class ClientSession của bạn có hàm close() hoặc disconnect():
                     session.close();
-                    System.out.println("Server: Đã đóng thành công 1 đường dây Socket Live.");
+                    log.info("Server: Đã đóng thành công 1 đường dây Socket Live.");
                 } catch (Exception e) {
-                    System.err.println("❌ Lỗi khi đóng kết nối vật lý của session: " + e.getMessage());
+                    log.error("❌ Lỗi khi đóng kết nối vật lý của session: {}", e.getMessage(), e);
                 }
             }
-            System.out.println("Server: Đã giải phóng hoàn toàn toàn bộ ClientSession của User [" + userId + "].");
+            log.info("Server: Đã giải phóng hoàn toàn toàn bộ ClientSession của User [{}].", userId);
         }
     }
 
@@ -97,7 +101,7 @@ public class ConnectionManage {
             boolean success = session.sendMessage(message);
             if (!success) {
                 // Nếu bắn tin nhắn lỗi (chứng tỏ Socket này đã chết ngầm từ trước)
-                System.err.println("[Connection] ⚠️ Phát hiện kết nối ma của User [" + userId + "], tiến hành trục xuất...");
+                log.warn("[Connection] ⚠️ Phát hiện kết nối ma của User [{}], tiến hành trục xuất...", userId);
 
                 // Tự động tháo dỡ kết nối lỗi này ra khỏi Set ngay lập tức để giải phóng RAM
                 removeConnection(userId, session);
@@ -113,10 +117,10 @@ public class ConnectionManage {
      * Được gọi duy nhất từ luồng ServerBootstrap khi hệ thống thực hiện hạ cánh an toàn.
      */
     public void closeAllConnections() {
-        System.out.println("[ConnectionManage] ⏳ Đang kích hoạt tiến trình giải phóng toàn bộ kết nối mạng...");
+        log.info("[ConnectionManage] ⏳ Đang kích hoạt tiến trình giải phóng toàn bộ kết nối mạng...");
 
         if (activeConnections.isEmpty()) {
-            System.out.println("[ConnectionManage] ℹ️ Không có thiết bị nào đang kết nối. Bỏ qua.");
+            log.info("[ConnectionManage] ℹ️ Không có thiết bị nào đang kết nối. Bỏ qua.");
             return;
         }
 
@@ -139,8 +143,7 @@ public class ConnectionManage {
                             totalClosedDevices++;
                         }
                     } catch (Exception e) {
-                        System.err.println("[ConnectionManage] ❌ Lỗi khi cưỡng chế đóng Socket của User ["
-                                + userId + "]: " + e.getMessage());
+                        log.error("[ConnectionManage] ❌ Lỗi khi cưỡng chế đóng Socket của User [{}]: {}", userId, e.getMessage(), e);
                     }
                 }
             }
@@ -150,9 +153,8 @@ public class ConnectionManage {
         // Cắt đứt hoàn toàn liên kết tham chiếu để giải phóng RAM ngay lập tức cho JVM
         activeConnections.clear();
 
-        System.out.println("[ConnectionManage] ✅ ĐÃ GIẢI PHÓNG TOÀN DIỆN MẠNG!");
-        System.out.println("[ConnectionManage] 👉 Kết quả: Đã đóng an toàn "
-                + totalClosedDevices + " thiết bị thuộc " + totalUsers + " người dùng.");
+        log.info("[ConnectionManage] ✅ ĐÃ GIẢI PHÓNG TOÀN DIỆN MẠNG!");
+        log.info("[ConnectionManage] 👉 Kết quả: Đã đóng an toàn {} thiết bị thuộc {} người dùng.", totalClosedDevices, totalUsers);
     }
 
     /**

@@ -1,5 +1,8 @@
 package com.auction.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.auction.enums.ActionType;
 import com.auction.enums.UserRole;
 import com.auction.exception.AuthorizationErrorCode;
@@ -15,6 +18,7 @@ import java.util.Set;
  * =========================================================================
  */
 public class AuthorizationService {
+    private static final Logger log = LoggerFactory.getLogger(AuthorizationService.class);
 
     /**
      * 1. PUBLIC ACTIONS: Hoàn toàn mở, không cần check Session đăng nhập
@@ -105,14 +109,14 @@ public class AuthorizationService {
 
         // Chốt chặn an toàn (Fail-Safe): Nếu Action lạ chưa được khai báo ở trên, cấm tuyệt đối truy cập
         if (allowedRoles == null) {
-            System.err.println("[Guard] 🚨 Cảnh báo bảo mật: Phát hiện request gọi Action chưa được cấu hình: " + action);
+            log.warn("[Guard] 🚨 Cảnh báo bảo mật: Phát hiện request gọi Action chưa được cấu hình: {}", action);
             throw new AuthorizationException(AuthorizationErrorCode.ACTION_UNAUTHORIZED);
         }
 
         // Bước 5: Kiểm tra xem vai trò của Session có nằm trong Whitelist cho phép hay không
         if (!allowedRoles.contains(session.getRole())) {
-            System.err.println("[Guard] ⛔ Từ chối truy cập: User [" + session.getUserId()
-                    + "] mang Role [" + session.getRole() + "] cố tình gọi Action hạn chế [" + action + "]");
+            log.warn("[Guard] ⛔ Từ chối truy cập: User [{}] mang Role [{}] cố tình gọi Action hạn chế [{}]",
+                    session.getUserId(), session.getRole(), action);
             throw new AuthorizationException(AuthorizationErrorCode.ROLE_ACCESS_DENIED);
         }
     }

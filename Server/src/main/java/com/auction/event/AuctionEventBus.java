@@ -1,5 +1,8 @@
 package com.auction.event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -24,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *   // → Tất cả Observers đã đăng ký sẽ nhận được sự kiện này
  */
 public class AuctionEventBus {
+    private static final Logger log = LoggerFactory.getLogger(AuctionEventBus.class);
     private static volatile AuctionEventBus instance;
 
     // Danh sách các Observers (thread-safe)
@@ -31,7 +35,7 @@ public class AuctionEventBus {
 
     private AuctionEventBus() {
         // Constructor private - chông ngừa khởi tạo từ bên ngoài
-        System.out.println("[EventBus] 🚀 AuctionEventBus khởi động");
+        log.info("[EventBus] 🚀 AuctionEventBus khởi động");
     }
 
     /**
@@ -67,14 +71,14 @@ public class AuctionEventBus {
      */
     public void attach(AuctionObserver observer) {
         if (observer == null) {
-            System.err.println("[EventBus] ⚠️ Không thể attach observer null");
+            log.warn("[EventBus] ⚠️ Không thể attach observer null");
             return;
         }
 
         // CopyOnWriteArrayList tự động handle thread-safety
         observers.add(observer);
-        System.out.println("[EventBus] ✅ Observer đã đăng ký: "
-            + observer.getClass().getSimpleName());
+        log.info("[EventBus] ✅ Observer đã đăng ký: {}",
+            observer.getClass().getSimpleName());
     }
 
     /**
@@ -87,13 +91,13 @@ public class AuctionEventBus {
      */
     public void detach(AuctionObserver observer) {
         if (observer == null) {
-            System.err.println("[EventBus] ⚠️ Không thể detach observer null");
+            log.warn("[EventBus] ⚠️ Không thể detach observer null");
             return;
         }
 
         if (observers.remove(observer)) {
-            System.out.println("[EventBus] ❌ Observer đã hủy đăng ký: "
-                + observer.getClass().getSimpleName());
+            log.info("[EventBus] ❌ Observer đã hủy đăng ký: {}",
+                observer.getClass().getSimpleName());
         }
     }
 
@@ -111,11 +115,11 @@ public class AuctionEventBus {
      */
     public void publish(AuctionEvent event) {
         if (event == null) {
-            System.err.println("[EventBus] ⚠️ Không thể publish event null");
+            log.warn("[EventBus] ⚠️ Không thể publish event null");
             return;
         }
 
-        System.out.println("[EventBus] 📢 Publishing: " + event);
+        log.debug("[EventBus] 📢 Publishing: {}", event);
 
         // Gửi event đến tất cả Observers
         // CopyOnWriteArrayList cho phép iterate an toàn khi mọi thread truy cập
@@ -125,10 +129,8 @@ public class AuctionEventBus {
                 observer.update(event);
             } catch (Exception e) {
                 // Nếu 1 Observer lỗi, không ảnh hưởng đến Observer khác
-                System.err.println("[EventBus] ⚠️ Observer "
-                    + observer.getClass().getSimpleName()
-                    + " xử lý event lỗi: " + e.getMessage());
-                e.printStackTrace();
+                log.error("[EventBus] ⚠️ Observer {} xử lý event lỗi: {}",
+                    observer.getClass().getSimpleName(), e.getMessage(), e);
             }
         }
     }
@@ -146,7 +148,7 @@ public class AuctionEventBus {
      */
     public void clearAllObservers() {
         observers.clear();
-        System.out.println("[EventBus] 🧹 Tất cả Observers đã bị xóa");
+        log.info("[EventBus] 🧹 Tất cả Observers đã bị xóa");
     }
 }
 

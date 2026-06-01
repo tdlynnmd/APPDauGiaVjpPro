@@ -13,7 +13,7 @@ public class AutoBidDAOImpl implements AutoBidDAO {
     @Override
     public boolean insertOrUpdate(Connection conn, AutoBid autoBid) throws SQLException {
         String sql = "INSERT INTO auto_bids (id, user_id, auction_id, max_bid, increment_amount, is_active, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                "VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, ?, ?) " +
                 "ON DUPLICATE KEY UPDATE id = VALUES(id), max_bid = VALUES(max_bid), increment_amount = VALUES(increment_amount), " +
                 "is_active = VALUES(is_active), created_at = VALUES(created_at)";
 
@@ -32,7 +32,7 @@ public class AutoBidDAOImpl implements AutoBidDAO {
 
     @Override
     public Optional<AutoBid> findActiveByUserAndAuction(Connection conn, String userId, String auctionId) throws SQLException {
-        String sql = "SELECT * FROM auto_bids WHERE user_id = ? AND auction_id = ? AND is_active = 1";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(user_id, 1) AS user_id, BIN_TO_UUID(auction_id, 1) AS auction_id, max_bid, increment_amount, is_active, created_at FROM auto_bids WHERE user_id = UUID_TO_BIN(?, 1) AND auction_id = UUID_TO_BIN(?, 1) AND is_active = 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.setString(2, auctionId);
@@ -48,7 +48,7 @@ public class AutoBidDAOImpl implements AutoBidDAO {
     @Override
     public List<AutoBid> findActiveByAuctionId(Connection conn, String auctionId) throws SQLException {
         List<AutoBid> list = new ArrayList<>();
-        String sql = "SELECT * FROM auto_bids WHERE auction_id = ? AND is_active = 1";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(user_id, 1) AS user_id, BIN_TO_UUID(auction_id, 1) AS auction_id, max_bid, increment_amount, is_active, created_at FROM auto_bids WHERE auction_id = UUID_TO_BIN(?, 1) AND is_active = 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, auctionId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -62,7 +62,7 @@ public class AutoBidDAOImpl implements AutoBidDAO {
 
     @Override
     public boolean disableAutoBid(Connection conn, String id) throws SQLException {
-        String sql = "UPDATE auto_bids SET is_active = 0 WHERE id = ?";
+        String sql = "UPDATE auto_bids SET is_active = 0 WHERE id = UUID_TO_BIN(?, 1)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, id);
             return stmt.executeUpdate() > 0;
