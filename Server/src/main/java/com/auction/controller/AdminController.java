@@ -2,7 +2,6 @@ package com.auction.controller;
 
 import com.auction.dto.*;
 import com.auction.enums.UserRole;
-import com.auction.enums.UserStatus;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
 import com.auction.manage.AuctionManage;
@@ -44,7 +43,7 @@ public class AdminController {
      */
     public void lockUserAccount(String adminId, LockUserAccountRequest request) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
-        userService.lockUserAccount(adminId, request.getUserId(), UserStatus.BANNED);
+        userService.lockUserAccount(adminId, request.getUserId(), request.getTargetStatus(), request.getReason());
     }
 
     /**

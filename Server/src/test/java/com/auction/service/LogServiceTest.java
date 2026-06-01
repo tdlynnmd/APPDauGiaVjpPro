@@ -148,7 +148,7 @@ class LogServiceTest {
         assertEquals(0, result.getTotalElements());
 
         assertTrue(logDAO.findPaginatedLogsCalled);
-        assertFalse(logDAO.getTotalLogCountCalled);
+        assertTrue(logDAO.getTotalLogCountCalled);
 
         assertEquals(10, logDAO.lastLimit);
         assertEquals(0, logDAO.lastOffset);
@@ -167,7 +167,7 @@ class LogServiceTest {
         assertEquals(0, result.getTotalElements());
 
         assertTrue(logDAO.findPaginatedLogsCalled);
-        assertFalse(logDAO.getTotalLogCountCalled);
+        assertTrue(logDAO.getTotalLogCountCalled);
 
         assertEquals(5, logDAO.lastLimit);
         assertEquals(5, logDAO.lastOffset);

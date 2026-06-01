@@ -4,7 +4,12 @@ import com.auction.dto.SocketRequest;
 import com.auction.dto.SocketResponse;
 import com.auction.enums.ActionType;
 import com.auction.network.ClientNetworkManager;
+import com.auction.util.ClientSession;
+import com.auction.util.SceneNavigator;
 import com.auction.utils.GsonProvider;
+import com.google.gson.JsonObject;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -61,6 +66,7 @@ public class ClientSocketService {
     private final CopyOnWriteArrayList<RealtimeUpdateListener> realtimeListeners = new CopyOnWriteArrayList<>();
 
     private volatile boolean running = true;
+    private volatile boolean forceLogoutHandled = false;
 
     private ClientSocketService() {
         ClientNetworkManager network = ClientNetworkManager.getInstance();
@@ -273,6 +279,11 @@ public class ClientSocketService {
         }
 
         if (SocketResponse.TYPE_EVENT.equals(response.getType())) {
+            if (isForceLogoutEvent(response)) {
+                handleForceLogout(response);
+                return;
+            }
+
             notifyRealtimeListeners(response);
             return;
         }
@@ -289,6 +300,86 @@ public class ClientSocketService {
         if (response.getRequestId() != null && !response.getRequestId().trim().isEmpty()) {
             completePendingResponse(response);
         }
+    }
+
+    /**
+     * FORCE_LOGOUT la event cap he thong.
+     *
+     * Khi Admin khoa user online, Server gui event nay ve client cua user do.
+     * Client phai dung moi request dang cho, xoa session, dong socket va quay ve Login.
+     */
+    private void handleForceLogout(SocketResponse event) {
+        if (forceLogoutHandled) {
+            return;
+        }
+
+        forceLogoutHandled = true;
+        running = false;
+
+        completeAllPendingResponses(
+                "Tai khoan da bi khoa boi quan tri vien.",
+                "FORCE_LOGOUT"
+        );
+
+        String displayMessage = buildForceLogoutDisplayMessage(event);
+
+        Platform.runLater(() -> {
+            showForceLogoutAlert(displayMessage);
+
+            ClientSession.clear();
+            ClientNetworkManager.resetConnection();
+            ClientSocketService.reset();
+            SceneNavigator.showLogin();
+        });
+    }
+
+    private boolean isForceLogoutEvent(SocketResponse response) {
+        return ActionType.FORCE_LOGOUT.name().equals(getActionName(response));
+    }
+
+    private String getActionName(SocketResponse response) {
+        try {
+            return response.getAction();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String buildForceLogoutDisplayMessage(SocketResponse event) {
+        String message = event.getMessage();
+
+        String reason = extractForceLogoutReason(event);
+        if (reason != null && !reason.trim().isEmpty()) {
+            return safeText(message, "Tai khoan cua ban da bi khoa boi quan tri vien.")
+                    + "\nLy do: " + reason.trim();
+        }
+
+        return safeText(message, "Tai khoan cua ban da bi khoa boi quan tri vien.");
+    }
+
+    private String extractForceLogoutReason(SocketResponse event) {
+        if (event.getBody() == null || !event.getBody().isJsonObject()) {
+            return null;
+        }
+
+        JsonObject body = event.getBody().getAsJsonObject();
+        if (!body.has("reason") || body.get("reason").isJsonNull()) {
+            return null;
+        }
+
+        return body.get("reason").getAsString();
+    }
+
+    private void showForceLogoutAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Tai khoan bi khoa");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private String safeText(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
     }
 
     /**

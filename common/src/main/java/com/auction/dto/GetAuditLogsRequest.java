@@ -1,13 +1,13 @@
 package com.auction.dto;
 
 /**
- * Request DTO chứa tham số phân trang để tải danh sách Audit Logs dành cho Admin.
+ * Request DTO for loading paginated audit logs in the admin dashboard.
+ * Fields are mutable so Gson can deserialize request bodies reliably.
  */
 public class GetAuditLogsRequest {
-    private final int page;
-    private final int pageSize;
+    private int page;
+    private int pageSize;
 
-    // Constructor mặc định (Giữ lại phòng trường hợp các bộ Parser cũ yêu cầu)
     public GetAuditLogsRequest() {
         this.page = 1;
         this.pageSize = 10;
@@ -22,9 +22,15 @@ public class GetAuditLogsRequest {
         return page;
     }
 
+    public void setPage(int page) {
+        this.page = page;
+    }
+
     public int getPageSize() {
         return pageSize;
     }
 
-    // Tuyệt đối không viết hàm Setter để bảo vệ tính toàn vẹn của dữ liệu Request
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+    }
 }

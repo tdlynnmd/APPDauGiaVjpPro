@@ -38,6 +38,7 @@ public class SceneNavigator {
     private static final String AUCTION_DETAIL_VIEW = "/com/auction/client/view/auction-detail.fxml";
     private static final String SELLER_ITEM_MANAGEMENT_VIEW = "/com/auction/client/view/seller-item-management.fxml";
     private static final String LIVE_BIDDING_VIEW = "/com/auction/client/view/live-bidding.fxml";
+    private static final String ADMIN_DASHBOARD_VIEW = "/com/auction/client/view/admin-dashboard.fxml";
 
     private SceneNavigator() {
         // Khong cho tao object SceneNavigator vi toan bo ham trong class nay la static.
@@ -70,6 +71,10 @@ public class SceneNavigator {
 
     public static void showSellerItemManagement() {
         loadScene(SELLER_ITEM_MANAGEMENT_VIEW, "Seller Item Management");
+    }
+
+    public static void showAdminDashboard() {
+        loadScene(ADMIN_DASHBOARD_VIEW, "Admin Dashboard");
     }
 
     public static void showLiveBidding(String auctionId) {

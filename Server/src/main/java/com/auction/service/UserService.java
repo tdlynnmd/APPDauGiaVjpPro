@@ -5,6 +5,7 @@ import com.auction.dao.LogDAO;
 import com.auction.dao.impl.UserDAOImpl;
 import com.auction.dao.impl.LogDAOImpl;
 import com.auction.dto.*;
+import com.auction.enums.ActionType;
 import com.auction.enums.UserStatus;
 import com.auction.exception.AuthErrorCode;
 import com.auction.exception.AuthenticationException;
@@ -15,19 +16,31 @@ import com.auction.exception.WalletException;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.UserManage;
 import com.auction.models.User.*;
+import com.auction.utils.GsonProvider;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class UserService {
     private final UserDAO userDAO = new UserDAOImpl(); // Đổi sang Interface UserDAO cho chuẩn Loose Coupling
     private final LogDAO logDAO = new LogDAOImpl();
     private final UserManage userManage = UserManage.getInstance();
     private final ConnectionManage connectionManage = ConnectionManage.getInstance();
+    private static final com.google.gson.Gson gson = GsonProvider.getGson();
+    private static final ScheduledExecutorService FORCE_LOGOUT_SCHEDULER =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread thread = new Thread(r, "force-logout-scheduler");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     // =========================================================================
     // 1. PHÂN HỆ NGHIỆP VỤ TÀI CHÍNH (ĐỒNG BỘ RAM & DATABASE TUYỆT ĐỐI)
@@ -177,6 +190,10 @@ public class UserService {
      * TÍNH NĂNG KHÓA TÀI KHOẢN TỨC THÌ CỦA ADMIN (Đã tối ưu Polite Close)
      */
     public void lockUserAccount(String adminId, String userId, UserStatus targetStatus) {
+        lockUserAccount(adminId, userId, targetStatus, null);
+    }
+
+    public void lockUserAccount(String adminId, String userId, UserStatus targetStatus, String reason) {
         if (userId == null || userId.trim().isEmpty() || targetStatus == null || adminId == null || adminId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Required parameter constraints for locking operation are missing.");
         }
@@ -186,6 +203,7 @@ public class UserService {
         }
 
         final String cleanUserId = userId.trim();
+        final String cleanReason = normalizeAdminReason(reason);
 
         synchronized (cleanUserId.intern()) {
             // [ĐOẠN CODE TRANSACTION DATABASE - GIỮ NGUYÊN HOÀN TOÀN CỦA BẠN]
@@ -200,7 +218,8 @@ public class UserService {
                 }
 
                 String logId = UUID.randomUUID().toString();
-                String actionDetail = "Admin thay đổi trạng thái tài khoản người dùng sang: " + targetStatus.name();
+                String actionDetail = "Admin changed user account status to: " + targetStatus.name()
+                        + ". Reason: " + cleanReason;
                 logDAO.insertLog(conn, logId, adminId, actionDetail, "USER", cleanUserId);
 
                 conn.commit();
@@ -231,11 +250,12 @@ public class UserService {
 
                 // Bước 1: Gửi thông điệp cảnh báo cho Client biết.
                 // Client nhận được chuỗi này phải hiện Dialog thông báo lập tức và tự đóng socket phía nó.
-                connectionManage.sendMessageToUser(cleanUserId, "FORCE_LOGOUT_REASON: ACCOUNT_LOCKED");
+                connectionManage.sendMessageToUser(cleanUserId,
+                        buildForceLogoutMessage(cleanUserId, cleanReason, targetStatus));
 
                 // Bước 2: Tạo một luồng chạy ẩn, hoãn lại 300ms để bọc hậu (Chốt chặn tối cao)
                 // Việc hoãn ẩn này giúp hàm thoát ra ngay lập tức, Admin không bị treo màn hình đợi.
-                java.util.concurrent.Executors.newSingleThreadScheduledExecutor().schedule(() -> {
+                FORCE_LOGOUT_SCHEDULER.schedule(() -> {
                     try {
                         // Nếu sau 300ms mà Client vẫn chưa tự ngắt kết nối (hoặc cố tình lỳ ra)
                         if (connectionManage.isUserOnline(cleanUserId)) {
@@ -250,9 +270,30 @@ public class UserService {
                     } catch (Exception e) {
                         System.err.println("[Security Guard] Lỗi khi thực thi bọc hậu ngắt socket: " + e.getMessage());
                     }
-                }, 300, java.util.concurrent.TimeUnit.MILLISECONDS); // 300ms là quá đủ cho gói tin TCP truyền đi thành công
+                }, 300, TimeUnit.MILLISECONDS); // 300ms là quá đủ cho gói tin TCP truyền đi thành công
             }
         }
+    }
+
+    private String normalizeAdminReason(String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            return "No reason provided.";
+        }
+        return reason.trim();
+    }
+
+    private String buildForceLogoutMessage(String userId, String reason, UserStatus targetStatus) {
+        Map<String, Object> payload = Map.of(
+                "userId", userId,
+                "newStatus", targetStatus.name(),
+                "reason", reason
+        );
+        SocketResponse response = SocketResponse.event(
+                ActionType.FORCE_LOGOUT,
+                "Your account has been locked by an administrator.",
+                payload
+        );
+        return gson.toJson(response);
     }
 
     /**

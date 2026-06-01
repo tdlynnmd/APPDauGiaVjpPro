@@ -24,6 +24,7 @@ public enum ActionType {
     BID_UPDATE,
     TIME_UPDATE,
     STATUS_UPDATED,
+    FORCE_LOGOUT,
     GET_AUCTION_BID_HISTORY, // lấy lịch sử đặt giá của một phiên đấu giá, chỉ bidder mới được gọi
     GET_MY_BID_HISTORY, // lấy lịch sử đặt giá của một người dùng, chỉ bidder mới được gọi
 

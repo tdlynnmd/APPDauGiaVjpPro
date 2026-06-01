@@ -209,7 +209,7 @@ public class DashboardController {
 
     @FXML
     private void handleAdminPanel() {
-        showInfo("Chức năng Admin Panel sẽ được nối với màn hình quản trị sau.");
+        SceneNavigator.showAdminDashboard();
     }
 
     @FXML

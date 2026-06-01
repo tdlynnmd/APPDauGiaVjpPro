@@ -535,7 +535,7 @@ class UserServiceTest {
     void lockUserAccountShouldInsertLogWhenSuccess() {
         userDAO.updateStatusResult = true;
 
-        assertDoesNotThrow(() -> userService.lockUserAccount("admin-1", "user-1", UserStatus.BANNED));
+        assertDoesNotThrow(() -> userService.lockUserAccount("admin-1", "user-1", UserStatus.BANNED, "policy violation"));
 
         assertEquals("user-1", userDAO.lastUpdateStatusUserId);
         assertEquals(UserStatus.BANNED.name(), userDAO.lastUpdateStatus);
@@ -545,6 +545,7 @@ class UserServiceTest {
         assertEquals("USER", logDAO.lastTargetType);
         assertEquals("user-1", logDAO.lastTargetId);
         assertTrue(logDAO.lastActionDetail.contains("BANNED"));
+        assertTrue(logDAO.lastActionDetail.contains("policy violation"));
     }
 
     private static class FakeDbConnection implements Connection {
