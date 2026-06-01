@@ -314,8 +314,10 @@ public class UserDAOImpl implements UserDAO {
         UserRole role = UserRole.valueOf(rs.getString("user_type"));
         UserStatus status = UserStatus.valueOf(rs.getString("status"));
 
-        java.time.LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        java.time.LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
+        Timestamp createdAtTs = rs.getTimestamp("created_at");
+        java.time.LocalDateTime createdAt = createdAtTs != null ? createdAtTs.toLocalDateTime() : null;
+        Timestamp updatedAtTs = rs.getTimestamp("updated_at");
+        java.time.LocalDateTime updatedAt = updatedAtTs != null ? updatedAtTs.toLocalDateTime() : null;
 
         switch (role) {
             case BIDDER:

@@ -5,6 +5,7 @@ import com.auction.dao.BidTransactionDAO;
 import com.auction.enums.BidStatus;
 import com.auction.models.Auction.BidTransaction;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -166,12 +167,14 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
      * Hàm này giữ nguyên throws SQLException rất sạch sẽ
      */
     private BidTransaction mapResultSetToBid(ResultSet rs) throws SQLException {
+        Timestamp createdAtTs = rs.getTimestamp("created_at");
+        LocalDateTime createdAt = createdAtTs != null ? createdAtTs.toLocalDateTime() : null;
         return new BidTransaction(
                 rs.getString("id"),
                 rs.getString("bidder_id"),
                 rs.getString("auction_id"),
                 rs.getDouble("amount"),
-                rs.getTimestamp("created_at").toLocalDateTime(),
+                createdAt,
                 BidStatus.valueOf(rs.getString("status"))
         );
     }

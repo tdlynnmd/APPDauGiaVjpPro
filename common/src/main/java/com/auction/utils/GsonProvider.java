@@ -12,8 +12,19 @@ public class GsonProvider {
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
                     new JsonPrimitive(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) ->
-                    LocalDateTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) -> {
+                String val = json.getAsString();
+                try {
+                    return LocalDateTime.parse(val, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                } catch (Exception e) {
+                    try {
+                        DateTimeFormatter backupFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        return LocalDateTime.parse(val, backupFormatter);
+                    } catch (Exception ex) {
+                        return LocalDateTime.parse(val.trim().replace(" ", "T"));
+                    }
+                }
+            })
             .create();
 
     public static Gson getGson() {

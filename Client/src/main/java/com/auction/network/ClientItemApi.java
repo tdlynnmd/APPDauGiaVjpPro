@@ -10,15 +10,13 @@ import com.auction.dto.SocketResponse;
 import com.auction.dto.UpdateItemRequest;
 import com.auction.enums.ActionType;
 import com.auction.service.ClientSocketService;
+import com.auction.utils.GsonProvider;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -37,19 +35,7 @@ import java.util.List;
  * - Server ItemController/ItemService moi la noi validate va xu ly nghiep vu that.
  */
 public class ClientItemApi {
-    private final Gson gson = new GsonBuilder()
-            .registerTypeAdapter(LocalDateTime.class, (com.google.gson.JsonDeserializer<LocalDateTime>) (json, typeOfT, context) -> {
-                try {
-                    return LocalDateTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                } catch (Exception e) {
-                    DateTimeFormatter backupFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    return LocalDateTime.parse(json.getAsString(), backupFormatter);
-                }
-            })
-            .registerTypeAdapter(LocalDateTime.class, (com.google.gson.JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
-                    new JsonPrimitive(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-            )
-            .create();
+    private final Gson gson = GsonProvider.getGson();
 
     /**
      * CREATE_ITEM

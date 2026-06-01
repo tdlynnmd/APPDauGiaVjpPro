@@ -3,6 +3,7 @@ package com.auction.network;
 import com.auction.dto.*;
 import com.auction.enums.ActionType;
 import com.auction.service.ClientSocketService;
+import com.auction.utils.GsonProvider;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
@@ -25,22 +26,7 @@ import java.util.List;
  * - Server mới là nơi kiểm tra quyền và xử lý nghiệp vụ thật.
  */
 public class ClientAuctionApi {
-    // Thay thế dòng khởi tạo cũ bằng GsonBuilder để cấu hình chuyển đổi LocalDateTime (Tránh lỗi InaccessibleObjectException trên Java mới)
-    private final Gson gson = new com.google.gson.GsonBuilder()
-            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonDeserializer<java.time.LocalDateTime>) (json, typeOfT, context) -> {
-                try {
-                    // Thử parse theo định dạng chuẩn ISO (ví dụ: 2026-05-22T05:15:30)
-                    return java.time.LocalDateTime.parse(json.getAsString(), java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                } catch (Exception e) {
-                    // Dự phòng nếu Server trả về định dạng chuỗi custom tùy biến có dấu cách (ví dụ: "yyyy-MM-dd HH:mm:ss")
-                    java.time.format.DateTimeFormatter backupFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    return java.time.LocalDateTime.parse(json.getAsString(), backupFormatter);
-                }
-            })
-            .registerTypeAdapter(java.time.LocalDateTime.class, (com.google.gson.JsonSerializer<java.time.LocalDateTime>) (src, typeOfSrc, context) ->
-                    new com.google.gson.JsonPrimitive(src.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-            )
-            .create();
+    private final Gson gson = GsonProvider.getGson();
 
     /**
      * Gửi request lấy danh sách các phiên đấu giá đang hoạt động.
