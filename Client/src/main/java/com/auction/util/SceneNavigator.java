@@ -40,6 +40,7 @@ public class SceneNavigator {
     private static final String LIVE_BIDDING_VIEW = "/com/auction/client/view/live-bidding.fxml";
     private static final String ADMIN_DASHBOARD_VIEW = "/com/auction/client/view/admin-dashboard.fxml";
     private static final String WALLET_VIEW = "/com/auction/client/view/wallet.fxml";
+    private static final String MY_BIDS_VIEW = "/com/auction/client/view/my-bids.fxml";
 
 
     private SceneNavigator() {
@@ -77,6 +78,9 @@ public class SceneNavigator {
 
     public static void showAdminDashboard() {
         loadScene(ADMIN_DASHBOARD_VIEW, "Admin Dashboard");
+    }
+    public static void showMyBids() {
+        loadScene(MY_BIDS_VIEW, "My Bids");
     }
     public static void showWallet() {
         loadScene(WALLET_VIEW, "Wallet");

@@ -281,11 +281,9 @@ public class DashboardController {
             );
         }
     }
-
     @FXML
     private void handleMyBids() {
-        System.out.println("Mở màn hình danh sách các phiên tôi đang đấu giá...");
-        // SceneNavigator.showMyBids(); // Ví dụ gọi chuyển màn hình
+        SceneNavigator.showMyBids();
     }
 
     @FXML
