@@ -104,6 +104,23 @@
                                 </GridPane>
 
                                 <Separator opacity="0.1" prefWidth="200.0" />
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="status-message-label" text="Auto-bid" />
+                                        <HBox spacing="10.0">
+                                            <children>
+                                                <TextField fx:id="maxAutoBidField" promptText="Gia toi da" />
+                                                <TextField fx:id="autoBidIncrementField" promptText="Moi lan tang" />
+                                            </children>
+                                        </HBox>
+                                        <HBox spacing="10.0">
+                                            <children>
+                                                <Button fx:id="setupAutoBidButton" onAction="#handleSetupAutoBid" text="Bat auto-bid" />
+                                                <Button fx:id="cancelAutoBidButton" onAction="#handleCancelAutoBid" text="Huy auto-bid" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
 
                                 <HBox alignment="CENTER_LEFT" spacing="15.0">
                                     <children>

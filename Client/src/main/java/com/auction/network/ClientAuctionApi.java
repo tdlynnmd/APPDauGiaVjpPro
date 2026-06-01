@@ -89,7 +89,15 @@ public class ClientAuctionApi {
         PlaceBidRequest request = new PlaceBidRequest(auctionId, amount);
         return sendRequest(ActionType.PLACE_BID, request);
     }
+    public SocketResponse setupAutoBid(String auctionId, double maxBid, double increment) {
+        SetupAutoBidRequest request = new SetupAutoBidRequest(auctionId, maxBid, increment);
+        return sendRequest(ActionType.SETUP_AUTO_BID, request);
+    }
 
+    public SocketResponse cancelAutoBid(String auctionId) {
+        CancelAutoBidRequest request = new CancelAutoBidRequest(auctionId);
+        return sendRequest(ActionType.CANCEL_AUTO_BID, request);
+    }
     /**
      * Gửi request đăng ký nhận realtime update của một phiên đấu giá.
      */

@@ -232,28 +232,24 @@ public class AuctionService {
         int loops = 0;
         // Giới hạn tối đa 20 lượt đấu giá tự động liên tiếp để tránh loop vô tận ngoài ý muốn
         while (loops < 20) {
-            AutoBid challenger = null;
             double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
-
-            PriorityQueue<AutoBid> queue = auction.getAutoBidsQueue();
-            synchronized (queue) {
-                for (AutoBid ab : queue) {
-                    if (!ab.getUserId().equals(auction.getHighestBidderId()) && ab.getMaxBid() >= minBidRequired) {
-                        if (challenger == null || ab.getMaxBid() > challenger.getMaxBid()) {
-                            challenger = ab;
-                        }
-                    }
-                }
-            }
+            List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
+            AutoBid challenger = selectAutoBidChallenger(activeAutoBids, auction.getHighestBidderId(), minBidRequired);
 
             if (challenger == null) {
+                break;
+            }
+
+            AutoBid currentLeaderAutoBid = findAutoBidByUser(activeAutoBids, auction.getHighestBidderId());
+            double bidAmount = calculateAutoBidAmount(auction, challenger, currentLeaderAutoBid, minBidRequired);
+            if (bidAmount < minBidRequired) {
                 break;
             }
 
             // Thực thi đặt giá cho Challenger
             try {
                 Bidder challengerBidder = getBidderContext(challenger.getUserId());
-                executeBidInternal(challengerBidder, auction, minBidRequired);
+                executeBidInternal(challengerBidder, auction, bidAmount);
             } catch (Exception e) {
                 System.err.println("[Auto-Bidding] ❌ Lượt thầu tự động của user " + challenger.getUserId() + " thất bại: " + e.getMessage());
                 // Vô hiệu hóa auto bid nếu xảy ra lỗi (ví dụ không đủ tiền) để tránh spam
@@ -263,10 +259,49 @@ public class AuctionService {
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                 }
-                queue.remove(challenger);
+                auction.removeAutoBidInRam(challenger.getUserId());
             }
             loops++;
         }
+    }
+
+    private List<AutoBid> snapshotActiveAutoBids(Auction auction) {
+        PriorityQueue<AutoBid> queue = auction.getAutoBidsQueue();
+        synchronized (queue) {
+            return queue.stream()
+                    .filter(AutoBid::isActive)
+                    .sorted(Auction.AUTO_BID_PRIORITY)
+                    .collect(Collectors.toList());
+        }
+    }
+
+    private AutoBid selectAutoBidChallenger(List<AutoBid> activeAutoBids, String highestBidderId, double minBidRequired) {
+        return activeAutoBids.stream()
+                .filter(autoBid -> !autoBid.getUserId().equals(highestBidderId))
+                .filter(autoBid -> autoBid.canCover(minBidRequired))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private AutoBid findAutoBidByUser(List<AutoBid> activeAutoBids, String userId) {
+        if (userId == null) {
+            return null;
+        }
+        return activeAutoBids.stream()
+                .filter(autoBid -> autoBid.getUserId().equals(userId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private double calculateAutoBidAmount(Auction auction, AutoBid challenger, AutoBid currentLeaderAutoBid, double minBidRequired) {
+        double bidAmount = challenger.calculateNextBidAmount(auction.getCurrentPrice(), minBidRequired);
+
+        if (currentLeaderAutoBid != null && Auction.AUTO_BID_PRIORITY.compare(currentLeaderAutoBid, challenger) <= 0) {
+            double leaderDefenseLimit = currentLeaderAutoBid.getMaxBid() - auction.getLiveStepPrice();
+            bidAmount = Math.min(bidAmount, leaderDefenseLimit);
+        }
+
+        return bidAmount;
     }
 
     private void validateBidInput(Bidder bidder, String auctionId, double amount) {
@@ -746,7 +781,7 @@ public class AuctionService {
             if (bidder.getId().equals(auction.getSellerId())) {
                 throw new AuctionException(AuctionErrorCode.BIDDER_IS_SELLER);
             }
-            if (maxBid < auction.getCurrentPrice() + auction.getStepPrice()) {
+            if (maxBid < auction.getCurrentPrice() + auction.getLiveStepPrice()) {
                 throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW, "Max bid must be at least the next required bid.");
             }
 
@@ -754,6 +789,13 @@ public class AuctionService {
 
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                 conn.setAutoCommit(false);
+                Optional<AutoBid> existingAutoBid = autoBidDAO.findActiveByUserAndAuction(conn, bidder.getId(), auctionId);
+                if (existingAutoBid != null && existingAutoBid.isPresent()) {
+                    AutoBid existing = existingAutoBid.get();
+                    autoBid.setId(existing.getId());
+                    autoBid.setCreatedAt(existing.getCreatedAt());
+                }
+
                 boolean success = autoBidDAO.insertOrUpdate(conn, autoBid);
                 if (!success) {
                     throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Failed to save auto-bid configuration.");

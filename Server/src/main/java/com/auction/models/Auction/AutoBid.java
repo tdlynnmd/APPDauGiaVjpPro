@@ -70,6 +70,15 @@ public class AutoBid extends Entity implements Serializable {
         this.increment = increment;
     }
 
+    public boolean canCover(double minimumBidRequired) {
+        return isActive && maxBid >= minimumBidRequired;
+    }
+
+    public double calculateNextBidAmount(double currentPrice, double minimumBidRequired) {
+        double preferredBid = currentPrice + increment;
+        return Math.min(maxBid, Math.max(minimumBidRequired, preferredBid));
+    }
+
     public boolean isActive() {
         return isActive;
     }

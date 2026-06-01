@@ -167,6 +167,18 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     @FXML
     private TextField bidAmountField;
 
+    @FXML
+    private TextField maxAutoBidField;
+
+    @FXML
+    private TextField autoBidIncrementField;
+
+    @FXML
+    private Button setupAutoBidButton;
+
+    @FXML
+    private Button cancelAutoBidButton;
+
     /**
      * FXML can co: <Button fx:id="placeBidButton" onAction="#handlePlaceBid" ... />
      */
@@ -446,6 +458,76 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     private void handleBack() {
         cleanupLiveRoom();
         SceneNavigator.showAuctionList();
+    }
+
+    @FXML
+    private void handleSetupAutoBid() {
+        if (isBlank(auctionId)) {
+            showError("Khong tim thay phien dau gia.");
+            return;
+        }
+
+        Double maxBid = readAmount(maxAutoBidField, "Vui long nhap gia toi da.");
+        Double increment = readAmount(autoBidIncrementField, "Vui long nhap buoc tang auto-bid.");
+
+        if (maxBid == null || increment == null) {
+            return;
+        }
+
+        if (currentAuctionDetail != null) {
+            double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice();
+            if (maxBid < minimumAmount) {
+                showError("Gia toi da phai toi thieu la " + formatMoney(minimumAmount) + ".");
+                return;
+            }
+        }
+
+        SocketResponse response = auctionApi.setupAutoBid(auctionId, maxBid, increment);
+
+        if (response == null || !response.isSuccess()) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        showMessage(response.getMessage());
+    }
+    private Double readAmount(TextField field, String emptyMessage) {
+        if (field == null || isBlank(field.getText())) {
+            showError(emptyMessage);
+            return null;
+        }
+
+        try {
+            double amount = Double.parseDouble(field.getText().trim().replace(",", "."));
+            if (amount <= 0) {
+                showError("So tien phai lon hon 0.");
+                return null;
+            }
+            return amount;
+        } catch (NumberFormatException e) {
+            showError("So tien khong hop le.");
+            return null;
+        }
+    }
+
+    @FXML
+    private void handleCancelAutoBid() {
+        if (isBlank(auctionId)) {
+            showError("Khong tim thay phien dau gia.");
+            return;
+        }
+
+        SocketResponse response = auctionApi.cancelAutoBid(auctionId);
+
+        if (response == null || !response.isSuccess()) {
+            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+            return;
+        }
+
+        if (maxAutoBidField != null) maxAutoBidField.clear();
+        if (autoBidIncrementField != null) autoBidIncrementField.clear();
+
+        showMessage(response.getMessage());
     }
 
     /**

@@ -531,6 +531,7 @@ class AuctionServiceTest {
 
         AutoBidDAO autoBidDAO = mock(AutoBidDAO.class);
         injectField(auctionService, "autoBidDAO", autoBidDAO);
+        when(autoBidDAO.findActiveByUserAndAuction(any(Connection.class), eq(bidder.getId()), eq("auction-autobid"))).thenReturn(Optional.empty());
         when(autoBidDAO.insertOrUpdate(any(Connection.class), any(AutoBid.class))).thenReturn(true);
 
         // 🔥 FIX: Stub đầy đủ dependencies cho triggerAutoBids → executeBidInternal chạy thành công
@@ -543,7 +544,92 @@ class AuctionServiceTest {
         assertDoesNotThrow(() -> auctionService.setupAutoBid(bidder.getId(), "auction-autobid", 15000000.0, 200000.0));
 
         verify(autoBidDAO).insertOrUpdate(any(Connection.class), any(AutoBid.class));
+        verify(auctionDAO).updatePriceAndWinner(any(Connection.class), eq("auction-autobid"), eq(12200000.0), eq(bidder.getId()), anyString(), any(LocalDateTime.class), anyDouble());
+        assertEquals(12200000.0, auction.getCurrentPrice());
         assertEquals(1, auction.getAutoBidsQueue().size());
+    }
+
+    @Test
+    void setupAutoBidShouldNotBidAboveMaxBid() throws Exception {
+        Item item = sampleItem("item-autobid-max");
+        Auction auction = sampleAuction("auction-autobid-max", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auctionManage.addAuction(auction);
+
+        Bidder bidder = new Bidder("bidder-autobid-max", "khach", "k@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
+        setBidderOnline(bidder.getId(), true);
+
+        AutoBidDAO autoBidDAO = mock(AutoBidDAO.class);
+        injectField(auctionService, "autoBidDAO", autoBidDAO);
+        when(autoBidDAO.findActiveByUserAndAuction(any(Connection.class), eq(bidder.getId()), eq("auction-autobid-max"))).thenReturn(Optional.empty());
+        when(autoBidDAO.insertOrUpdate(any(Connection.class), any(AutoBid.class))).thenReturn(true);
+
+        when(userDAO.freezeMoney(any(Connection.class), eq(bidder.getId()), anyDouble())).thenReturn(true);
+        when(auctionDAO.updatePriceAndWinner(any(Connection.class), eq("auction-autobid-max"), anyDouble(), eq(bidder.getId()), anyString(), any(LocalDateTime.class), anyDouble())).thenReturn(true);
+        when(bidTransactionDAO.insertBid(any(Connection.class), any())).thenReturn(true);
+
+        assertDoesNotThrow(() -> auctionService.setupAutoBid(bidder.getId(), "auction-autobid-max", 12300000.0, 1000000.0));
+
+        verify(auctionDAO).updatePriceAndWinner(any(Connection.class), eq("auction-autobid-max"), eq(12300000.0), eq(bidder.getId()), anyString(), any(LocalDateTime.class), anyDouble());
+        assertEquals(12300000.0, auction.getCurrentPrice());
+    }
+
+    @Test
+    void autoBidShouldKeepEarlierRegistrationAheadWhenMaxBidTies() throws Exception {
+        Item item = sampleItem("item-autobid-tie");
+        Auction auction = sampleAuction("auction-autobid-tie", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auctionManage.addAuction(auction);
+
+        Bidder manualBidder = new Bidder("bidder-manual-tie", "manual", "m@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        Bidder earlierBidder = new Bidder("bidder-earlier-auto", "earlier", "e@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        Bidder laterBidder = new Bidder("bidder-later-auto", "later", "l@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+
+        when(userDAO.findById(manualBidder.getId())).thenReturn(Optional.of(manualBidder));
+        when(userDAO.findById(earlierBidder.getId())).thenReturn(Optional.of(earlierBidder));
+        when(userDAO.findById(laterBidder.getId())).thenReturn(Optional.of(laterBidder));
+        setBidderOnline(manualBidder.getId(), true);
+
+        LocalDateTime baseTime = LocalDateTime.now().minusMinutes(10);
+        auction.addOrUpdateAutoBidInRam(new AutoBid("auto-earlier", earlierBidder.getId(), auction.getId(), 12300000.0, 100000.0, true, baseTime));
+        auction.addOrUpdateAutoBidInRam(new AutoBid("auto-later", laterBidder.getId(), auction.getId(), 12300000.0, 1000000.0, true, baseTime.plusMinutes(1)));
+
+        when(userDAO.freezeMoney(any(Connection.class), anyString(), anyDouble())).thenReturn(true);
+        when(auctionDAO.updatePriceAndWinner(any(Connection.class), eq("auction-autobid-tie"), anyDouble(), anyString(), anyString(), any(LocalDateTime.class), anyDouble())).thenReturn(true);
+        when(bidTransactionDAO.insertBid(any(Connection.class), any())).thenReturn(true);
+
+        assertDoesNotThrow(() -> auctionService.processBid(manualBidder.getId(), "auction-autobid-tie", 12100000.0));
+
+        assertEquals(earlierBidder.getId(), auction.getHighestBidderId());
+    }
+
+    @Test
+    void setupAutoBidShouldKeepOriginalPriorityWhenUpdatingActiveConfig() throws Exception {
+        Item item = sampleItem("item-autobid-update");
+        Auction auction = sampleAuction("auction-autobid-update", item);
+        auction.setStatus(AuctionStatus.OPEN);
+        auctionManage.addAuction(auction);
+
+        Bidder bidder = new Bidder("bidder-autobid-update", "khach", "k@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
+
+        LocalDateTime originalCreatedAt = LocalDateTime.now().minusMinutes(30);
+        AutoBid existingAutoBid = new AutoBid("existing-autobid-id", bidder.getId(), "auction-autobid-update", 13000000.0, 100000.0, true, originalCreatedAt);
+
+        AutoBidDAO autoBidDAO = mock(AutoBidDAO.class);
+        injectField(auctionService, "autoBidDAO", autoBidDAO);
+        when(autoBidDAO.findActiveByUserAndAuction(any(Connection.class), eq(bidder.getId()), eq("auction-autobid-update"))).thenReturn(Optional.of(existingAutoBid));
+        when(autoBidDAO.insertOrUpdate(any(Connection.class), any(AutoBid.class))).thenReturn(true);
+
+        assertDoesNotThrow(() -> auctionService.setupAutoBid(bidder.getId(), "auction-autobid-update", 15000000.0, 300000.0));
+
+        org.mockito.ArgumentCaptor<AutoBid> captor = org.mockito.ArgumentCaptor.forClass(AutoBid.class);
+        verify(autoBidDAO).insertOrUpdate(any(Connection.class), captor.capture());
+        assertEquals(existingAutoBid.getId(), captor.getValue().getId());
+        assertEquals(originalCreatedAt, captor.getValue().getCreatedAt());
+        assertEquals(15000000.0, captor.getValue().getMaxBid());
+        assertEquals(300000.0, captor.getValue().getIncrement());
     }
 
     @Test

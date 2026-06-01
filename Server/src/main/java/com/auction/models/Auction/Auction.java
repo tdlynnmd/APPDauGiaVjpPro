@@ -13,6 +13,10 @@ import java.util.PriorityQueue;
 import java.util.Comparator;
 
 public class Auction extends Entity implements Serializable {
+    public static final Comparator<AutoBid> AUTO_BID_PRIORITY =
+            Comparator.comparingDouble(AutoBid::getMaxBid).reversed()
+                    .thenComparing(AutoBid::getCreatedAt);
+
     private String itemId;              // Foreign Key
     private String sellerId;            // Track người bán
     private String highestBidderId;     // Foreign Key
@@ -32,13 +36,7 @@ public class Auction extends Entity implements Serializable {
 
     private transient Item item;                  // Load on-demand từ DB
     private transient Bidder highestBidder;       // Load on-demand từ DB
-    private transient PriorityQueue<AutoBid> autoBidsQueue = new PriorityQueue<>(
-        (a, b) -> {
-            int comp = Double.compare(b.getMaxBid(), a.getMaxBid());
-            if (comp != 0) return comp;
-            return a.getCreatedAt().compareTo(b.getCreatedAt());
-        }
-    );
+    private transient PriorityQueue<AutoBid> autoBidsQueue = new PriorityQueue<>(AUTO_BID_PRIORITY);
 
     // Cấu hình Anti-sniping
     private static final int THRESHOLD_SECONDS = 30; // Nếu thầu trong 30s cuối
@@ -256,11 +254,7 @@ public class Auction extends Entity implements Serializable {
 
     public synchronized void addOrUpdateAutoBidInRam(AutoBid autoBid) {
         if (autoBidsQueue == null) {
-            autoBidsQueue = new PriorityQueue<>((a, b) -> {
-                int comp = Double.compare(b.getMaxBid(), a.getMaxBid());
-                if (comp != 0) return comp;
-                return a.getCreatedAt().compareTo(b.getCreatedAt());
-            });
+            autoBidsQueue = new PriorityQueue<>(AUTO_BID_PRIORITY);
         }
         autoBidsQueue.removeIf(ab -> ab.getUserId().equals(autoBid.getUserId()));
         if (autoBid.isActive()) {
@@ -276,11 +270,7 @@ public class Auction extends Entity implements Serializable {
 
     public synchronized PriorityQueue<AutoBid> getAutoBidsQueue() {
         if (autoBidsQueue == null) {
-            autoBidsQueue = new PriorityQueue<>((a, b) -> {
-                int comp = Double.compare(b.getMaxBid(), a.getMaxBid());
-                if (comp != 0) return comp;
-                return a.getCreatedAt().compareTo(b.getCreatedAt());
-            });
+            autoBidsQueue = new PriorityQueue<>(AUTO_BID_PRIORITY);
         }
         return autoBidsQueue;
     }

@@ -14,7 +14,8 @@ public class AutoBidDAOImpl implements AutoBidDAO {
     public boolean insertOrUpdate(Connection conn, AutoBid autoBid) throws SQLException {
         String sql = "INSERT INTO auto_bids (id, user_id, auction_id, max_bid, increment_amount, is_active, created_at) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE max_bid = VALUES(max_bid), increment_amount = VALUES(increment_amount), is_active = VALUES(is_active)";
+                "ON DUPLICATE KEY UPDATE id = VALUES(id), max_bid = VALUES(max_bid), increment_amount = VALUES(increment_amount), " +
+                "is_active = VALUES(is_active), created_at = VALUES(created_at)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, autoBid.getId());
