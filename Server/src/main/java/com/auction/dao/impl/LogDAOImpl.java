@@ -50,7 +50,8 @@ public class LogDAOImpl implements LogDAO {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    java.time.LocalDateTime time = rs.getTimestamp("created_at").toLocalDateTime();
+                    Timestamp timeTs = rs.getTimestamp("created_at");
+                    java.time.LocalDateTime time = timeTs != null ? timeTs.toLocalDateTime() : null;
 
                     ActionLogDTO dto = new ActionLogDTO(
                             rs.getString("id"),

@@ -142,10 +142,17 @@ public class AuctionDAOImpl implements AuctionDAO {
         double currentPrice = rs.getDouble("current_price");
         double stepPrice = rs.getDouble("step_price");
 
-        LocalDateTime startTime = rs.getTimestamp("start_time").toLocalDateTime();
-        LocalDateTime endTime = rs.getTimestamp("end_time").toLocalDateTime();
-        LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
+        Timestamp startTimeTs = rs.getTimestamp("start_time");
+        LocalDateTime startTime = startTimeTs != null ? startTimeTs.toLocalDateTime() : null;
+
+        Timestamp endTimeTs = rs.getTimestamp("end_time");
+        LocalDateTime endTime = endTimeTs != null ? endTimeTs.toLocalDateTime() : null;
+
+        Timestamp createdAtTs = rs.getTimestamp("created_at");
+        LocalDateTime createdAt = createdAtTs != null ? createdAtTs.toLocalDateTime() : null;
+
+        Timestamp updatedAtTs = rs.getTimestamp("updated_at");
+        LocalDateTime updatedAt = updatedAtTs != null ? updatedAtTs.toLocalDateTime() : null;
 
         AuctionStatus status = AuctionStatus.valueOf(rs.getString("status"));
 

@@ -205,7 +205,8 @@ public class ItemDAOImpl implements ItemDAO {
         String sellerId = rs.getString("seller_id");
         String imageUrl = rs.getString("image_url");
         ItemStatus status = ItemStatus.valueOf(rs.getString("status"));
-        java.time.LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
+        Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
+        java.time.LocalDateTime createdAt = createdAtTimestamp != null ? createdAtTimestamp.toLocalDateTime() : null;
         String typeStr = rs.getString("item_type");
 
         switch (typeStr) {

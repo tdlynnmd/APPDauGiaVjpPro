@@ -76,7 +76,8 @@ public class AutoBidDAOImpl implements AutoBidDAO {
         double maxBid = rs.getDouble("max_bid");
         double increment = rs.getDouble("increment_amount");
         boolean isActive = rs.getBoolean("is_active");
-        LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
+        Timestamp createdAtTs = rs.getTimestamp("created_at");
+        LocalDateTime createdAt = createdAtTs != null ? createdAtTs.toLocalDateTime() : null;
 
         return new AutoBid(id, userId, auctionId, maxBid, increment, isActive, createdAt);
     }
