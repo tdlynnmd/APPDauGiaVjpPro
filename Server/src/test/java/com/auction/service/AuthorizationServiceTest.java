@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,62 +23,75 @@ class AuthorizationServiceTest {
         authorizationService = new AuthorizationService();
     }
 
-    // Tạo session đã đăng nhập: phải có cả userId và role
+    // Tạo session chưa login
+    private ClientSession anonymousSession() {
+        return new ClientSession((Socket) null, new PrintWriter(System.out));
+    }
+
+    // Tạo session đã login với role cụ thể
     private ClientSession loggedInSession(String userId, UserRole role) {
-        ClientSession session = new ClientSession(null, new PrintWriter(System.out));
+        ClientSession session = new ClientSession((Socket) null, new PrintWriter(System.out));
         session.setUserId(userId);
         session.setRole(role);
         return session;
     }
 
-    // Session chưa đăng nhập: userId và role đều null
-    private ClientSession notLoggedInSession() {
-        return new ClientSession(null, new PrintWriter(System.out));
-    }
-
     // Check đúng mã lỗi AuthorizationException
-    private void assertAuthorizationError(
-            AuthorizationException exception,
-            AuthorizationErrorCode expectedError
-    ) {
+    private void assertAuthorizationError(AuthorizationException exception, AuthorizationErrorCode expectedError) {
         assertEquals(expectedError.getCode(), exception.getErrorCode());
     }
 
     // =========================================================
-    // ACTION NULL / BLANK
+    // Invalid action
     // =========================================================
 
+    // action null phải bị chặn ACTION_UNAUTHORIZED
     @Test
     void canAccessShouldThrowWhenActionIsNull() {
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(null, null);
+            authorizationService.canAccess(null, anonymousSession());
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
     }
 
-    @Test
-    void canAccessShouldThrowWhenActionIsEmpty() {
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess("", null);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
-    }
-
+    // action rỗng phải bị chặn ACTION_UNAUTHORIZED
     @Test
     void canAccessShouldThrowWhenActionIsBlank() {
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess("   ", null);
+            authorizationService.canAccess("   ", anonymousSession());
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
     }
 
+    // action lạ chưa cấu hình phải bị chặn ACTION_UNAUTHORIZED
+    @Test
+    void canAccessShouldThrowWhenActionIsUnknown() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
+
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+            authorizationService.canAccess("UNKNOWN_ACTION", bidder);
+        });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
+    }
+
+    // action phân biệt hoa thường, login viết thường không được coi là LOGIN
+    @Test
+    void canAccessShouldBeCaseSensitive() {
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+            authorizationService.canAccess("login", anonymousSession());
+        });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.NOT_AUTHENTICATED);
+    }
+
     // =========================================================
-    // PUBLIC ACTIONS: LOGIN / REGISTER
+    // Public actions
     // =========================================================
 
+    // LOGIN không cần session
     @Test
     void canAccessShouldAllowLoginWithoutSession() {
         assertDoesNotThrow(() -> {
@@ -84,6 +99,7 @@ class AuthorizationServiceTest {
         });
     }
 
+    // REGISTER không cần session
     @Test
     void canAccessShouldAllowRegisterWithoutSession() {
         assertDoesNotThrow(() -> {
@@ -91,277 +107,380 @@ class AuthorizationServiceTest {
         });
     }
 
+    // PING không cần session
     @Test
-    void canAccessShouldAllowLoginWithNotLoggedInSession() {
-        ClientSession session = notLoggedInSession();
-
+    void canAccessShouldAllowPingWithoutSession() {
         assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.LOGIN.name(), session);
+            authorizationService.canAccess(ActionType.PING.name(), null);
         });
     }
 
+    // Public actions vẫn được cho qua nếu session chưa login
+    @Test
+    void canAccessShouldAllowPublicActionsForAnonymousSession() {
+        ClientSession session = anonymousSession();
+
+        assertDoesNotThrow(() -> authorizationService.canAccess(ActionType.LOGIN.name(), session));
+        assertDoesNotThrow(() -> authorizationService.canAccess(ActionType.REGISTER.name(), session));
+        assertDoesNotThrow(() -> authorizationService.canAccess(ActionType.PING.name(), session));
+    }
+
     // =========================================================
-    // LOGIN REQUIRED ACTIONS
+    // Login required actions
     // =========================================================
 
+    // LOGOUT chưa login phải bị chặn NOT_AUTHENTICATED
     @Test
-    void canAccessShouldThrowNotAuthenticatedWhenLogoutWithNullSession() {
+    void canAccessShouldDenyLogoutWhenNotLoggedIn() {
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.LOGOUT.name(), null);
+            authorizationService.canAccess(ActionType.LOGOUT.name(), anonymousSession());
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.NOT_AUTHENTICATED);
     }
 
+    // Các action chỉ cần login thì BIDDER/SELLER/ADMIN đều được phép
     @Test
-    void canAccessShouldThrowNotAuthenticatedWhenLogoutWithNotLoggedInSession() {
-        ClientSession session = notLoggedInSession();
+    void canAccessShouldAllowLoginRequiredActionsForAllLoggedInRoles() {
+        List<ActionType> loginRequiredActions = List.of(
+                ActionType.LOGOUT,
+                ActionType.GET_ACTIVE_AUCTIONS,
+                ActionType.GET_AUCTION_DETAIL,
+                ActionType.GET_USER_PROFILE,
+                ActionType.GET_AUCTION_BID_HISTORY
+        );
 
+        List<ClientSession> sessions = List.of(
+                loggedInSession("bidder-1", UserRole.BIDDER),
+                loggedInSession("seller-1", UserRole.SELLER),
+                loggedInSession("admin-1", UserRole.ADMIN)
+        );
+
+        for (ActionType action : loginRequiredActions) {
+            for (ClientSession session : sessions) {
+                assertDoesNotThrow(() -> {
+                    authorizationService.canAccess(action.name(), session);
+                }, "Action should be allowed: " + action + " for role " + session.getRole());
+            }
+        }
+    }
+
+    // Login required action với session null phải bị chặn
+    @Test
+    void canAccessShouldDenyLoginRequiredActionWhenSessionIsNull() {
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.LOGOUT.name(), session);
+            authorizationService.canAccess(ActionType.GET_ACTIVE_AUCTIONS.name(), null);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.NOT_AUTHENTICATED);
     }
 
+    // Có userId nhưng chưa có role thì vẫn chưa được coi là login
     @Test
-    void canAccessShouldAllowLogoutWhenBidderLoggedIn() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.LOGOUT.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldAllowGetActiveAuctionsWhenUserLoggedIn() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.GET_ACTIVE_AUCTIONS.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldAllowGetAuctionDetailWhenUserLoggedIn() {
-        ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.GET_AUCTION_DETAIL.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldThrowNotAuthenticatedForAuctionDetailWhenNotLoggedIn() {
-        ClientSession session = notLoggedInSession();
+    void canAccessShouldDenyWhenSessionHasUserIdButNoRole() {
+        ClientSession session = anonymousSession();
+        session.setUserId("user-1");
 
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.GET_AUCTION_DETAIL.name(), session);
+            authorizationService.canAccess(ActionType.GET_USER_PROFILE.name(), session);
+        });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.NOT_AUTHENTICATED);
+    }
+
+    // Có role nhưng chưa có userId thì vẫn chưa được coi là login
+    @Test
+    void canAccessShouldDenyWhenSessionHasRoleButNoUserId() {
+        ClientSession session = anonymousSession();
+        session.setRole(UserRole.BIDDER);
+
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+            authorizationService.canAccess(ActionType.GET_USER_PROFILE.name(), session);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.NOT_AUTHENTICATED);
     }
 
     // =========================================================
-    // SELLER / ADMIN ITEM PERMISSIONS
+    // Seller actions
     // =========================================================
 
+    // SELLER được phép gọi các action của seller
     @Test
-    void canAccessShouldAllowSellerToCreateItem() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
+    void canAccessShouldAllowSellerActionsForSeller() {
+        ClientSession seller = loggedInSession("seller-1", UserRole.SELLER);
 
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.CREATE_ITEM.name(), session);
-        });
+        List<ActionType> sellerActions = List.of(
+                ActionType.CREATE_ITEM,
+                ActionType.UPDATE_ITEM,
+                ActionType.GET_SELLER_ITEMS,
+                ActionType.GET_ITEM_DETAIL,
+                ActionType.CREATE_AUCTION,
+                ActionType.SELLER_CANCEL_AUCTION,
+                ActionType.SELLER_DELETE_ITEM
+        );
+
+        for (ActionType action : sellerActions) {
+            assertDoesNotThrow(() -> {
+                authorizationService.canAccess(action.name(), seller);
+            }, "Seller should be allowed: " + action);
+        }
     }
 
+    // BIDDER không được gọi action seller
     @Test
-    void canAccessShouldDenyAdminToCreateItem() { // 🔥 SỬA: Đổi từ Allow sang Deny để khớp Whitelist mới
-        ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
+    void canAccessShouldDenySellerActionsForBidder() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
+
+        List<ActionType> sellerOnlyActions = List.of(
+                ActionType.CREATE_ITEM,
+                ActionType.UPDATE_ITEM,
+                ActionType.GET_SELLER_ITEMS,
+                ActionType.CREATE_AUCTION,
+                ActionType.SELLER_CANCEL_AUCTION,
+                ActionType.SELLER_DELETE_ITEM
+        );
+
+        for (ActionType action : sellerOnlyActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), bidder);
+            }, "Bidder should be denied: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // ADMIN không được gọi các action seller-only
+    @Test
+    void canAccessShouldDenySellerOnlyActionsForAdmin() {
+        ClientSession admin = loggedInSession("admin-1", UserRole.ADMIN);
+
+        List<ActionType> sellerOnlyActions = List.of(
+                ActionType.CREATE_ITEM,
+                ActionType.UPDATE_ITEM,
+                ActionType.GET_SELLER_ITEMS,
+                ActionType.CREATE_AUCTION,
+                ActionType.SELLER_CANCEL_AUCTION,
+                ActionType.SELLER_DELETE_ITEM
+        );
+
+        for (ActionType action : sellerOnlyActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), admin);
+            }, "Admin should be denied seller-only action: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // GET_ITEM_DETAIL cho phép cả SELLER và ADMIN
+    @Test
+    void canAccessShouldAllowGetItemDetailForSellerAndAdmin() {
+        ClientSession seller = loggedInSession("seller-1", UserRole.SELLER);
+        ClientSession admin = loggedInSession("admin-1", UserRole.ADMIN);
+
+        assertDoesNotThrow(() -> authorizationService.canAccess(ActionType.GET_ITEM_DETAIL.name(), seller));
+        assertDoesNotThrow(() -> authorizationService.canAccess(ActionType.GET_ITEM_DETAIL.name(), admin));
+    }
+
+    // GET_ITEM_DETAIL không cho BIDDER
+    @Test
+    void canAccessShouldDenyGetItemDetailForBidder() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
 
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.CREATE_ITEM.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldDenyBidderToCreateItem() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.CREATE_ITEM.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldAllowSellerToUpdateItem() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.UPDATE_ITEM.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldDenyBidderToUpdateItem() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.UPDATE_ITEM.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldAllowSellerToGetSellerItems() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.GET_SELLER_ITEMS.name(), session);
-        });
-    }
-
-    // =========================================================
-    // CREATE AUCTION / CANCEL AUCTION
-    // =========================================================
-
-    @Test
-    void canAccessShouldAllowSellerToCreateAuction() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.CREATE_AUCTION.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldDenyAdminToCreateAuction() { // 🔥 SỬA: Đổi từ Allow sang Deny để khớp Whitelist mới
-        ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.CREATE_AUCTION.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldDenyBidderToCreateAuction() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.CREATE_AUCTION.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldAllowAdminToCancelAuction() {
-        ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.CMD_ADMIN_CANCEL_AUCTION.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldAllowSellerToCancelAuction() { // 🔥 SỬA: Seller ĐƯỢC PHÉP tự hủy phòng chính chủ
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.SELLER_CANCEL_AUCTION.name(), session);
-        });
-    }
-
-    // =========================================================
-    // BIDDER PERMISSIONS
-    // =========================================================
-
-    @Test
-    void canAccessShouldAllowBidderToPlaceBid() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.PLACE_BID.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldDenySellerToPlaceBid() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.PLACE_BID.name(), session);
-        });
-
-        assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
-    }
-
-    @Test
-    void canAccessShouldAllowBidderToLiveEntered() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.LIVE_ENTERED.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldAllowBidderToLiveExited() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.LIVE_EXITED.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldAllowBidderToSubscribeAuction() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
-
-        assertDoesNotThrow(() -> {
-            authorizationService.canAccess(ActionType.AUCTION_SUBSCRIBED.name(), session);
-        });
-    }
-
-    @Test
-    void canAccessShouldDenySellerToSubscribeAuction() {
-        ClientSession session = loggedInSession("seller-1", UserRole.SELLER);
-
-        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.AUCTION_SUBSCRIBED.name(), session);
+            authorizationService.canAccess(ActionType.GET_ITEM_DETAIL.name(), bidder);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
     }
 
     // =========================================================
-    // UNCONFIGURED ACTION
+    // Bidder actions
     // =========================================================
 
+    // BIDDER được phép gọi các action bidder
     @Test
-    void canAccessShouldThrowWhenActionIsNotConfigured() {
-        ClientSession session = loggedInSession("bidder-1", UserRole.BIDDER);
+    void canAccessShouldAllowBidderActionsForBidder() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
+
+        List<ActionType> bidderActions = List.of(
+                ActionType.DEPOSIT_MONEY,
+                ActionType.WITHDRAW_MONEY,
+                ActionType.PLACE_BID,
+                ActionType.LIVE_ENTERED,
+                ActionType.LIVE_EXITED,
+                ActionType.AUCTION_SUBSCRIBED,
+                ActionType.AUCTION_UNSUBSCRIBED,
+                ActionType.GET_MY_BID_HISTORY,
+                ActionType.SETUP_AUTO_BID,
+                ActionType.CANCEL_AUTO_BID
+        );
+
+        for (ActionType action : bidderActions) {
+            assertDoesNotThrow(() -> {
+                authorizationService.canAccess(action.name(), bidder);
+            }, "Bidder should be allowed: " + action);
+        }
+    }
+
+    // SELLER không được gọi action bidder
+    @Test
+    void canAccessShouldDenyBidderActionsForSeller() {
+        ClientSession seller = loggedInSession("seller-1", UserRole.SELLER);
+
+        List<ActionType> bidderActions = List.of(
+                ActionType.DEPOSIT_MONEY,
+                ActionType.WITHDRAW_MONEY,
+                ActionType.PLACE_BID,
+                ActionType.LIVE_ENTERED,
+                ActionType.LIVE_EXITED,
+                ActionType.AUCTION_SUBSCRIBED,
+                ActionType.AUCTION_UNSUBSCRIBED,
+                ActionType.GET_MY_BID_HISTORY,
+                ActionType.SETUP_AUTO_BID,
+                ActionType.CANCEL_AUTO_BID
+        );
+
+        for (ActionType action : bidderActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), seller);
+            }, "Seller should be denied: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // ADMIN không được gọi action bidder
+    @Test
+    void canAccessShouldDenyBidderActionsForAdmin() {
+        ClientSession admin = loggedInSession("admin-1", UserRole.ADMIN);
+
+        List<ActionType> bidderActions = List.of(
+                ActionType.DEPOSIT_MONEY,
+                ActionType.WITHDRAW_MONEY,
+                ActionType.PLACE_BID,
+                ActionType.LIVE_ENTERED,
+                ActionType.LIVE_EXITED,
+                ActionType.AUCTION_SUBSCRIBED,
+                ActionType.AUCTION_UNSUBSCRIBED,
+                ActionType.GET_MY_BID_HISTORY,
+                ActionType.SETUP_AUTO_BID,
+                ActionType.CANCEL_AUTO_BID
+        );
+
+        for (ActionType action : bidderActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), admin);
+            }, "Admin should be denied bidder action: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // =========================================================
+    // Admin actions
+    // =========================================================
+
+    // ADMIN được phép gọi các action admin
+    @Test
+    void canAccessShouldAllowAdminActionsForAdmin() {
+        ClientSession admin = loggedInSession("admin-1", UserRole.ADMIN);
+
+        List<ActionType> adminActions = List.of(
+                ActionType.CMD_ADMIN_GET_USERS,
+                ActionType.CMD_ADMIN_LOCK_USER,
+                ActionType.CMD_ADMIN_CANCEL_AUCTION,
+                ActionType.CMD_ADMIN_DELETE_ITEM,
+                ActionType.CMD_ADMIN_GET_LOGS
+        );
+
+        for (ActionType action : adminActions) {
+            assertDoesNotThrow(() -> {
+                authorizationService.canAccess(action.name(), admin);
+            }, "Admin should be allowed: " + action);
+        }
+    }
+
+    // BIDDER không được gọi action admin
+    @Test
+    void canAccessShouldDenyAdminActionsForBidder() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
+
+        List<ActionType> adminActions = List.of(
+                ActionType.CMD_ADMIN_GET_USERS,
+                ActionType.CMD_ADMIN_LOCK_USER,
+                ActionType.CMD_ADMIN_CANCEL_AUCTION,
+                ActionType.CMD_ADMIN_DELETE_ITEM,
+                ActionType.CMD_ADMIN_GET_LOGS
+        );
+
+        for (ActionType action : adminActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), bidder);
+            }, "Bidder should be denied admin action: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // SELLER không được gọi action admin
+    @Test
+    void canAccessShouldDenyAdminActionsForSeller() {
+        ClientSession seller = loggedInSession("seller-1", UserRole.SELLER);
+
+        List<ActionType> adminActions = List.of(
+                ActionType.CMD_ADMIN_GET_USERS,
+                ActionType.CMD_ADMIN_LOCK_USER,
+                ActionType.CMD_ADMIN_CANCEL_AUCTION,
+                ActionType.CMD_ADMIN_DELETE_ITEM,
+                ActionType.CMD_ADMIN_GET_LOGS
+        );
+
+        for (ActionType action : adminActions) {
+            AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+                authorizationService.canAccess(action.name(), seller);
+            }, "Seller should be denied admin action: " + action);
+
+            assertAuthorizationError(exception, AuthorizationErrorCode.ROLE_ACCESS_DENIED);
+        }
+    }
+
+    // =========================================================
+    // Response/event actions not configured
+    // =========================================================
+
+    // BID_UPDATE là action server gửi về client, client không được chủ động gọi lên
+    @Test
+    void canAccessShouldDenyBidUpdateAsClientRequest() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
 
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess(ActionType.BID_UPDATE.name(), session);
+            authorizationService.canAccess(ActionType.BID_UPDATE.name(), bidder);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
     }
 
+    // TIME_UPDATE là action server gửi về client, client không được chủ động gọi lên
     @Test
-    void canAccessShouldThrowWhenActionIsUnknownString() {
-        ClientSession session = loggedInSession("admin-1", UserRole.ADMIN);
+    void canAccessShouldDenyTimeUpdateAsClientRequest() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
 
         AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
-            authorizationService.canAccess("UNKNOWN_ACTION", session);
+            authorizationService.canAccess(ActionType.TIME_UPDATE.name(), bidder);
+        });
+
+        assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
+    }
+
+    // STATUS_UPDATED là action server gửi về client, client không được chủ động gọi lên
+    @Test
+    void canAccessShouldDenyStatusUpdatedAsClientRequest() {
+        ClientSession bidder = loggedInSession("bidder-1", UserRole.BIDDER);
+
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
+            authorizationService.canAccess(ActionType.STATUS_UPDATED.name(), bidder);
         });
 
         assertAuthorizationError(exception, AuthorizationErrorCode.ACTION_UNAUTHORIZED);
