@@ -1,126 +1,201 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
-<StackPane fx:id="rootContainer" prefHeight="720.0" prefWidth="1280.0" styleClass="sim-root-container" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
+<StackPane fx:id="rootContainer" prefHeight="750.0" prefWidth="1200.0" styleClass="sim-container" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://fxml.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
     <children>
-        <VBox spacing="0.0" styleClass="sim-card-main" StackPane.alignment="CENTER">
-            <children>
-                <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" styleClass="top-bar-box">
+        <BorderPane>
+            <top>
+                <VBox spacing="8.0" styleClass="sim-top-bar">
                     <children>
-                        <Button mnemonicParsing="false" onAction="#handleBack" prefHeight="35.0" prefWidth="134.0" styleClass="btn-back-solid" text="⬅ Quay lại" />
-                        <Label fx:id="dynamicTitleLabel" styleClass="sim-label-title" text="ĐĂNG KÝ PHIÊN ĐẤU GIÁ MỚI">
-                            <font>
-                                <Font name="System Bold" size="18.0" />
-                            </font>
-                        </Label>
-                        <Region HBox.hgrow="ALWAYS" />
-                    </children>
-                    <padding>
-                        <Insets left="20.0" right="20.0" />
-                    </padding>
-                </HBox>
-
-                <ScrollPane fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-viewport-background-color: transparent;" VBox.vgrow="ALWAYS">
-                    <content>
-                        <HBox alignment="CENTER" styleClass="content-pane">
+                        <HBox alignment="CENTER_LEFT" spacing="15.0">
                             <children>
-                                <VBox maxWidth="650.0" prefWidth="650.0" spacing="25.0" HBox.hgrow="ALWAYS">
+                                <Button onAction="#handleBack" text="← Quay lại" styleClass="sim-btn-secondary" />
+                                <Label fx:id="dynamicTitleLabel" styleClass="sim-screen-title" text="QUẢN LÝ VẬT PHẨM" />
+                                <Pane HBox.hgrow="ALWAYS" />
+
+                                <Button onAction="#handleOpenFormForCreate" text="➕ Thêm Vật Phẩm Mới" styleClass="sim-btn-action" />
+                                <Button onAction="#handleOpenFormForEdit" text="📝 Sửa Vật Phẩm" styleClass="sim-btn-action" />
+                                <Button onAction="#handleOpenFormForAuction" text="🔨 Tạo Phiên Đấu Giá" styleClass="sim-btn-action" />
+                                <Button onAction="#handleDeleteItem" text="🚮 Xóa Vật Phẩm" styleClass="sim-btn-danger" />
+                                <Button onAction="#handleLoadSellerItems" text="🔄 Làm mới bảng" styleClass="sim-btn-secondary" />
+                            </children>
+                        </HBox>
+                        <HBox alignment="CENTER_LEFT">
+                            <children>
+                                <Pane HBox.hgrow="ALWAYS" />
+                                <Label fx:id="messageLabel" styleClass="sim-status-label" text="Hệ thống sẵn sàng." />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </top>
+
+            <center>
+                <HBox spacing="10.0" style="-fx-padding: 10;">
+                    <children>
+                        <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                            <children>
+                                <TableView fx:id="sellerItemsTable" styleClass="sim-table" VBox.vgrow="ALWAYS">
+                                    <placeholder>
+                                        <Label text="Không có sản phẩm nào trong danh sách" />
+                                    </placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="itemIdColumn" prefWidth="100.0" text="Mã Sản Phẩm" />
+                                        <TableColumn fx:id="itemNameColumn" prefWidth="220.0" text="Tên Vật Phẩm" />
+                                        <TableColumn fx:id="itemTypeColumn" prefWidth="100.0" text="Phân Loại" />
+                                        <TableColumn fx:id="startingPriceColumn" prefWidth="130.0" text="Giá Khởi Điểm" />
+                                        <TableColumn fx:id="statusColumn" prefWidth="100.0" text="Trạng Thái" />
+                                    </columns>
+                                </TableView>
+                            </children>
+                        </VBox>
+
+                        <ScrollPane fx:id="rightSplitPaneContainer" fitToWidth="true" maxWidth="450.0" minWidth="0" prefWidth="420.0" styleClass="sim-scroll-pane">
+                            <content>
+                                <VBox spacing="15.0" style="-fx-padding: 10;">
                                     <children>
-                                        <VBox spacing="30.0">
+
+                                        <VBox fx:id="formCreateContainer" spacing="12.0" styleClass="sim-card">
                                             <children>
-                                                <VBox prefWidth="650.0" spacing="8.0">
+                                                <HBox alignment="CENTER_LEFT">
                                                     <children>
-                                                        <Label fx:id="formTitleLabel" styleClass="sim-form-header" text="Thông Tin Phiên Đấu Giá" textFill="WHITE">
-                                                            <font>
-                                                                <Font name="System Bold" size="22.0" />
-                                                            </font>
-                                                        </Label>
-                                                        <HBox spacing="20.0">
-                                                            <children>
-                                                                <Label fx:id="selectedItemIdLabel" styleClass="sim-label-title" text="Item ID: Chưa chọn" />
-                                                                <Label fx:id="itemNameLabel" styleClass="sim-label-title" text="Vật phẩm: Nhập thủ công bên dưới" />
-                                                            </children>
-                                                        </HBox>
+                                                        <Label styleClass="sim-form-title" text="✨ TẠO MỚI VẬT PHẨM" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button onAction="#handleCloseCreateForm" text="✕" styleClass="sim-btn-close" />
                                                     </children>
-                                                </VBox>
+                                                </HBox>
+                                                <Separator styleClass="sim-separator"/>
+                                                <Label text="Loại hàng hóa (*):" styleClass="sim-field-label" />
+                                                <ComboBox fx:id="itemTypeComboBox" maxWidth="Infinity" styleClass="sim-combobox" />
+                                                <Label text="Tên sản phẩm (*):" styleClass="sim-field-label" />
+                                                <TextField fx:id="itemNameField" styleClass="sim-input" />
+                                                <Label text="Giá khởi điểm ($) (*):" styleClass="sim-field-label" />
+                                                <TextField fx:id="startingPriceField" styleClass="sim-input" />
+                                                <Label text="Năm sản xuất (*):" styleClass="sim-field-label" />
+                                                <TextField fx:id="yearCreatedField" styleClass="sim-input" />
+                                                <Label text="Mô tả sản phẩm:" styleClass="sim-field-label" />
+                                                <TextField fx:id="descriptionField" styleClass="sim-input" />
+                                                <Label text="Đường dẫn hình ảnh (URL):" styleClass="sim-field-label" />
+                                                <TextField fx:id="imageUrlField" styleClass="sim-input" />
 
-                                                <VBox spacing="15.0">
+                                                <VBox fx:id="artFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Họa sĩ (*):" styleClass="sim-field-label" /><TextField fx:id="painterField" styleClass="sim-input" /><Label text="Trường phái (*):" styleClass="sim-field-label" /><TextField fx:id="artStyleField" styleClass="sim-input" /></children></VBox>
+                                                <VBox fx:id="electronicsFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Thương hiệu (*):" styleClass="sim-field-label" /><TextField fx:id="brandField" styleClass="sim-input" /><Label text="Bảo hành (tháng) (*):" styleClass="sim-field-label" /><TextField fx:id="warrantyMonthsField" styleClass="sim-input" /></children></VBox>
+                                                <VBox fx:id="vehicleFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Model (*):" styleClass="sim-field-label" /><TextField fx:id="modelField" styleClass="sim-input" /><Label text="Động cơ (*):" styleClass="sim-field-label" /><TextField fx:id="engineTypeField" styleClass="sim-input" /><Label text="Biển số (*):" styleClass="sim-field-label" /><TextField fx:id="licensePlateField" styleClass="sim-input" /><Label text="Số km (*):" styleClass="sim-field-label" /><TextField fx:id="kmAgeField" styleClass="sim-input" /></children></VBox>
+
+                                                <HBox alignment="CENTER_RIGHT" spacing="10.0" style="-fx-padding: 10 0 0 0;">
                                                     <children>
-                                                        <VBox spacing="6.0">
-                                                            <children>
-                                                                <Label styleClass="sim-label-title" text="Mã định danh vật phẩm (Item ID):" />
-                                                                <TextField fx:id="itemIdField" prefHeight="45.0" promptText="Nhập ID sản phẩm của bạn (ví dụ: ITEM-001)" styleClass="sim-input-field" />
-                                                            </children>
-                                                        </VBox>
-
-                                                        <VBox spacing="6.0">
-                                                            <children>
-                                                                <Label styleClass="sim-label-title" text="Bước giá tối thiểu (VNĐ):" />
-                                                                <TextField fx:id="stepPriceField" prefHeight="45.0" promptText="Ví dụ: 50000" styleClass="sim-input-field" />
-                                                            </children>
-                                                        </VBox>
-
-                                                        <VBox spacing="6.0">
-                                                            <children>
-                                                                <Label styleClass="sim-label-title" text="Thời gian bắt đầu phiên (Định dạng ISO):" />
-                                                                <TextField fx:id="startTimeField" prefHeight="45.0" promptText="Format: 2026-05-20T10:30:00" styleClass="sim-input-field" />
-                                                            </children>
-                                                        </VBox>
-
-                                                        <VBox spacing="6.0">
-                                                            <children>
-                                                                <Label styleClass="sim-label-title" text="Thời gian kết thúc phiên (Định dạng ISO):" />
-                                                                <TextField fx:id="endTimeField" prefHeight="45.0" promptText="Format: 2026-05-20T11:30:00" styleClass="sim-input-field" />
-                                                            </children>
-                                                        </VBox>
+                                                        <Button onAction="#handleClearForm" text="♻ Xóa chữ" styleClass="sim-btn-secondary" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button onAction="#handleCreateItem" text="➕ TẠO MỚI ITEM" styleClass="sim-btn-submit" />
                                                     </children>
-                                                </VBox>
+                                                </HBox>
                                             </children>
                                         </VBox>
 
-                                        <Separator opacity="0.1" />
-
-                                        <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                        <VBox fx:id="formEditContainer" spacing="12.0" styleClass="sim-card">
                                             <children>
-                                                <Button mnemonicParsing="false" onAction="#handleUseDefaultTime" prefHeight="35.0" styleClass="sim-btn-secondary" text="⏱ Điền thời gian gợi ý" />
-                                                <Button mnemonicParsing="false" onAction="#handleClearForm" prefHeight="35.0" styleClass="sim-btn-secondary" text="🔄 Làm mới Form" />
-                                                <Region HBox.hgrow="ALWAYS" />
+                                                <HBox alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <Label styleClass="sim-form-title" text="📝 CHỈNH SỬA VẬT PHẨM" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button onAction="#handleCloseEditForm" text="✕ Đóng" styleClass="sim-btn-close-text" />
+                                                    </children>
+                                                </HBox>
+                                                <Separator styleClass="sim-separator"/>
+                                                <HBox spacing="15.0">
+                                                    <children>
+                                                        <Label fx:id="selectedItemIdLabel" styleClass="sim-tag-label" text="Item ID: Chưa chọn" />
+                                                        <Label fx:id="itemNameLabel" styleClass="sim-item-name-header" text="Vật phẩm: Chưa chọn" />
+                                                    </children>
+                                                </HBox>
+                                                <Label text="Loại hàng sửa:" styleClass="sim-field-label" />
+                                                <ComboBox fx:id="editItemTypeComboBox" maxWidth="Infinity" styleClass="sim-combobox" />
+                                                <Label text="Tên sản phẩm:" styleClass="sim-field-label" />
+                                                <TextField fx:id="editItemNameField" styleClass="sim-input" />
+                                                <Label text="Giá khởi điểm ($):" styleClass="sim-field-label" />
+                                                <TextField fx:id="editStartingPriceField" styleClass="sim-input" />
+                                                <Label text="Năm sản xuất:" styleClass="sim-field-label" />
+                                                <TextField fx:id="editYearCreatedField" styleClass="sim-input" />
+                                                <Label text="Mô tả sửa đổi:" styleClass="sim-field-label" />
+                                                <TextField fx:id="editDescriptionField" styleClass="sim-input" />
+                                                <Label text="Đường dẫn ảnh mới:" styleClass="sim-field-label" />
+                                                <TextField fx:id="editImageUrlField" styleClass="sim-input" />
+
+                                                <VBox fx:id="editArtFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Họa sĩ:" styleClass="sim-field-label" /><TextField fx:id="editPainterField" styleClass="sim-input" /><Label text="Trường phái:" styleClass="sim-field-label" /><TextField fx:id="editArtStyleField" styleClass="sim-input" /></children></VBox>
+                                                <VBox fx:id="editElectronicsFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Thương hiệu:" styleClass="sim-field-label" /><TextField fx:id="editBrandField" styleClass="sim-input" /><Label text="Bảo hành:" styleClass="sim-field-label" /><TextField fx:id="editWarrantyMonthsField" styleClass="sim-input" /></children></VBox>
+                                                <VBox fx:id="editVehicleFieldsBox" managed="false" spacing="8.0" visible="false"><children><Label text="Model:" styleClass="sim-field-label" /><TextField fx:id="editModelField" styleClass="sim-input" /><Label text="Động cơ:" styleClass="sim-field-label" /><TextField fx:id="editEngineTypeField" styleClass="sim-input" /><Label text="Biển số:" styleClass="sim-field-label" /><TextField fx:id="editLicensePlateField" styleClass="sim-input" /><Label text="Số Km:" styleClass="sim-field-label" /><TextField fx:id="editKmAgeField" styleClass="sim-input" /></children></VBox>
+
+                                                <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 5 0 0 0;">
+                                                    <children>
+                                                        <Button onAction="#handleDeleteItem" text="🗑 GỠ/ẨN ITEM" styleClass="sim-btn-danger-outline" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button onAction="#handleUpdateItem" text="💾 LƯU CẬP NHẬT" styleClass="sim-btn-submit" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox fx:id="auctionConfigContainer" spacing="12.0" styleClass="sim-card">
+                                            <children>
+                                                <HBox alignment="CENTER_LEFT">
+                                                    <children>
+                                                        <Label styleClass="sim-form-title" text="🔨 ĐƯA VẬT PHẨM ĐI ĐẤU GIÁ" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button onAction="#handleCloseAuctionForm" text="✕ Đóng" styleClass="sim-btn-close-text" />
+                                                    </children>
+                                                </HBox>
+                                                <Separator styleClass="sim-separator"/>
+                                                <HBox spacing="15.0">
+                                                    <children>
+                                                        <Label fx:id="auctionItemIdLabel" styleClass="sim-tag-label" text="Item ID: Chưa chọn" />
+                                                        <Label fx:id="auctionItemNameLabel" styleClass="sim-item-name-header" text="Vật phẩm: Chưa chọn" />
+                                                    </children>
+                                                </HBox>
+
+                                                <Label text="Bước giá tối thiểu ($) (*):" styleClass="sim-field-label" />
+                                                <TextField fx:id="stepPriceField" promptText="Ví dụ: 15.5" styleClass="sim-input" />
+                                                <Label text="Thời gian bắt đầu sàn (ISO):" styleClass="sim-field-label" />
+                                                <TextField fx:id="startTimeField" styleClass="sim-input" />
+                                                <Label text="Thời gian kết thúc sàn (ISO):" styleClass="sim-field-label" />
+                                                <TextField fx:id="endTimeField" styleClass="sim-input" />
+
+                                                <HBox alignment="CENTER_RIGHT" spacing="10.0" style="-fx-padding: 5 0 0 0;">
+                                                    <children>
+                                                        <Button onAction="#handleUseDefaultTime" text="🕒 Điền thời gian gợi ý" styleClass="sim-btn-secondary" />
+                                                        <Pane HBox.hgrow="ALWAYS" />
+                                                        <Button fx:id="btnSubmit" onAction="#handleCreateAuction" text="TẠO PHIÊN ĐẤU GIÁ" styleClass="sim-btn-submit" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
+
+                                        <HBox managed="false" visible="false">
+                                            <children>
+                                                <TextField fx:id="itemTypeField" /><TextField fx:id="updateItemIdField" /><TextField fx:id="deleteItemIdField" /><TextField fx:id="detailItemIdField" /><TextField fx:id="itemIdField" />
                                             </children>
                                         </HBox>
 
-                                        <Separator opacity="0.1" />
-
-                                        <VBox spacing="15.0">
-                                            <children>
-                                                <Label fx:id="messageLabel" styleClass="sim-label-title" text="Nhập thông tin để tạo phiên đấu giá." wrapText="true" />
-                                                <Button fx:id="btnSubmit" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleCreateAuction" prefHeight="50.0" styleClass="place-bid-button" text="XÁC NHẬN TẠO PHIÊN ĐẤU GIÁ 🚀">
-                                                    <font>
-                                                        <Font name="System Bold" size="14.0" />
-                                                    </font>
-                                                </Button>
-                                            </children>
-                                        </VBox>
                                     </children>
                                 </VBox>
-                            </children>
-                            <padding>
-                                <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
-                            </padding>
-                        </HBox>
-                    </content>
-                </ScrollPane>
-            </children>
-        </VBox>
+                            </content>
+                        </ScrollPane>
+
+                    </children>
+                </HBox>
+            </center>
+        </BorderPane>
     </children>
 </StackPane>

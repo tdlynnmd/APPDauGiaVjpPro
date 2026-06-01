@@ -18,17 +18,47 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
 }
 
-/* Áp dụng cho TẤT CẢ các nút bấm */
+/* ==========================================================================
+   BUTTONS (NÚT BẤM - LIGHT MODE)
+   ========================================================================== */
+/* Trạng thái bình thường */
 .button {
     -fx-background-color: -fx-primary-color;
     -fx-text-fill: white;
     -fx-background-radius: 8;
+    -fx-cursor: hand; /* Đổi con trỏ chuột thành hình bàn tay */
+    -fx-transition: 0.2s; /* Nếu JavaFX hỗ trợ transition (tùy phiên bản) */
 }
 
-/* Áp dụng cho TẤT CẢ các ô nhập liệu */
+/* Khi di chuột vào (Hover) -> Sáng nhẹ lên bằng cách phủ lớp trắng trong suốt */
+.button:hover {
+    -fx-background-color: derive(-fx-primary-color, 15%); /* Tự động kích sáng màu gốc lên 15% */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 5, 0, 0, 2); /* Đổ bóng nhẹ dưới chân nút */
+}
+
+/* Khi nhấn giữ chuột vào (Pressed) -> Tối nhẹ đi tạo cảm giác nút bị lún xuống */
+.button:pressed {
+    -fx-background-color: derive(-fx-primary-color, -10%);
+}
+
+
+/* ==========================================================================
+   TEXT INPUT (Ô NHẬP LIỆU - LIGHT MODE)
+   ========================================================================== */
+/* Trạng thái bình thường */
 .text-input {
     -fx-background-color: #E8F0FE;
     -fx-text-fill: -fx-text-main;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+
+/* Khi người dùng click vào ô để gõ chữ (Focused) -> Đổi màu nền trắng tinh và lên viền xanh */
+.text-input:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: -fx-primary-color; /* Lên viền theo màu chủ đạo hệ thống */
 }
 
 /* Áp dụng cho TẤT CẢ các nhãn chữ */
@@ -323,73 +353,6 @@
     -fx-background-color: #145dbf;
 }
 
-/* --- HỆ THỐNG CLASS DÀNH RIÊNG CHO MÀN SIM - LIGHT MODE --- */
-
-/* Nền tổng thể ngoài cùng: Màu xám nhạt như màn Login */
-.sim-root-container {
-    -fx-background-color: #f0f2f5;
-}
-
-/* Khung Card chính ở giữa: Màu trắng tinh, đổ bóng mờ tạo chiều sâu bứt phá khỏi nền */
-.sim-card-main {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 15;
-    -fx-padding: 30;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 15, 0, 0, 5);
-}
-
-/* Ô nhập liệu (TextField): Màu xanh nhạt dịu như ô nhập của Login */
-.sim-input-field {
-    -fx-background-color: #eaf2ff;
-    -fx-border-color: transparent;
-    -fx-background-radius: 8;
-    -fx-text-fill: #111111;
-    -fx-prompt-text-fill: #888888;
-}
-.sim-input-field:focused {
-    -fx-border-color: #1877f2;
-    -fx-border-radius: 8;
-}
-
-/* Label tiêu đề nhỏ (Mã định danh, Bước giá...): Ép lên màu xám đậm để cực kỳ rõ nét */
-.sim-label-title {
-    -fx-text-fill: #4b4b4b;
-    -fx-font-weight: bold;
-}
-
-/* Các nhãn chữ tiêu đề nhỏ bên trong Card (Mã định danh, Bước giá...) */
-.sim-label-title {
-    -fx-text-fill: #333333;
-    -fx-font-weight: bold;
-}
-
-/* Tiêu đề phụ của form: Chữ to hơn, đậm hơn, màu xanh đen sang trọng */
-.sim-form-header {
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #1e293b; /* Màu xanh đen thẫm Slate cực sang */
-}
-
-/* Nút phụ ở chế độ Sáng: Nền trắng trong suốt, viền mảnh màu xám bo tròn, chữ tiệp màu label */
-.sim-btn-secondary {
-    -fx-background-color: transparent;
-    -fx-border-color: #cbd5e1; /* Viền xám mảnh tinh tế */
-    -fx-border-width: 1;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-text-fill: #4b4b4b; /* Đồng bộ hoàn toàn với màu của sim-label-title */
-    -fx-font-weight: bold;
-    -fx-cursor: hand;
-    -fx-padding: 5 12 5 12;
-}
-
-/* Hiệu ứng di chuột: Nền hửng sáng xanh nhẹ, viền đậm hơn một chút cực kỳ chuyên nghiệp */
-.sim-btn-secondary:hover {
-    -fx-background-color: #f1f5f9;
-    -fx-border-color: #94a3b8;
-    -fx-text-fill: #1877f2; /* Điểm xuyết chút màu xanh đặc trưng khi hover */
-}
-
 /* Style cho thẻ Ví ở chế độ Light Mode */
 .wallet-mini-card {
     -fx-background-color: rgba(0, 0, 0, 0.06); /* Nền xám nhạt tinh tế */
@@ -431,4 +394,309 @@
 
     /* Tạo hiệu ứng quầng sáng lan tỏa màu vàng/cam ấm (Glow Effect) bao quanh nút cực kỳ bắt mắt */
     -fx-effect: dropshadow(three-pass-box, rgba(255, 179, 0, 0.8), 15, 0.3, 0, 0);
+}
+
+/* ==========================================================================
+   SELLER ITEM MANAGER (SIM) - LIGHT MODE EXCLUSIVE STYLE
+   ========================================================================== */
+
+/* Thùng chứa nền tổng */
+.sim-container {
+    -fx-background-color: #F4F7F6;
+}
+
+/* Thanh công cụ phía trên */
+.sim-top-bar {
+    -fx-border-color: transparent transparent #E0E0E0 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 15 20 15 20;
+    -fx-background-color: #FFFFFF;
+}
+
+.sim-screen-title {
+    -fx-text-fill: #1C1E21;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.sim-status-label {
+    -fx-text-fill: #65676B;
+    -fx-font-style: italic;
+}
+
+/* Kiểu dáng các khối Card chức năng bên phải */
+.sim-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12px;
+    -fx-border-color: #E4E6EB;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 8, 0, 0, 4);
+}
+
+.sim-form-title {
+    -fx-text-fill: #1877F2;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.sim-separator {
+    -fx-border-color: #F0F2F5;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* Ô nhập liệu và Label */
+.sim-field-label {
+    -fx-text-fill: #1C1E21;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.sim-input {
+    -fx-background-color: #F0F2F5;
+    -fx-text-fill: #1C1E21;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px;
+    -fx-border-color: transparent;
+}
+.sim-input:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #1877F2;
+    -fx-border-radius: 6px;
+}
+
+/* --- TRIỆT ĐỂ LỖI COMBOBOX POPUP (LIGHT MODE) --- */
+.sim-combobox {
+    -fx-background-color: #F0F2F5;
+    -fx-background-radius: 6px;
+    -fx-padding: 4px;
+    -fx-cursor: hand;
+}
+.sim-combobox .list-cell {
+    -fx-text-fill: #1C1E21 !important;
+}
+
+/* Ép màu cửa sổ popup và danh sách phần tử ngay khi vừa khởi tạo */
+.sim-combobox .context-menu,
+.sim-combobox > .combo-box-popup > .list-view {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #E4E6EB !important;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+}
+/* Trạng thái tĩnh của các dòng chữ trong danh sách khi chưa di chuột */
+.sim-combobox > .combo-box-popup > .list-view .list-cell {
+    -fx-background-color: #FFFFFF !important;
+    -fx-text-fill: #1C1E21 !important;
+}
+/* Hiệu ứng di chuột vào dòng */
+.sim-combobox > .combo-box-popup > .list-view .list-cell:hover {
+    -fx-background-color: #F0F2F5 !important;
+    -fx-text-fill: #1877F2 !important;
+}
+/* Khi dòng đó được chọn trúng */
+.sim-combobox > .combo-box-popup > .list-view .list-cell:filled:selected {
+    -fx-background-color: #1877F2 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* ScrollPane bọc ngoài vùng form */
+.sim-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+.sim-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* --- LỖI TIÊU ĐỀ BẢNG VÀ VÙNG THỪA BÊN PHẢI & THÔNG BÁO RỖNG (LIGHT MODE) --- */
+.sim-table {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8px;
+    -fx-border-color: #E4E6EB;
+    -fx-border-radius: 8px;
+    -fx-padding: 5px;
+}
+/* Đồng bộ màu nền của toàn bộ thanh tiêu đề và ô trống thừa bên phải */
+.sim-table .column-header-background,
+.sim-table .column-header-background .filler,
+.sim-table .show-hide-columns-button,
+.sim-table .column-header-background .nested-column-header {
+    -fx-background-color: #F0F2F5 !important;
+}
+.sim-table .column-header {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent #E4E6EB transparent transparent;
+}
+.sim-table .column-header .label {
+    -fx-text-fill: #1877F2 !important;
+    -fx-font-weight: bold;
+}
+.sim-table .arrow {
+    -fx-background-color: #1877F2 !important;
+}
+.sim-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #F0F2F5 transparent;
+}
+.sim-table .table-row-cell:odd {
+    -fx-background-color: #FAFAFA;
+}
+.sim-table .table-row-cell:filled:hover {
+    -fx-background-color: #E8F0FE;
+}
+.sim-table .table-row-cell:filled:selected {
+    -fx-background-color: #1877F2;
+}
+.sim-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #FFFFFF !important;
+    -fx-font-weight: bold;
+}
+
+/* --- ĐỒNG BỘ VÙNG BẢNG TRỐNG (LIGHT MODE) --- */
+.sim-table .placeholder {
+    -fx-background-color: #FFFFFF !important;
+}
+.sim-table .placeholder .placeholder-icon {
+    -fx-font-size: 32px;
+    -fx-text-fill: #1877F2 !important;
+}
+.sim-table .placeholder .placeholder-text {
+    -fx-text-fill: #1877F2 !important; /* Màu xanh thương hiệu */
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+
+/* --- HỆ THỐNG NÚT BẤM - HIỆU ỨNG DI CHUỘT VÀ CURSOR HAND (LIGHT MODE) --- */
+.sim-btn-action {
+    -fx-background-color: #1877F2;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-action:hover {
+    -fx-background-color: #145DBF;
+    -fx-effect: dropshadow(three-pass-box, rgba(24, 119, 242, 0.3), 10, 0, 0, 0);
+}
+
+.sim-btn-submit {
+    -fx-background-color: #007BFF;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 16px;
+}
+.sim-btn-submit:hover {
+    -fx-background-color: #0056B3;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 123, 255, 0.3), 10, 0, 0, 0);
+}
+
+.sim-btn-secondary {
+    -fx-background-color: #E4E6EB;
+    -fx-text-fill: #1C1E21;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-secondary:hover {
+    -fx-background-color: #D8DADF;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 6, 0, 0, 0);
+}
+
+/* Nút Danger phát sáng màu vàng rực rỡ, ấm áp trên nền sáng khi dí chuột */
+.sim-btn-danger {
+    -fx-background-color: #D9534F;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-danger:hover {
+    -fx-background-color: #C9302C;
+    -fx-effect: dropshadow(three-pass-box, #ff9f43, 15, 0.5, 0, 0);
+}
+
+.sim-btn-danger-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #D9534F;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-text-fill: #D9534F;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-danger-outline:hover {
+    -fx-background-color: #D9534F;
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(three-pass-box, rgba(217, 83, 79, 0.2), 8, 0, 0, 0);
+}
+
+.sim-btn-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: #65676B;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.sim-btn-close:hover { -fx-text-fill: #1C1E21; }
+
+.sim-btn-close-text {
+    -fx-background-color: transparent;
+    -fx-border-color: #65676B;
+    -fx-border-radius: 4px;
+    -fx-text-fill: #65676B;
+    -fx-cursor: hand;
+}
+.sim-btn-close-text:hover {
+    -fx-background-color: #65676B;
+    -fx-text-fill: white;
+}
+
+/* Tags labels nhỏ */
+.sim-tag-label {
+    -fx-text-fill: #1877F2;
+    -fx-background-color: #E8F0FE;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 4px;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+.sim-item-name-header {
+    -fx-text-fill: #1C1E21;
+    -fx-font-weight: bold;
+}
+/* --- TỐI ƯU CHIỀU CAO VÀ CHỮ TRONG BẢNG (LIGHT MODE) --- */
+.sim-table .table-cell {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #1C1E21 !important;
+    -fx-padding: 16px 20px; /* Ô mở rộng to ra tương tự trên nền sáng */
+    -fx-alignment: center-left;
+}
+
+/* Định dạng riêng cho màu sắc trạng thái nổi bật */
+.sim-table .table-cell.status-active,
+.sim-table .table-cell.status-open {
+    -fx-font-weight: bold;
+    -fx-text-fill: #1877F2 !important; /* Màu xanh dương thương hiệu cực nét cho Light Mode */
+}
+
+/* Ẩn triệt để các hàng thừa không chứa dữ liệu phía dưới */
+.sim-table .table-row-cell:empty {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+}
+.sim-table .table-row-cell:empty .table-cell {
+    -fx-border-color: transparent !important;
+    -fx-text-fill: transparent !important;
 }

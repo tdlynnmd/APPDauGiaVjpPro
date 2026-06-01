@@ -14,13 +14,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
@@ -28,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * SellerItemController là controller phía Client cho màn Seller quản lý vật phẩm.
@@ -51,6 +46,13 @@ public class SellerItemController {
     private final ObservableList<ItemSummaryDTO> sellerItems = FXCollections.observableArrayList();
 
     private ItemSummaryDTO selectedItem;
+
+    // =========================================================================
+    // KHAI BÁO BIẾN ĐIỀU KHIỂN LUỒNG FORM RIÊNG BIỆT: TẠO RIÊNG - SỬA RIÊNG
+    // =========================================================================
+    @FXML private ScrollPane rightSplitPaneContainer;
+    @FXML private VBox formCreateContainer;     // Form chuyên biệt phục vụ việc TẠO MỚI
+    @FXML private VBox formEditContainer;       // Form chuyên biệt phục vụ việc CHỈNH SỬA & ĐẤU GIÁ
 
     // =========================
     // Root / Header / Status UI
@@ -112,6 +114,30 @@ public class SellerItemController {
     @FXML private TextField deleteItemIdField;
     @FXML private TextField detailItemIdField;
 
+    // =========================================================================
+    // CÁC THÀNH PHẦN INPUT ĐỘC LẬP DÀNH RIÊNG CHO FORM CHỈNH SỬA (PREFIX: edit)
+    // =========================================================================
+    @FXML private ComboBox<String> editItemTypeComboBox;
+    @FXML private TextField editItemNameField;
+    @FXML private TextField editStartingPriceField;
+    @FXML private TextField editYearCreatedField;
+    @FXML private TextField editDescriptionField;
+    @FXML private TextField editImageUrlField;
+
+    @FXML private VBox editArtFieldsBox;
+    @FXML private TextField editPainterField;
+    @FXML private TextField editArtStyleField;
+
+    @FXML private VBox editElectronicsFieldsBox;
+    @FXML private TextField editBrandField;
+    @FXML private TextField editWarrantyMonthsField;
+
+    @FXML private VBox editVehicleFieldsBox;
+    @FXML private TextField editModelField;
+    @FXML private TextField editEngineTypeField;
+    @FXML private TextField editLicensePlateField;
+    @FXML private TextField editKmAgeField;
+
     // =========================
     // Auction form UI
     // =========================
@@ -121,28 +147,44 @@ public class SellerItemController {
     @FXML private TextField startTimeField;
     @FXML private TextField endTimeField;
 
+    @FXML private VBox auctionConfigContainer;
+    @FXML private Label auctionItemIdLabel;
+    @FXML private Label auctionItemNameLabel;
+
+    private com.auction.dto.ItemSummaryDTO currentEditingItem = null;
+
     @FXML
     public void initialize() {
-        applyTheme();
+        // 1. Khởi tạo các thành phần điều khiển và cấu trúc bảng dữ liệu trước (ĐỂ TRÁNH RESET CÁC CONTROL)
         initializeItemTypeControl();
         initializeSellerItemsTable();
-
         fillDefaultTimeIfEmpty();
-        updateTypeSpecificFieldsVisibility(readItemType());
 
-        showMessage("Tải danh sách item hoặc tạo item mới.");
+        // 2. Áp dụng theme hệ thống và nạp giao diện placeholder động tương ứng cho bảng
+        applyTheme();
+
+        // 3. Khởi tạo ban đầu: Ẩn hết toàn bộ Panel bên phải đi cho thoáng màn hình
+        if (rightSplitPaneContainer != null) { rightSplitPaneContainer.setVisible(false); rightSplitPaneContainer.setManaged(false); }
+        if (formCreateContainer != null) { formCreateContainer.setVisible(false); formCreateContainer.setManaged(false); }
+        if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
+        if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
+
+        // 4. Tải dữ liệu từ database lên bảng
+        updateTypeSpecificFieldsVisibility(readItemType()); // Đưa hàm này xuống sát phần load dữ liệu
+        handleLoadSellerItems();
     }
 
     /**
-     * Áp dụng theme hiện tại của app.
-     * Nếu FXML chưa có rootContainer thì bỏ qua để tránh crash.
+     * Áp dụng theme hiện tại của ứng dụng dựa trên cấu hình hệ thống toàn cục.
      */
     private void applyTheme() {
         if (rootContainer == null) {
             return;
         }
 
+        // Xóa bỏ các stylesheet cũ để tránh xung đột
         rootContainer.getStylesheets().clear();
+
         String cssPath = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/dark.css"
                 : "/com/auction/client/view/light.css";
@@ -151,30 +193,47 @@ public class SellerItemController {
             String css = Objects.requireNonNull(getClass().getResource(cssPath)).toExternalForm();
             rootContainer.getStylesheets().add(css);
         } catch (Exception e) {
-            System.out.println("Không thể nạp theme: " + cssPath);
+            System.out.println("Không thể nạp theme cho SIM: " + cssPath);
         }
 
+        // --- ĐOẠN CODE TỰ ĐỘNG THÔNG BÁO CHẾ ĐỘ MÀU CHUẨN PHONG CÁCH SIM ---
         if (SceneNavigator.isAppDarkMode) {
             setLabelText(dynamicTitleLabel, "QUẢN LÝ VẬT PHẨM");
-            setLabelText(formTitleLabel, "Thông Tin Vật Phẩm");
-            if (dynamicTitleLabel != null) {
-                dynamicTitleLabel.setStyle("-fx-text-fill: #ff9f43;");
-            }
-            if (btnSubmit != null) {
-                btnSubmit.setText("TẠO PHIÊN ĐẤU GIÁ");
-            }
+            showMessage("● SYSTEM DARK MODE SIGNED ⚡");
         } else {
             setLabelText(dynamicTitleLabel, "QUẢN LÝ VẬT PHẨM");
-            setLabelText(formTitleLabel, "Thông Tin Vật Phẩm");
-            if (dynamicTitleLabel != null) {
-                dynamicTitleLabel.setStyle("-fx-text-fill: #1877f2;");
+            showMessage("✓ Hệ thống đã sẵn sàng.");
+        }
+
+        // --- CẬP NHẬT: TỰ ĐỘNG ĐỔI ICON VÀ CHỮ KHI BẢNG RỖNG ---
+        if (sellerItemsTable != null) { // Lưu ý: Hãy thay 'sellerItemsTable' bằng đúng tên biến TableView trong code của bạn
+            // Tạo một Layout VBox chứa Icon xếp trên Chữ
+            javafx.scene.layout.VBox placeholderBox = new javafx.scene.layout.VBox();
+            placeholderBox.setAlignment(javafx.geometry.Pos.CENTER);
+            placeholderBox.setSpacing(10); // Tạo khoảng cách thông thoáng giữa Icon và Chữ
+
+            // Label làm Icon hiển thị lớn ở trên
+            javafx.scene.control.Label iconLabel = new javafx.scene.control.Label();
+            iconLabel.getStyleClass().add("placeholder-icon"); // Định danh lớp CSS để chỉnh cỡ font và màu sắc
+
+            // Label làm dòng chữ thông báo ở dưới
+            javafx.scene.control.Label textLabel = new javafx.scene.control.Label();
+            textLabel.getStyleClass().add("placeholder-text"); // Định danh lớp CSS cho chữ
+
+            // Gán nội dung động tương ứng với từng Theme
+            if (SceneNavigator.isAppDarkMode) {
+                iconLabel.setText("🏴‍☠️🔨");
+                textLabel.setText("Hàng tồn hiện không còn trong kho");
+            } else {
+                iconLabel.setText("📦"); // Icon hộp quà giống hệt như giao diện mẫu bạn gửi
+                textLabel.setText("Không có sản phẩm nào trong danh sách");
             }
-            if (btnSubmit != null) {
-                btnSubmit.setText("TẠO PHIÊN ĐẤU GIÁ");
-            }
+
+            // Đưa các Label vào Box và thiết lập làm Placeholder cho bảng
+            placeholderBox.getChildren().addAll(iconLabel, textLabel);
+            sellerItemsTable.setPlaceholder(placeholderBox);
         }
     }
-
     /**
      * ComboBox giúp FXML tránh cho người dùng gõ sai item type.
      */
@@ -210,46 +269,288 @@ public class SellerItemController {
         }
 
         sellerItemsTable.setItems(sellerItems);
+        sellerItemsTable.setFixedCellSize(48);
 
         if (itemIdColumn != null) {
-            itemIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemId()))
-            );
+            itemIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemId())));
         }
 
         if (itemNameColumn != null) {
-            itemNameColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemName()))
-            );
+            itemNameColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemName())));
+
+            itemNameColumn.setCellFactory(column -> new TableCell<ItemSummaryDTO, String>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("");
+                    } else {
+                        setText(item);
+                        // Ép in đậm chữ và tăng kích thước font lên 14px cho riêng cột Tên
+                        setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                    }
+                }
+            });
         }
 
         if (itemTypeColumn != null) {
-            itemTypeColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemType()))
-            );
+            itemTypeColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemType())));
         }
 
         if (startingPriceColumn != null) {
-            startingPriceColumn.setCellValueFactory(data ->
-                    new SimpleDoubleProperty(data.getValue().getStartingPrice())
-            );
+            // Giữ nguyên dòng này để lấy giá trị số từ DTO
+            startingPriceColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getStartingPrice()));
+
+            startingPriceColumn.setCellFactory(column -> new TableCell<ItemSummaryDTO, Number>() {
+                @Override
+                protected void updateItem(Number price, boolean empty) {
+                    super.updateItem(price, empty);
+                    if (empty || price == null) {
+                        setText(null);
+                    } else {
+                        // Định dạng số có dấu phẩy phân cách hàng nghìn (Ví dụ: 2,500,000 VNĐ)
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        setText(df.format(price.doubleValue()) + " VNĐ");
+                    }
+                }
+            });
         }
 
         if (statusColumn != null) {
-            statusColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getStatus()))
-            );
+            statusColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getStatus())));
+
+            statusColumn.setCellFactory(column -> new TableCell<ItemSummaryDTO, String>() {
+                @Override
+                protected void updateItem(String status, boolean empty) {
+                    super.updateItem(status, empty);
+                    if (empty || status == null) {
+                        setText(null);
+                        getStyleClass().removeAll("status-active", "status-open", "status-close");
+                    } else {
+                        setText(status);
+                        // Xóa class cũ để không bị lỗi cộng dồn class khi cuộn bảng
+                        getStyleClass().removeAll("status-active", "status-open", "status-close");
+
+                        // Thêm class tương ứng với chữ để CSS bắt màu chuẩn
+                        if ("ACTIVE".equalsIgnoreCase(status)) {
+                            getStyleClass().add("status-active");
+                        } else if ("OPEN".equalsIgnoreCase(status)) {
+                            getStyleClass().add("status-open");
+                        } else if ("CLOSE".equalsIgnoreCase(status) || "CLOSED".equalsIgnoreCase(status)) {
+                            getStyleClass().add("status-close");
+                        }
+                    }
+                }
+            });
         }
 
         sellerItemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
             if (newItem == null) {
                 return;
             }
-
-            setSelectedItem(newItem);
+            this.selectedItem = newItem;
+            this.currentEditingItem = newItem;
             loadItemDetailIntoForm(newItem.getItemId(), false);
         });
     }
+
+    /**
+     * Hành động khi bấm nút tạo: Chỉ mở form Tạo mới, ẩn sạch form Sửa đi.
+     */
+    @FXML
+    private void handleOpenFormForCreate() {
+        rightSplitPaneContainer.setVisible(true);
+        rightSplitPaneContainer.setManaged(true);
+        formCreateContainer.setVisible(true);
+        formCreateContainer.setManaged(true);
+
+        // Ẩn các form khác
+        formEditContainer.setVisible(false);
+        formEditContainer.setManaged(false);
+        if (auctionConfigContainer != null) {
+            auctionConfigContainer.setVisible(false);
+            auctionConfigContainer.setManaged(false);
+        }
+    }
+
+    /**
+     * NÚT SỬA ngoài bảng: Nếu chưa chọn item nào trên tableview thì bắn lỗi ngay.
+     * Nếu đã chọn dòng, tự động đóng form tạo (nếu mở) và mở form sửa ra đẩy bảng lại.
+     */
+    private String originalFormText = "";
+
+    @FXML
+    private void handleOpenFormForEdit() {
+        // 1. Kiểm tra xem người dùng đã chọn dòng nào trên TableView chưa
+        var selectedItem = sellerItemsTable.getSelectionModel().getSelectedItem();
+        if (selectedItem == null) {
+            // Báo lỗi tương tự như form cũ của bạn bằng Alert hoặc MessageLabel
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Thông báo");
+            alert.setHeaderText(null);
+            alert.setContentText("Vui lòng chọn một vật phẩm từ bảng danh sách trước khi thực hiện sửa!");
+            alert.showAndWait();
+            return;
+        }
+
+        this.currentEditingItem = selectedItem;
+
+        // 2. Nếu đã chọn item, mở form sửa và ẩn form khác
+        rightSplitPaneContainer.setVisible(true);
+        rightSplitPaneContainer.setManaged(true);
+        formEditContainer.setVisible(true);
+        formEditContainer.setManaged(true);
+        formCreateContainer.setVisible(false);
+        formCreateContainer.setManaged(false);
+        if (auctionConfigContainer != null) {
+            auctionConfigContainer.setVisible(false);
+            auctionConfigContainer.setManaged(false);
+        }
+
+        // [ĐÃ CẬP NHẬT]: Chuỗi được chụp sau khi form sửa đã hiển thị và điền đầy đủ ký tự gốc
+        this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
+                + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
+                + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
+                + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
+
+        showMessage("Đang mở Form chỉnh sửa vật phẩm: " + selectedItem.getItemName());
+    }
+
+    /**
+     * Hàm dùng chung xử lý đóng form Tạo và trượt form Sửa ra kèm load dữ liệu
+     */
+    private void activateEditFormWorkflow(ItemSummaryDTO item) {
+        // Form sửa tự hiểu và ẩn form tạo đi
+        setNodeVisible(formCreateContainer, false);
+
+        // Mở rộng thanh bên phải và bật form Sửa lên độc lập
+        setNodeVisible(rightSplitPaneContainer, true);
+        setNodeVisible(formEditContainer, true);
+
+        setSelectedItem(item);
+        loadItemDetailIntoForm(item.getItemId(), false);
+        showMessage("Đang mở Form chỉnh sửa vật phẩm: " + item.getItemName());
+    }
+
+    /**
+     * Nút (X) trên Form Tạo: Đóng luôn, xóa sạch dữ liệu nhập dở, không cần cảnh báo.
+     */
+    @FXML
+    private void handleCloseCreateForm() {
+        // Chỉ hỏi khi có ít nhất 1 ô được điền ký tự bất kỳ
+        if (isAnyFieldFilled(itemNameField, startingPriceField, yearCreatedField, descriptionField, imageUrlField, painterField, artStyleField, brandField, warrantyMonthsField, modelField, engineTypeField, licensePlateField, kmAgeField)) {
+            if (!confirmExit()) {
+                return; // Người dùng chọn Không -> Giữ nguyên form, không thoát
+            }
+        }
+
+        // Thực hiện đóng nếu form trống hoặc đồng ý thoát
+        rightSplitPaneContainer.setVisible(false);
+        rightSplitPaneContainer.setManaged(false);
+        formCreateContainer.setVisible(false);
+        formCreateContainer.setManaged(false);
+
+        handleClearItemForm(); // Xóa sạch chữ trong form tạo
+        handleLoadSellerItems(); // Load lại bảng dữ liệu
+    }
+
+    /**
+     * Nút (X) trên Form Sửa: Có cảnh báo nếu phát hiện người dùng đã chỉnh sửa dữ liệu dở dang chưa lưu.
+     */
+    @FXML
+    private void handleCloseEditForm() {
+        // === THÊM 3 DÒNG NÀY ĐỂ SỬA LỖI ===
+        // Nếu form chỉnh sửa vốn dĩ đang đóng/ẩn thì thoát luôn, không so sánh chữ, không cảnh báo
+        if (formEditContainer == null || !formEditContainer.isVisible()) {
+            return;
+        }
+
+        // 1. Gom tất cả chữ hiện tại người dùng đang nhập trên màn hình lại (Bọc check null an toàn)
+        String currentFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
+                + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
+                + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
+                + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
+
+        // 2. Nếu chuỗi hiện tại KHÁC chuỗi gốc ban đầu -> Tức là có người đã chỉnh sửa chữ
+        if (!currentFormText.equals(this.originalFormText)) {
+            if (!confirmExit()) {
+                return; // Chọn không -> Giữ nguyên form
+            }
+        }
+
+        // 3. Tiến hành đóng form nếu không thay đổi hoặc chọn đồng ý thoát
+        formEditContainer.setVisible(false);
+        formEditContainer.setManaged(false);
+
+        this.currentEditingItem = null;
+        this.originalFormText = "";
+
+        checkAndCollapseRightContainer();
+    }
+
+    /**
+     * Kiểm tra xem form sửa có bị thay đổi dữ liệu so với dữ liệu gốc của vật phẩm đang chọn không
+     */
+    private boolean isEditFormDirty() {
+        if (selectedItem == null) return false;
+        String currentName = readText(editItemNameField);
+        return !isBlank(currentName) && !currentName.equals(selectedItem.getItemName());
+    }
+
+    /**
+     * Thu gọn toàn bộ SplitPane bên phải nếu cả hai form đều đã đóng
+     */
+    private void checkAndCollapseRightContainer() {
+        if ((formCreateContainer == null || !formCreateContainer.isVisible()) &&
+                (formEditContainer == null || !formEditContainer.isVisible()) &&
+                (auctionConfigContainer == null || !auctionConfigContainer.isVisible())) {
+            setNodeVisible(rightSplitPaneContainer, false);
+        }
+    }
+
+    /**
+     * Xóa sạch các trường dữ liệu trên form Sửa
+     */
+    private void clearEditFormFields() {
+        selectedItem = null;
+        clearText(editItemNameField);
+        clearText(editStartingPriceField);
+        clearText(editYearCreatedField);
+        clearText(editDescriptionField);
+        clearText(editImageUrlField);
+        if (editItemTypeComboBox != null) editItemTypeComboBox.getSelectionModel().clearSelection();
+
+        clearText(editPainterField);
+        clearText(editArtStyleField);
+        clearText(editBrandField);
+        clearText(editWarrantyMonthsField);
+        clearText(editModelField);
+        clearText(editEngineTypeField);
+        clearText(editLicensePlateField);
+        clearText(editKmAgeField);
+
+        clearText(itemIdField);
+        clearText(stepPriceField);
+        fillDefaultTime();
+    }
+
+    private void updateEditTypeSpecificFieldsVisibility(String itemType) {
+        if (isBlank(itemType)) {
+            setNodeVisible(editArtFieldsBox, false);
+            setNodeVisible(editElectronicsFieldsBox, false);
+            setNodeVisible(editVehicleFieldsBox, false);
+            return;
+        }
+        String normalizedType = itemType.trim().toUpperCase();
+        setNodeVisible(editArtFieldsBox, "ART".equals(normalizedType));
+        setNodeVisible(editElectronicsFieldsBox, "ELECTRONICS".equals(normalizedType));
+        setNodeVisible(editVehicleFieldsBox, "VEHICLES".equals(normalizedType) || "VEHICLE".equals(normalizedType));
+    }
+
+    // =========================================================================
 
     /**
      * FXML action: tải danh sách item của seller đang đăng nhập.
@@ -265,9 +566,7 @@ public class SellerItemController {
     @FXML
     private void handleCreateItem() {
         CreateItemRequest request = buildCreateItemRequest();
-        if (request == null) {
-            return;
-        }
+        if (request == null) return;
 
         SocketResponse response = itemApi.createItem(request);
         if (!isSuccessful(response)) {
@@ -276,22 +575,26 @@ public class SellerItemController {
         }
 
         ItemDetailDTO createdItem = itemApi.parseItemDetail(response);
-        if (createdItem != null) {
-            fillItemForm(createdItem);
-            setSelectedItem(createdItem.toSummaryDTO());
-        }
 
         refreshSellerItems(false);
         showInfo(response.getMessage());
         showMessage("Tạo sản phẩm thành công.");
+
+        // Tự động ép ẩn form tạo đi một cách im lặng, không hiện popup hỏi han
+        if (formCreateContainer != null) {
+            formCreateContainer.setVisible(false);
+            formCreateContainer.setManaged(false);
+        }
+        handleClearItemForm(); // Xóa chữ trong form tạo
+        checkAndCollapseRightContainer(); // Co màn hình lại
     }
 
     /**
-     * FXML action: cập nhật item đang chọn hoặc itemId nhập ở updateItemIdField.
+     * FXML action: cập nhật item đã chọn.
      */
     @FXML
     private void handleUpdateItem() {
-        UpdateItemRequest request = buildUpdateItemRequest();
+        UpdateItemRequest request = buildUpdateItemRequestFromEditForm();
         if (request == null) {
             return;
         }
@@ -303,103 +606,77 @@ public class SellerItemController {
         }
 
         ItemDetailDTO updatedItem = itemApi.parseItemDetail(response);
-        if (updatedItem != null) {
-            fillItemForm(updatedItem);
-            setSelectedItem(updatedItem.toSummaryDTO());
-        }
 
         refreshSellerItems(false);
         showInfo(response.getMessage());
         showMessage("Cập nhật sản phẩm thành công.");
+
+        // [ĐÃ CẬP NHẬT]: Trực tiếp đóng và ẩn form sửa sau khi cập nhật thành công thành công
+        if (formEditContainer != null) {
+            formEditContainer.setVisible(false);
+            formEditContainer.setManaged(false);
+        }
+        clearEditFormFields();
+        this.currentEditingItem = null;
+        this.originalFormText = "";
+
+        checkAndCollapseRightContainer();
     }
 
     /**
-     * FXML action: xóa/ẩn item.
-     * Server hiện xử lý delete bằng cách đổi status sang INACTIVE.
+     * FXML action: xóa/ẩn item hiện tại.
      */
     @FXML
     private void handleDeleteItem() {
-        String itemId = firstNonBlank(readText(deleteItemIdField), readItemId());
-        if (isBlank(itemId)) {
-            showError("Vui lòng nhập itemId cần xóa.");
+        var selectedItem = sellerItemsTable.getSelectionModel().getSelectedItem();
+        if (selectedItem == null) {
+            showError("Vui lòng chọn một vật phẩm trong danh sách để xóa.");
             return;
         }
 
-        SocketResponse response = itemApi.deleteItem(itemId, "Deleted from seller item controller.");
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
-            return;
-        }
+        // 1. Hiển thị hộp thoại yêu cầu người dùng nhập lý do xóa sản phẩm
+        TextInputDialog dialog = new TextInputDialog("Không còn nhu cầu đấu giá");
+        dialog.setTitle("Lý do xóa vật phẩm");
+        dialog.setHeaderText("Xác nhận xóa vật phẩm: " + safeText(selectedItem.getItemName()));
+        dialog.setContentText("Vui lòng nhập lý do xóa (*):");
 
-        refreshSellerItems(false);
-        showInfo(response.getMessage());
-        showMessage("Đã xóa/ẩn sản phẩm: " + itemId);
+        Optional<String> result = dialog.showAndWait();
+
+        // 2. Nếu người dùng bấm OK và có nhập chữ
+        if (result.isPresent()) {
+            String reason = result.get().trim();
+
+            if (isBlank(reason)) {
+                showError("Bạn phải nhập lý do thì mới có thể xóa vật phẩm.");
+                return;
+            }
+
+            // 3. Gọi API truyền đúng 2 tham số: itemId và lý do xóa (reason) đúng như hàm trong ClientItemApi yêu cầu
+            SocketResponse response = itemApi.deleteItem(selectedItem.getItemId(), reason);
+
+            if (!isSuccessful(response)) {
+                showError(response == null ? "Xóa thất bại. Server không phản hồi hợp lệ." : response.getMessage());
+                return;
+            }
+
+            // 4. Thông báo và làm mới giao diện
+            showInfo(response.getMessage());
+            showMessage("Xóa sản phẩm thành công.");
+
+            if (formEditContainer != null && formEditContainer.isVisible()) {
+                formEditContainer.setVisible(false);
+                formEditContainer.setManaged(false);
+                this.originalFormText = "";
+                this.currentEditingItem = null;
+            }
+
+            refreshSellerItems(false);
+            checkAndCollapseRightContainer();
+        }
     }
 
     /**
-     * FXML action: load chi tiết item theo detailItemIdField hoặc item đang chọn.
-     */
-    @FXML
-    private void handleLoadItemDetail() {
-        String itemId = firstNonBlank(readText(detailItemIdField), readItemId());
-        if (isBlank(itemId)) {
-            showError("Vui lòng nhập itemId cần xem chi tiết.");
-            return;
-        }
-
-        loadItemDetailIntoForm(itemId, true);
-    }
-
-    /**
-     * FXML action: khi đổi item type bằng ComboBox.
-     */
-    @FXML
-    private void handleItemTypeChanged() {
-        updateTypeSpecificFieldsVisibility(readItemType());
-    }
-
-    /**
-     * FXML action: clear form item.
-     */
-    @FXML
-    private void handleClearItemForm() {
-        selectedItem = null;
-
-        if (sellerItemsTable != null) {
-            sellerItemsTable.getSelectionModel().clearSelection();
-        }
-
-        clearText(itemTypeField);
-        if (itemTypeComboBox != null) {
-            itemTypeComboBox.getSelectionModel().clearSelection();
-        }
-
-        clearText(itemNameField);
-        clearText(startingPriceField);
-        clearText(descriptionField);
-        clearText(yearCreatedField);
-        clearText(imageUrlField);
-        clearText(painterField);
-        clearText(artStyleField);
-        clearText(brandField);
-        clearText(warrantyMonthsField);
-        clearText(modelField);
-        clearText(engineTypeField);
-        clearText(licensePlateField);
-        clearText(kmAgeField);
-        clearText(updateItemIdField);
-        clearText(deleteItemIdField);
-        clearText(detailItemIdField);
-
-        setLabelText(selectedItemIdLabel, "Item ID: Chưa chọn");
-        setLabelText(itemNameLabel, "Vật phẩm: Chưa chọn");
-
-        updateTypeSpecificFieldsVisibility(null);
-        showMessage("Đã làm mới form item.");
-    }
-
-    /**
-     * FXML action: tạo phiên đấu giá từ item đang chọn hoặc itemId nhập thủ công.
+     * FXML action: tạo phiên đấu giá cho item đã chọn.
      */
     @FXML
     private void handleCreateAuction() {
@@ -443,6 +720,19 @@ public class SellerItemController {
 
         showInfo(response.getMessage());
         showMessage("Tạo phiên đấu giá thành công.");
+
+        // [ĐÃ CẬP NHẬT]: Tạo phiên đấu giá thành công thì đóng và thu gọn khối đấu giá độc lập
+        if (auctionConfigContainer != null) {
+            auctionConfigContainer.setVisible(false);
+            auctionConfigContainer.setManaged(false);
+        }
+
+        if (stepPriceField != null) stepPriceField.clear();
+        if (startTimeField != null) startTimeField.clear();
+        if (endTimeField != null) endTimeField.clear();
+
+        checkAndCollapseRightContainer();
+        refreshSellerItems(false);
     }
 
     /**
@@ -477,6 +767,27 @@ public class SellerItemController {
         clearText(stepPriceField);
         fillDefaultTime();
         showMessage("Đã làm mới form tạo phiên đấu giá.");
+    }
+
+    /**
+     * FXML action: dọn dẹp các trường nhập thô trong form tạo mới
+     */
+    private void handleClearItemForm() {
+        clearText(itemNameField);
+        clearText(startingPriceField);
+        clearText(descriptionField);
+        clearText(yearCreatedField);
+        clearText(imageUrlField);
+        if (itemTypeComboBox != null) itemTypeComboBox.getSelectionModel().clearSelection();
+
+        clearText(painterField);
+        clearText(artStyleField);
+        clearText(brandField);
+        clearText(warrantyMonthsField);
+        clearText(modelField);
+        clearText(engineTypeField);
+        clearText(licensePlateField);
+        clearText(kmAgeField);
     }
 
     /**
@@ -525,17 +836,27 @@ public class SellerItemController {
             return;
         }
 
-        List<ItemSummaryDTO> items = itemApi.parseItemSummaryList(response);
-        sellerItems.setAll(items);
+        // 1. Lấy toàn bộ danh sách từ Server về
+        List<ItemSummaryDTO> allItems = itemApi.parseItemSummaryList(response);
 
+        // 2. [CẬP NHẬT]: Lọc sạch, chỉ giữ lại các vật phẩm KHÔNG PHẢI là "INACTIVE"
+        List<ItemSummaryDTO> activeItems = allItems.stream()
+                .filter(item -> item != null && !"INACTIVE".equalsIgnoreCase(item.getStatus()))
+                .toList();
+
+        // 3. Đổ danh sách đã lọc sạch vào bảng dữ liệu thay vì allItems ban đầu
+        sellerItems.setAll(activeItems);
+
+        // 4. Cập nhật lại logic chọn dòng (Sử dụng danh sách activeItems mới)
         if (selectedItem != null) {
             selectItemInTable(selectedItem.getItemId());
-        } else if (!items.isEmpty()) {
-            setSelectedItem(items.get(0));
+        } else if (!activeItems.isEmpty()) {
+            setSelectedItem(activeItems.get(0));
         }
 
         if (showResultMessage) {
-            showMessage("Đã tải " + items.size() + " sản phẩm của người bán.");
+            // Thông báo số lượng sản phẩm đang hoạt động thực tế trên màn hình
+            showMessage("Đã tải " + activeItems.size() + " sản phẩm đang hoạt động.");
         }
     }
 
@@ -561,8 +882,7 @@ public class SellerItemController {
     }
 
     /**
-     * Fill toàn bộ form từ ItemDetailDTO.
-     * Đây là hàm quan trọng để FXML có trải nghiệm chọn item -> thấy detail.
+     * Fill toàn bộ dữ liệu từ ItemDetailDTO vào form Sửa đổi
      */
     private void fillItemForm(ItemDetailDTO item) {
         if (item == null) {
@@ -574,25 +894,26 @@ public class SellerItemController {
         setText(deleteItemIdField, item.getItemId());
         setText(detailItemIdField, item.getItemId());
 
-        setItemTypeValue(item.getItemType());
-        setText(itemNameField, item.getItemName());
-        setText(startingPriceField, numberToText(item.getStartingPrice()));
-        setText(descriptionField, item.getDescription());
-        setText(yearCreatedField, numberToText(item.getYearCreated()));
-        setText(imageUrlField, item.getImageUrl());
+        // Đổ dữ liệu riêng biệt vào các trường của Form Chỉnh Sửa
+        if (editItemTypeComboBox != null) {
+            editItemTypeComboBox.setValue(normalizeItemType(item.getItemType()));
+        }
+        setText(editItemNameField, item.getItemName());
+        setText(editStartingPriceField, numberToText(item.getStartingPrice()));
+        setText(editDescriptionField, item.getDescription());
+        setText(editYearCreatedField, numberToText(item.getYearCreated()));
+        setText(editImageUrlField, item.getImageUrl());
 
-        setText(painterField, item.getPainter());
-        setText(artStyleField, item.getArtStyle());
+        setText(editPainterField, item.getPainter());
+        setText(editArtStyleField, item.getArtStyle());
+        setText(editBrandField, item.getBrand());
+        setText(editWarrantyMonthsField, numberToText(item.getWarrantyMonths()));
+        setText(editModelField, item.getModel());
+        setText(editEngineTypeField, item.getEngineType());
+        setText(editLicensePlateField, item.getLicensePlate());
+        setText(editKmAgeField, numberToText(item.getKmAge()));
 
-        setText(brandField, item.getBrand());
-        setText(warrantyMonthsField, numberToText(item.getWarrantyMonths()));
-
-        setText(modelField, item.getModel());
-        setText(engineTypeField, item.getEngineType());
-        setText(licensePlateField, item.getLicensePlate());
-        setText(kmAgeField, numberToText(item.getKmAge()));
-
-        updateTypeSpecificFieldsVisibility(item.getItemType());
+        updateEditTypeSpecificFieldsVisibility(item.getItemType());
     }
 
     private CreateItemRequest buildCreateItemRequest() {
@@ -693,6 +1014,54 @@ public class SellerItemController {
                 readText(modelField),
                 readText(engineTypeField),
                 readText(licensePlateField),
+                kmAge
+        );
+    }
+
+    private UpdateItemRequest buildUpdateItemRequestFromEditForm() {
+        String itemId = firstNonBlank(readText(updateItemIdField), readItemId());
+        if (isBlank(itemId)) {
+            showError("Vui lòng chọn sản phẩm cần cập nhật từ danh sách.");
+            return null;
+        }
+
+        String itemType = editItemTypeComboBox != null ? editItemTypeComboBox.getValue() : null;
+        if (isBlank(itemType) && selectedItem != null) {
+            itemType = selectedItem.getItemType();
+        }
+
+        if (isBlank(itemType)) {
+            showError("Vui lòng chọn loại sản phẩm.");
+            return null;
+        }
+
+        Double startingPrice = readOptionalPositiveDouble(editStartingPriceField, "giá khởi điểm");
+        Integer yearCreated = readOptionalInteger(editYearCreatedField, "năm tạo/sản xuất");
+        Integer warrantyMonths = readOptionalInteger(editWarrantyMonthsField, "số tháng bảo hành");
+        Double kmAge = readOptionalPositiveDouble(editKmAgeField, "số km đã đi");
+
+        if (hasInvalidOptionalNumber(editStartingPriceField, startingPrice)
+                || hasInvalidOptionalNumber(editYearCreatedField, yearCreated)
+                || hasInvalidOptionalNumber(editWarrantyMonthsField, warrantyMonths)
+                || hasInvalidOptionalNumber(editKmAgeField, kmAge)) {
+            return null;
+        }
+
+        return new UpdateItemRequest(
+                itemId,
+                itemType,
+                readText(editItemNameField),
+                startingPrice,
+                readText(editDescriptionField),
+                yearCreated,
+                readText(editImageUrlField),
+                readText(editPainterField),
+                readText(editArtStyleField),
+                readText(editBrandField),
+                warrantyMonths,
+                readText(editModelField),
+                readText(editEngineTypeField),
+                readText(editLicensePlateField),
                 kmAge
         );
     }
@@ -985,5 +1354,69 @@ public class SellerItemController {
         alert.setHeaderText(null);
         alert.setContentText(safeText(message));
         alert.showAndWait();
+    }
+
+    // Hàm tiện ích kiểm tra xem người dùng đã gõ bất kỳ ký tự nào vào một danh sách các ô TextField chưa
+    private boolean isAnyFieldFilled(TextField... fields) {
+        for (TextField field : fields) {
+            if (field != null && field.getText() != null && !field.getText().trim().isEmpty()) {
+                return true; // Chỉ cần có ít nhất 1 ô có dữ liệu
+            }
+        }
+        return false;
+    }
+
+    // Hàm hiển thị hộp thoại xác nhận hủy thao tác
+    private boolean confirmExit() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Xác nhận hủy bỏ");
+        alert.setHeaderText("Bạn đã nhập dữ liệu dở dang.");
+        alert.setContentText("Bạn có chắc chắn muốn thoát và xóa sạch các dữ liệu đã nhập không?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.OK;
+    }
+
+    @FXML
+    private void handleOpenFormForAuction() {
+        var selectedItem = sellerItemsTable.getSelectionModel().getSelectedItem();
+        if (selectedItem == null) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setContentText("Vui lòng chọn một vật phẩm từ bảng danh sách trước khi tạo phiên đấu giá!");
+            alert.showAndWait();
+            return;
+        }
+        rightSplitPaneContainer.setVisible(true); rightSplitPaneContainer.setManaged(true);
+        auctionConfigContainer.setVisible(true); auctionConfigContainer.setManaged(true);
+
+        formCreateContainer.setVisible(false); formCreateContainer.setManaged(false);
+        formEditContainer.setVisible(false); formEditContainer.setManaged(false);
+
+        // Hiển thị thông tin Item lên tiêu đề form đấu giá để người dùng không bị nhầm lẫn
+        if(auctionItemIdLabel != null) auctionItemIdLabel.setText("Item ID: " + selectedItem.getItemId());
+        if(auctionItemNameLabel != null) auctionItemNameLabel.setText("Vật phẩm: " + selectedItem.getItemName());
+        fillDefaultTimeIfEmpty();
+    }
+
+    @FXML
+    private void handleCloseAuctionForm() {
+        // Chỉ hỏi khi người dùng đã gõ bất kỳ chữ nào vào ô nhập của form đấu giá
+        if (isAnyFieldFilled(stepPriceField, startTimeField, endTimeField)) {
+            if (!confirmExit()) {
+                return; // Chọn không -> Giữ nguyên form
+            }
+        }
+
+        // Tiến hành ẩn form đấu giá
+        if (auctionConfigContainer != null) {
+            auctionConfigContainer.setVisible(false);
+            auctionConfigContainer.setManaged(false);
+        }
+
+        // Clear dữ liệu nhập dở
+        if (stepPriceField != null) stepPriceField.clear();
+
+        // Thu gọn container bên phải
+        checkAndCollapseRightContainer();
     }
 }

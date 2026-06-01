@@ -19,17 +19,46 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 5);
 }
 
-/* Áp dụng cho TẤT CẢ các nút bấm */
+/* ==========================================================================
+   BUTTONS (NÚT BẤM - DARK MODE)
+   ========================================================================== */
+/* Trạng thái bình thường */
 .button {
     -fx-background-color: -fx-primary-color;
-    -fx-text-fill: #18191A;       /* Chữ đen trên nền cam cho rõ */
+    -fx-text-fill: #18191A; /* Chữ đen trên nền cam rõ ràng */
     -fx-background-radius: 8;
+    -fx-cursor: hand; /* Đổi con trỏ chuột thành hình bàn tay */
 }
 
-/* Áp dụng cho TẤT CẢ các ô nhập liệu */
+/* Khi di chuột vào (Hover) -> Sáng bừng nhẹ tạo hiệu ứng phát sáng Neon khu vực tối */
+.button:hover {
+    -fx-background-color: derive(-fx-primary-color, 20%); /* Tăng độ sáng mạnh hơn chút trên nền tối */
+    -fx-effect: dropshadow(three-pass-box, rgba(252, 163, 17, 0.3), 10, 0, 0, 0); /* Đổ bóng phát sáng màu primary */
+}
+
+/* Khi nhấn giữ chuột vào (Pressed) */
+.button:pressed {
+    -fx-background-color: derive(-fx-primary-color, -15%);
+}
+
+
+/* ==========================================================================
+   TEXT INPUT (Ô NHẬP LIỆU - DARK MODE)
+   ========================================================================== */
+/* Trạng thái bình thường */
 .text-input {
     -fx-background-color: #3A3B3C;
     -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+
+/* Khi người dùng click vào ô để gõ chữ (Focused) -> Nền tối sâu hơn và lên viền cam rực rỡ */
+.text-input:focused {
+    -fx-background-color: #242526;
+    -fx-border-color: -fx-primary-color;
 }
 
 /* Áp dụng cho TẤT CẢ các nhãn chữ */
@@ -329,70 +358,6 @@
     -fx-background-color: #e08732;
 }
 
-/* --- HỆ THỐNG CLASS DÀNH RIÊNG CHO MÀN SIM - DARK MODE --- */
-
-/* Nền tổng thể ngoài cùng: Màu xám siêu tối huyền bí */
-.sim-root-container {
-    -fx-background-color: #18191a;
-}
-
-/* Khung Card chính ở giữa: Màu mịn màng, đồng điệu tuyệt đối với Login */
-.sim-card-main {
-    -fx-background-color: #242526;
-    -fx-background-radius: 15;
-    -fx-padding: 30;
-    -fx-border-color: transparent; /* Bỏ viền cứng gây gắt mắt */
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 10, 0, 0, 0);
-}
-
-/* Ô nhập liệu (TextField): Màu xám tối vừa phải, mịn màng dịu mắt */
-.sim-input-field {
-    -fx-background-color: #3a3b3c;
-    -fx-border-color: transparent;
-    -fx-background-radius: 8;
-    -fx-text-fill: #ffffff;
-    -fx-prompt-text-fill: #b0b3b8;
-}
-.sim-input-field:focused {
-    -fx-border-color: #ff9f43;
-    -fx-border-radius: 8;
-}
-
-/* Label tiêu đề nhỏ: Màu xám bạc tinh tế, không bị chìm mà nhìn rất sang */
-.sim-label-title {
-    -fx-text-fill: #e4e6eb;
-    -fx-font-weight: bold;
-}
-
-/* Tiêu đề phụ của form: Chữ phát sáng mờ nhẹ giống màn hình Login */
-.sim-form-header {
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #ffffff; /* Chữ trắng tinh bừng sáng */
-    /* Hiệu ứng đổ bóng mờ nhẹ màu cam xung quanh chữ tạo độ sâu */
-    -fx-effect: dropshadow(three-pass-box, rgba(255, 159, 67, 0.3), 8, 0, 0, 0);
-}
-
-/* Nút phụ ở chế độ Tối: Nền tệp với card, viền mảnh xám tối, chữ bạc đồng bộ với label */
-.sim-btn-secondary {
-    -fx-background-color: transparent;
-    -fx-border-color: #4e4f50; /* Viền tối mờ dịu mắt */
-    -fx-border-width: 1;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-text-fill: #e4e6eb; /* Đồng bộ hoàn toàn với màu chữ sim-label-title của Dark Mode */
-    -fx-font-weight: bold;
-    -fx-cursor: hand;
-    -fx-padding: 5 12 5 12;
-}
-
-/* Hiệu ứng di chuột: Nền sáng nhẹ lên, chữ và viền hửng sắc cam ngầm */
-.sim-btn-secondary:hover {
-    -fx-background-color: #3a3b3c;
-    -fx-border-color: #ff9f43; /* Viền cam rực nhẹ lên tạo điểm nhấn thế giới ngầm */
-    -fx-text-fill: #ff9f43;
-}
-
 /* Style cho thẻ Ví ở chế độ Dark Mode */
 .wallet-mini-card {
     -fx-background-color: rgba(255, 255, 255, 0.1); /* Nền trắng đục mờ nhẹ trên nền tối */
@@ -434,4 +399,312 @@
 
     /* Tạo hiệu ứng quầng sáng lan tỏa màu vàng/cam ấm (Glow Effect) bao quanh nút cực kỳ bắt mắt */
     -fx-effect: dropshadow(three-pass-box, rgba(255, 179, 0, 0.8), 15, 0.3, 0, 0);
+}
+
+/* ==========================================================================
+   SELLER ITEM MANAGER (SIM) - DARK MODE EXCLUSIVE STYLE
+   ========================================================================== */
+
+/* Thùng chứa nền tổng */
+.sim-container {
+    -fx-background-color: #18191A;
+}
+
+/* Thanh công cụ phía trên */
+.sim-top-bar {
+    -fx-border-color: transparent transparent #3D3D3D transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 15 20 15 20;
+    -fx-background-color: #242526;
+}
+
+.sim-screen-title {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.sim-status-label {
+    -fx-text-fill: #E4E6EB;
+    -fx-font-style: italic;
+}
+
+/* Kiểu dáng các khối Card chức năng bên phải */
+.sim-card {
+    -fx-background-color: #242526;
+    -fx-background-radius: 12px;
+    -fx-border-color: #3D3D3D;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 8, 0, 0, 4);
+}
+
+.sim-form-title {
+    -fx-text-fill: #fca311;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.sim-separator {
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* Ô nhập liệu và Label */
+.sim-field-label {
+    -fx-text-fill: #E4E6EB;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.sim-input {
+    -fx-background-color: #3A3B3C;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px;
+    -fx-border-color: transparent;
+}
+.sim-input:focused {
+    -fx-background-color: #242526;
+    -fx-border-color: #fca311;
+    -fx-border-radius: 6px;
+}
+
+/* --- TRIỆT ĐỂ LỖI COMBOBOX POPUP (DARK MODE) --- */
+.sim-combobox {
+    -fx-background-color: #3A3B3C;
+    -fx-background-radius: 6px;
+    -fx-padding: 4px;
+    -fx-cursor: hand;
+}
+.sim-combobox .list-cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+.sim-combobox .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+/* Ép màu cửa sổ popup và danh sách phần tử ngay khi vừa khởi tạo */
+.sim-combobox .context-menu,
+.sim-combobox > .combo-box-popup > .list-view {
+    -fx-background-color: #242526 !important;
+    -fx-border-color: #3D3D3D !important;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+}
+/* Trạng thái tĩnh của các dòng chữ trong danh sách khi chưa di chuột */
+.sim-combobox > .combo-box-popup > .list-view .list-cell {
+    -fx-background-color: #242526 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+/* Hiệu ứng di chuột vào dòng */
+.sim-combobox > .combo-box-popup > .list-view .list-cell:hover {
+    -fx-background-color: #3A3B3C !important;
+    -fx-text-fill: #fca311 !important;
+}
+/* Khi dòng đó được chọn trúng */
+.sim-combobox > .combo-box-popup > .list-view .list-cell:filled:selected {
+    -fx-background-color: #fca311 !important;
+    -fx-text-fill: #000000 !important;
+}
+
+/* ScrollPane bọc ngoài vùng form */
+.sim-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+.sim-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* --- LỖI TIÊU ĐỀ BẢNG VÀ VÙNG THỪA BÊN PHẢI & THÔNG BÁO RỖNG (DARK MODE) --- */
+.sim-table {
+    -fx-background-color: #2B2B2B;
+    -fx-background-radius: 8px;
+    -fx-border-color: #3D3D3D;
+    -fx-border-radius: 8px;
+    -fx-padding: 5px;
+}
+/* Đồng bộ màu nền của toàn bộ thanh tiêu đề và ô trống thừa bên phải */
+.sim-table .column-header-background,
+.sim-table .column-header-background .filler,
+.sim-table .show-hide-columns-button,
+.sim-table .column-header-background .nested-column-header {
+    -fx-background-color: #242424 !important;
+}
+.sim-table .column-header {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent #3D3D3D transparent transparent;
+}
+.sim-table .column-header .label {
+    -fx-text-fill: #fca311 !important;
+    -fx-font-weight: bold;
+}
+.sim-table .arrow {
+    -fx-background-color: #fca311 !important;
+}
+.sim-table .table-row-cell {
+    -fx-background-color: #2B2B2B;
+    -fx-border-color: transparent transparent #3D3D3D transparent;
+}
+.sim-table .table-row-cell:odd {
+    -fx-background-color: #242424;
+}
+.sim-table .table-row-cell:filled:hover {
+    -fx-background-color: #383838;
+}
+.sim-table .table-row-cell:filled:selected {
+    -fx-background-color: #fca311;
+}
+.sim-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #000000 !important;
+    -fx-font-weight: bold;
+}
+
+/* --- ĐỒNG BỘ VÙNG BẢNG TRỐNG (DARK MODE) --- */
+.sim-table .placeholder {
+    -fx-background-color: #2B2B2B !important;
+}
+.sim-table .placeholder .placeholder-icon {
+    -fx-font-size: 32px; /* Cho icon to lên rõ ràng */
+    -fx-text-fill: #fca311 !important;
+    -fx-effect: dropshadow(three-pass-box, rgba(252, 163, 17, 0.4), 10, 0, 0, 0); /* Phát sáng nhẹ */
+}
+.sim-table .placeholder .placeholder-text {
+    -fx-text-fill: #fca311 !important; /* Màu vàng cam */
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* --- HỆ THỐNG NÚT BẤM - HIỆU ỨNG DI CHUỘT VÀ CURSOR HAND (DARK MODE) --- */
+.sim-btn-action {
+    -fx-background-color: #fca311;
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-action:hover {
+    -fx-background-color: #FFB703;
+    -fx-effect: dropshadow(three-pass-box, rgba(252, 163, 17, 0.4), 10, 0, 0, 0);
+}
+
+.sim-btn-submit {
+    -fx-background-color: #fca311;
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 16px;
+}
+.sim-btn-submit:hover {
+    -fx-background-color: #FFB703;
+    -fx-effect: dropshadow(three-pass-box, rgba(252, 163, 17, 0.5), 12, 0, 0, 0);
+}
+
+.sim-btn-secondary {
+    -fx-background-color: #4E4E4E;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-secondary:hover {
+    -fx-background-color: #606060;
+    -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.1), 8, 0, 0, 0);
+}
+
+/* Nút Danger phát sáng vàng Neon hổ phách cực mạnh khi dí chuột */
+.sim-btn-danger {
+    -fx-background-color: #FF4D4D;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-danger:hover {
+    -fx-background-color: #D9534F;
+    -fx-effect: dropshadow(three-pass-box, #fca311, 15, 0.5, 0, 0);
+}
+
+.sim-btn-danger-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #FF4D4D;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-text-fill: #FF4D4D;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 8px 14px;
+}
+.sim-btn-danger-outline:hover {
+    -fx-background-color: #FF4D4D;
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 77, 77, 0.3), 8, 0, 0, 0);
+}
+
+.sim-btn-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A0A0A0;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.sim-btn-close:hover { -fx-text-fill: #FFFFFF; }
+
+.sim-btn-close-text {
+    -fx-background-color: transparent;
+    -fx-border-color: #FF4D4D;
+    -fx-border-radius: 4px;
+    -fx-text-fill: #FF4D4D;
+    -fx-cursor: hand;
+}
+.sim-btn-close-text:hover {
+    -fx-background-color: #FF4D4D;
+    -fx-text-fill: #FFFFFF;
+}
+
+/* Tags labels nhỏ */
+.sim-tag-label {
+    -fx-text-fill: #A0A0A0;
+    -fx-background-color: #3D3D3D;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 4px;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+.sim-item-name-header {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+}
+/* --- TỐI ƯU CHIỀU CAO VÀ CHỮ TRONG BẢNG (DARK MODE) --- */
+.sim-table .table-cell {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #E4E6EB !important;
+    -fx-padding: 16px 20px; /* Tăng padding lên 16px để ô mở rộng to ra, thoáng đãng như ảnh mẫu */
+    -fx-alignment: center-left;
+}
+
+/* Định dạng riêng cho màu sắc trạng thái nổi bật */
+.sim-table .table-cell.status-active,
+.sim-table .table-cell.status-open {
+    -fx-font-weight: bold;
+    -fx-text-fill: #fca311 !important; /* Màu vàng cam hổ phách phát sáng cho Dark Mode */
+}
+
+/* Ẩn triệt để các hàng thừa không chứa dữ liệu phía dưới */
+.sim-table .table-row-cell:empty {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+}
+.sim-table .table-row-cell:empty .table-cell {
+    -fx-border-color: transparent !important;
+    -fx-text-fill: transparent !important;
 }
