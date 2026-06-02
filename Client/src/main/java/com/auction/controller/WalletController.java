@@ -77,14 +77,15 @@ public class WalletController {
          * Chan tu phia Client de tranh user khong dung role vao nham man hinh.
          * Day chi la guard UI. Server van la noi check quyen that su.
          */
-        if (!isBidderSession()) {
-            showError("Chi tai khoan Bidder moi duoc su dung vi dau gia.");
+        if (!isWalletViewerSession()) {
+            showError("Chi tai khoan Bidder hoac Seller moi duoc xem vi.");
             SceneNavigator.showDashboard();
             return;
         }
 
         bindCurrentUserToHeader();
         setBusy(false);
+        applyWalletModeByRole();
         showMessage("Dang tai thong tin vi...");
 
         /*
@@ -117,17 +118,32 @@ public class WalletController {
         }
     }
 
-    /**
-     * Kiem tra session hien tai co phai Bidder khong.
-     *
-     * Backend hien dang cho:
-     * - BIDDER: DEPOSIT_MONEY, WITHDRAW_MONEY
-     * - SELLER/ADMIN: khong duoc goi 2 action nay
-     */
-    private boolean isBidderSession() {
+
+    private boolean isWalletViewerSession() {
+        if (!ClientSession.isLoggedIn() || ClientSession.getCurrentUser() == null) {
+            return false;
+        }
+
+        UserRole role = ClientSession.getCurrentUser().getRole();
+        return role == UserRole.BIDDER || role == UserRole.SELLER;
+    }
+
+    private boolean canUseWalletTransactions() {
         return ClientSession.isLoggedIn()
                 && ClientSession.getCurrentUser() != null
                 && ClientSession.getCurrentUser().getRole() == UserRole.BIDDER;
+    }
+
+    private void applyWalletModeByRole() {
+        boolean bidder = canUseWalletTransactions();
+
+        setDisabled(depositButton, !bidder);
+        setDisabled(withdrawButton, !bidder);
+        setDisabled(amountField, !bidder);
+
+        if (!bidder) {
+            showMessage("Seller chi duoc xem so du vi. Chuc nang nap/rut hien chi danh cho Bidder.");
+        }
     }
 
     /**
@@ -166,6 +182,10 @@ public class WalletController {
      */
     @FXML
     private void handleDeposit() {
+        if (!canUseWalletTransactions()) {
+            showError("Seller chi duoc xem vi, khong duoc nap tien.");
+            return;
+        }
         Double amount = readAmountFromInput();
         if (amount == null) {
             return;
@@ -188,6 +208,10 @@ public class WalletController {
      */
     @FXML
     private void handleWithdraw() {
+        if (!canUseWalletTransactions()) {
+            showError("Seller chi duoc xem vi, khong duoc rut tien trong phien ban hien tai.");
+            return;
+        }
         Double amount = readAmountFromInput();
         if (amount == null) {
             return;
@@ -365,11 +389,11 @@ public class WalletController {
      */
     private void setBusy(boolean busy) {
         Platform.runLater(() -> {
-            setDisabled(refreshButton, busy);
-            setDisabled(depositButton, busy);
-            setDisabled(withdrawButton, busy);
-            setDisabled(backButton, busy);
-            setDisabled(amountField, busy);
+            boolean transactionAllowed = canUseWalletTransactions();
+
+            setDisabled(depositButton, busy || !transactionAllowed);
+            setDisabled(withdrawButton, busy || !transactionAllowed);
+            setDisabled(amountField, busy || !transactionAllowed);
         });
     }
 

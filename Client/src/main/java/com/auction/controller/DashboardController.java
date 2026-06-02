@@ -174,7 +174,8 @@ public class DashboardController {
             setCardVisible(walletMiniCard, true); // Hiện thẻ ví cho khách đấu giá nhìn số dư công khai
         } else if (role == UserRole.SELLER) {
             setElementVisible(sellerManagementButton, sellerManagementSpacer, true);
-        } else if (role == UserRole.ADMIN) {
+            setButtonVisible(walletButton, true);
+            setCardVisible(walletMiniCard, true);        } else if (role == UserRole.ADMIN) {
             setElementVisible(adminPanelButton, adminPanelSpacer, true);
             setCardVisible(walletMiniCard, false); // Admin không cần thẻ ví cá nhân, ẩn đi cho gọn gàng
         }
@@ -262,7 +263,10 @@ public class DashboardController {
         // Quay về màn hình đăng nhập.
         SceneNavigator.showLogin();
     }
-
+    @FXML
+    private void handleAccount() {
+        SceneNavigator.showAccount();
+    }
     // --- HÀM XỬ LÝ SỰ KIỆN KHI CLICK VÀO NÚT EXIT APP MỚI ---
     @FXML
     private void handleExit() {
