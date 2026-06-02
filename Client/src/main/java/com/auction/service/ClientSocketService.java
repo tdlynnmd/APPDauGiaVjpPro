@@ -68,6 +68,13 @@ public class ClientSocketService {
     private volatile boolean running = true;
     private volatile boolean forceLogoutHandled = false;
 
+    private final java.util.concurrent.ScheduledExecutorService pingScheduler = 
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "ping-scheduler");
+            t.setDaemon(true);
+            return t;
+        });
+
     private ClientSocketService() {
         ClientNetworkManager network = ClientNetworkManager.getInstance();
 
@@ -75,6 +82,26 @@ public class ClientSocketService {
         this.reader = network.getReader();
 
         startReaderThread();
+        startPingScheduler();
+    }
+
+    private void startPingScheduler() {
+        pingScheduler.scheduleAtFixedRate(this::sendPing, 20, 20, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private void sendPing() {
+        if (!running || writer == null) {
+            return;
+        }
+        try {
+            SocketRequest pingRequest = new SocketRequest(ActionType.PING, (String) null);
+            synchronized (writer) {
+                writer.println(gson.toJson(pingRequest));
+                writer.flush();
+            }
+        } catch (Exception e) {
+            System.err.println("[ClientSocketService] Loi gui PING keep-alive: " + e.getMessage());
+        }
     }
 
     /**
@@ -278,6 +305,11 @@ public class ClientSocketService {
             return;
         }
 
+        // Bỏ qua phản hồi PING/PONG để tránh in cảnh báo thiếu RequestId
+        if (ActionType.PING.name().equals(response.getAction())) {
+            return;
+        }
+
         if (SocketResponse.TYPE_EVENT.equals(response.getType())) {
             if (isForceLogoutEvent(response)) {
                 handleForceLogout(response);
@@ -430,6 +462,20 @@ public class ClientSocketService {
                 "Server da dong ket noi.",
                 "CONNECTION_CLOSED"
         );
+
+        // Chuyển hướng người dùng về màn đăng nhập khi phát hiện mất kết nối vật lý với Server
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Mat ket noi");
+            alert.setHeaderText(null);
+            alert.setContentText("Mat ket noi toi Server. Vui long dang nhap lai!");
+            alert.showAndWait();
+
+            ClientSession.clear();
+            ClientNetworkManager.resetConnection();
+            ClientSocketService.reset();
+            SceneNavigator.showLogin();
+        });
     }
 
     /**
@@ -460,6 +506,11 @@ public class ClientSocketService {
      */
     public void stop() {
         running = false;
+        try {
+            pingScheduler.shutdownNow();
+        } catch (Exception e) {
+            // bỏ qua
+        }
 
         completeAllPendingResponses(
                 "ClientSocketService da dung.",
