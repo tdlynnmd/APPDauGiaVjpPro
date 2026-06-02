@@ -683,28 +683,48 @@
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
 }
-/* --- TỐI ƯU CHIỀU CAO VÀ CHỮ TRONG BẢNG (DARK MODE) --- */
+/* --- TỐI ƯU HIỂN THỊ CHỮ VÀ TRẠNG THÁI (DARK MODE) --- */
 .sim-table .table-cell {
     -fx-font-family: "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: #E4E6EB !important;
-    -fx-padding: 16px 20px; /* Tăng padding lên 16px để ô mở rộng to ra, thoáng đãng như ảnh mẫu */
+    -fx-text-fill: #E4E6EB !important; /* Màu trắng xám dịu mắt mặc định */
     -fx-alignment: center-left;
+    -fx-padding: 0 15px;
 }
 
-/* Định dạng riêng cho màu sắc trạng thái nổi bật */
+/* In đậm và làm sáng riêng cột tên vật phẩm */
+.sim-table .table-cell.cell-item-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: #FFFFFF !important; /* Trắng tinh nổi bật hẳn lên */
+}
+
+/* Đổi màu chữ Trạng thái động trên nền Dark Mode */
 .sim-table .table-cell.status-active,
 .sim-table .table-cell.status-open {
     -fx-font-weight: bold;
-    -fx-text-fill: #fca311 !important; /* Màu vàng cam hổ phách phát sáng cho Dark Mode */
+    -fx-text-fill: #fca311 !important; /* Vàng hổ phách */
+}
+.sim-table .table-cell.status-close {
+    -fx-font-weight: bold;
+    -fx-text-fill: #FF4D4D !important; /* Đỏ cảnh báo */
+}
+
+/* Khi một dòng được chọn ở Dark Mode */
+.sim-table .table-row-cell:filled:selected {
+    -fx-background-color: #3A3B3C !important; /* Nền xám đậm nổi lên vừa phải */
+}
+.sim-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #fca311 !important; /* Biến toàn bộ chữ dòng đó thành màu vàng thương hiệu */
+}
+.sim-table .table-row-cell:filled:selected .table-cell.cell-item-name {
+    -fx-text-fill: #FFFFFF !important; /* Giữ cột tên trắng sáng */
 }
 
 /* Ẩn triệt để các hàng thừa không chứa dữ liệu phía dưới */
-.sim-table .table-row-cell:empty {
-    -fx-background-color: transparent !important;
-    -fx-border-color: transparent !important;
-}
+.sim-table .table-row-cell:empty,
 .sim-table .table-row-cell:empty .table-cell {
+    -fx-background-color: transparent !important;
     -fx-border-color: transparent !important;
     -fx-text-fill: transparent !important;
 }

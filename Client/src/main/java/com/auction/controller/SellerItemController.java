@@ -12,6 +12,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -46,6 +47,11 @@ public class SellerItemController {
     private final ObservableList<ItemSummaryDTO> sellerItems = FXCollections.observableArrayList();
 
     private ItemSummaryDTO selectedItem;
+    private javafx.collections.transformation.FilteredList<ItemSummaryDTO> filteredItems;
+    private boolean showAllStatusesMode = false; // false: Chỉ hiện ACTIVE | true: Hiện tất cả
+    private boolean isNameAscending = true;
+    private boolean isPriceAscending = true;
+    private boolean isTypeAscending = true;
 
     // =========================================================================
     // KHAI BÁO BIẾN ĐIỀU KHIỂN LUỒNG FORM RIÊNG BIỆT: TẠO RIÊNG - SỬA RIÊNG
@@ -152,6 +158,79 @@ public class SellerItemController {
     @FXML private Label auctionItemNameLabel;
 
     private com.auction.dto.ItemSummaryDTO currentEditingItem = null;
+
+    private void applyStatusFilterAndSort() {
+        if (filteredItems == null) return;
+
+        // 1. BỘ LỌC ẨN / HIỆN THEO CHẾ ĐỘ XEM (Giữ nguyên logic chuẩn của bạn)
+        filteredItems.setPredicate(item -> {
+            if (item == null || item.getStatus() == null) return false;
+            String status = item.getStatus().toUpperCase();
+            if (showAllStatusesMode) {
+                return true;
+            } else {
+                return "ACTIVE".equals(status);
+            }
+        });
+
+        // 2. BỘ SẮP XẾP SỬA ĐỔI TOÀN DIỆN THEO YÊU CẦU MỚI
+        SortedList<ItemSummaryDTO> sortedItems = new SortedList<>(filteredItems);
+
+        // Kiểm tra xem người dùng đang kích hoạt sắp xếp ở cột nào trên TableView
+        if (sellerItemsTable.getSortOrder().isEmpty()) {
+            // TRƯỜNG HỢP MẶC ĐỊNH HOẶC KHI ẤN CỘT TRẠNG THÁI: Sắp xếp theo ACTIVE ➔ SOLD ➔ INACTIVE
+            sortedItems.setComparator((item1, item2) -> {
+                if (item1 == null || item2 == null) return 0;
+                String s1 = item1.getStatus() == null ? "" : item1.getStatus().toUpperCase();
+                String s2 = item2.getStatus() == null ? "" : item2.getStatus().toUpperCase();
+                if (s1.equals(s2)) return 0;
+
+                int p1 = "ACTIVE".equals(s1) ? 1 : (("SOLD".equals(s1) || "CLOSE".equals(s1) || "CLOSED".equals(s1)) ? 2 : 3);
+                int p2 = "ACTIVE".equals(s2) ? 1 : (("SOLD".equals(s2) || "CLOSE".equals(s2) || "CLOSED".equals(s2)) ? 2 : 3);
+                return Integer.compare(p1, p2);
+            });
+        } else {
+            // Lấy ra cột đang được yêu cầu sắp xếp
+            TableColumn<ItemSummaryDTO, ?> currentSortColumn = sellerItemsTable.getSortOrder().get(0);
+
+            if (currentSortColumn == itemNameColumn) {
+                // SẮP XẾP THEO TÊN (BẢNG CHỮ CÁI)
+                sortedItems.setComparator((item1, item2) -> {
+                    if (item1 == null || item2 == null) return 0;
+                    String name1 = item1.getItemName() == null ? "" : item1.getItemName();
+                    String name2 = item2.getItemName() == null ? "" : item2.getItemName();
+
+                    int comp = name1.compareToIgnoreCase(name2);
+                    return isNameAscending ? comp : -comp;
+                });
+            }
+            else if (currentSortColumn == startingPriceColumn) {
+                // SẮP XẾP THEO GIÁ TIỀN
+                sortedItems.setComparator((item1, item2) -> {
+                    if (item1 == null || item2 == null) return 0;
+                    int comp = Double.compare(item1.getStartingPrice(), item2.getStartingPrice());
+                    return isPriceAscending ? comp : -comp;
+                });
+            }
+            else if (currentSortColumn == itemTypeColumn) {
+                // SẮP XẾP THỂ LOẠI THEO TRẠNG THÁI VẬT PHẨM
+                sortedItems.setComparator((item1, item2) -> {
+                    if (item1 == null || item2 == null) return 0;
+                    String s1 = item1.getStatus() == null ? "" : item1.getStatus().toUpperCase();
+                    String s2 = item2.getStatus() == null ? "" : item2.getStatus().toUpperCase();
+                    if (s1.equals(s2)) return 0;
+
+                    int p1 = "ACTIVE".equals(s1) ? 1 : (("SOLD".equals(s1) || "CLOSE".equals(s1) || "CLOSED".equals(s1)) ? 2 : 3);
+                    int p2 = "ACTIVE".equals(s2) ? 1 : (("SOLD".equals(s2) || "CLOSE".equals(s2) || "CLOSED".equals(s2)) ? 2 : 3);
+
+                    int comp = Integer.compare(p1, p2);
+                    return isTypeAscending ? comp : -comp;
+                });
+            }
+        }
+
+        sellerItemsTable.setItems(sortedItems);
+    }
 
     @FXML
     public void initialize() {
@@ -268,7 +347,8 @@ public class SellerItemController {
             return;
         }
 
-        sellerItemsTable.setItems(sellerItems);
+        filteredItems = new javafx.collections.transformation.FilteredList<>(sellerItems, p -> true);
+        applyStatusFilterAndSort();
         sellerItemsTable.setFixedCellSize(48);
 
         if (itemIdColumn != null) {
@@ -287,9 +367,30 @@ public class SellerItemController {
                         setStyle("");
                     } else {
                         setText(item);
-                        // Ép in đậm chữ và tăng kích thước font lên 14px cho riêng cột Tên
                         setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
                     }
+                }
+            });
+
+            if (itemIdColumn != null) {
+                itemIdColumn.setSortable(false);
+            }
+
+            sellerItemsTable.setOnSort(event -> {
+                // Ngăn chặn JavaFX chạy bộ sort Alphabet mặc định của nó
+                event.consume();
+
+                if (!sellerItemsTable.getSortOrder().isEmpty()) {
+                    TableColumn<ItemSummaryDTO, ?> col = sellerItemsTable.getSortOrder().get(0);
+
+                    // Đảo chiều tăng/giảm sau mỗi lần click
+                    if (col == itemNameColumn) isNameAscending = !isNameAscending;
+                    if (col == startingPriceColumn) isPriceAscending = !isPriceAscending;
+                    if (col == itemTypeColumn) isTypeAscending = !isTypeAscending;
+
+                    // Gọi hàm xử lý sắp xếp tùy biến
+                    applyStatusFilterAndSort();
+                    sellerItemsTable.refresh();
                 }
             });
         }
@@ -299,7 +400,6 @@ public class SellerItemController {
         }
 
         if (startingPriceColumn != null) {
-            // Giữ nguyên dòng này để lấy giá trị số từ DTO
             startingPriceColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getStartingPrice()));
 
             startingPriceColumn.setCellFactory(column -> new TableCell<ItemSummaryDTO, Number>() {
@@ -309,7 +409,6 @@ public class SellerItemController {
                     if (empty || price == null) {
                         setText(null);
                     } else {
-                        // Định dạng số có dấu phẩy phân cách hàng nghìn (Ví dụ: 2,500,000 VNĐ)
                         java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
                         setText(df.format(price.doubleValue()) + " VNĐ");
                     }
@@ -329,10 +428,8 @@ public class SellerItemController {
                         getStyleClass().removeAll("status-active", "status-open", "status-close");
                     } else {
                         setText(status);
-                        // Xóa class cũ để không bị lỗi cộng dồn class khi cuộn bảng
                         getStyleClass().removeAll("status-active", "status-open", "status-close");
 
-                        // Thêm class tương ứng với chữ để CSS bắt màu chuẩn
                         if ("ACTIVE".equalsIgnoreCase(status)) {
                             getStyleClass().add("status-active");
                         } else if ("OPEN".equalsIgnoreCase(status)) {
@@ -343,15 +440,129 @@ public class SellerItemController {
                     }
                 }
             });
+
+            // =========================================================================
+            // LOGIC ẤN VÀO TIÊU ĐỀ: ĐẢO CHẾ ĐỘ ẨN/HIỆN & ĐỒNG BỘ ĐÓNG FORM KHI ITEM BIẾN MẤT
+            // =========================================================================
+            statusColumn.setGraphic(new Label("Trạng Thái 🔄"));
+            statusColumn.getGraphic().setStyle("-fx-cursor: hand; -fx-text-fill: -fx-primary-color;");
+            statusColumn.setText("");
+            statusColumn.setSortable(false); // Khóa tính năng tự sort Alphabet của JavaFX
+
+            statusColumn.getGraphic().setOnMouseClicked(event -> {
+                // 1. Đảo chế độ hiển thị biến showAllStatusesMode
+                showAllStatusesMode = !showAllStatusesMode;
+
+                // 2. Chạy bộ lọc để ẩn/hiện các dòng tương ứng trên bảng
+                applyStatusFilterAndSort();
+
+                // 3. LOGIC QUAN TRỌNG: Kiểm tra nếu chuyển về chế độ "Chỉ hiện ACTIVE"
+                if (!showAllStatusesMode) {
+                    showMessage("Chế độ: Chỉ hiển thị các sản phẩm ACTIVE");
+
+                    // Nếu sản phẩm đang chọn bị ẩn đi (không phải ACTIVE), ta phải đóng form lại ngay để tránh kẹt dữ liệu ẩn
+                    if (this.selectedItem != null && !"ACTIVE".equalsIgnoreCase(this.selectedItem.getStatus())) {
+
+                        // Ẩn form Sửa và form Đấu giá đi vì sản phẩm đó đã biến mất khỏi bảng
+                        if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
+                        if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
+
+                        // Thu gọn luôn thanh trượt bên phải
+                        checkAndCollapseRightContainer();
+
+                        // Reset trạng thái lưu trữ text gốc
+                        this.originalFormText = "";
+                        this.currentEditingItem = null;
+                    }
+                } else {
+                    showMessage("Chế độ: Hiện tất cả trạng thái");
+                }
+
+                // 4. Ép bảng chọn lại sản phẩm ACTIVE đầu tiên (nếu có) để giao diện mượt mà, không bị trống dòng chọn
+                if (sellerItemsTable != null && !sellerItemsTable.getItems().isEmpty()) {
+                    var firstVisibleItem = sellerItemsTable.getItems().get(0);
+                    sellerItemsTable.getSelectionModel().select(firstVisibleItem);
+                } else {
+                    this.selectedItem = null;
+                }
+
+                sellerItemsTable.refresh();
+            });
         }
 
+        // =========================================================================
+        // LISTENER CHỌN DÒNG TRÊN BẢNG (Giữ nguyên logic Cảnh báo chuẩn của bạn)
+        // =========================================================================
         sellerItemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
-            if (newItem == null) {
-                return;
+            if (newItem == null) return;
+
+            // --- CẢNH BÁO FORM TẠO PHIÊN ĐẤU GIÁ ---
+            if (auctionConfigContainer != null && auctionConfigContainer.isVisible()) {
+                if (isAnyFieldFilled(stepPriceField, startTimeField, endTimeField)) {
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Xác nhận thay đổi");
+                    alert.setHeaderText("Thông tin tạo phiên đấu giá đang nhập dở!");
+                    alert.setContentText("Bạn có chắc chắn muốn hủy bỏ phiên nhập hiện tại để chọn sản phẩm khác không?");
+
+                    if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                        javafx.application.Platform.runLater(() -> sellerItemsTable.getSelectionModel().select(oldItem));
+                        return;
+                    }
+                }
+                if (stepPriceField != null) stepPriceField.clear();
             }
+
+            // --- CẢNH BÁO FORM SỬA ---
+            if (formEditContainer != null && formEditContainer.isVisible()) {
+                if (isEditFormDirty()) {
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Xác nhận thay đổi");
+                    alert.setHeaderText("Dữ liệu chỉnh sửa chưa được lưu!");
+                    alert.setContentText("Bạn có chắc chắn muốn bỏ qua thay đổi hiện tại và chuyển sang sản phẩm mới không?");
+
+                    if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                        javafx.application.Platform.runLater(() -> sellerItemsTable.getSelectionModel().select(oldItem));
+                        return;
+                    }
+                }
+            }
+
+            // --- TIẾN HÀNH ĐỔI SẢN PHẨM ---
             this.selectedItem = newItem;
             this.currentEditingItem = newItem;
-            loadItemDetailIntoForm(newItem.getItemId(), false);
+
+            if (auctionConfigContainer != null && auctionConfigContainer.isVisible()) {
+                if (auctionItemIdLabel != null) auctionItemIdLabel.setText("Item ID: " + newItem.getItemId());
+                if (auctionItemNameLabel != null) auctionItemNameLabel.setText("Vật phẩm: " + newItem.getItemName());
+                fillDefaultTimeIfEmpty();
+            }
+
+            if (formEditContainer != null && formEditContainer.isVisible()) {
+                loadItemDetailIntoForm(newItem.getItemId(), true);
+
+                this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
+                        + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
+                        + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                        + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
+                        + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
+            }
+
+            if (formCreateContainer != null && formCreateContainer.isVisible()) {
+                formCreateContainer.setVisible(false);
+                formCreateContainer.setManaged(false);
+
+                if (formEditContainer != null) {
+                    formEditContainer.setVisible(true);
+                    formEditContainer.setManaged(true);
+                    loadItemDetailIntoForm(newItem.getItemId(), true);
+
+                    this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
+                            + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
+                            + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                            + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
+                            + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
+                }
+            }
         });
     }
 
@@ -628,21 +839,26 @@ public class SellerItemController {
      */
     @FXML
     private void handleDeleteItem() {
-        var selectedItem = sellerItemsTable.getSelectionModel().getSelectedItem();
-        if (selectedItem == null) {
+        var selectedItemLocal = sellerItemsTable.getSelectionModel().getSelectedItem();
+        if (selectedItemLocal == null) {
             showError("Vui lòng chọn một vật phẩm trong danh sách để xóa.");
             return;
         }
 
-        // 1. Hiển thị hộp thoại yêu cầu người dùng nhập lý do xóa sản phẩm
+        // Kiểm tra điều kiện: Chỉ cho phép xóa sản phẩm đang ở trạng thái ACTIVE
+        String currentStatus = selectedItemLocal.getStatus() == null ? "" : selectedItemLocal.getStatus().toUpperCase();
+        if (!"ACTIVE".equals(currentStatus)) {
+            showError("Chỉ có thể xóa sản phẩm đang hoạt động (ACTIVE). Sản phẩm mang trạng thái " + currentStatus + " không thể xóa!");
+            return;
+        }
+
         TextInputDialog dialog = new TextInputDialog("Không còn nhu cầu đấu giá");
         dialog.setTitle("Lý do xóa vật phẩm");
-        dialog.setHeaderText("Xác nhận xóa vật phẩm: " + safeText(selectedItem.getItemName()));
+        dialog.setHeaderText("Xác nhận xóa vật phẩm: " + safeText(selectedItemLocal.getItemName()));
         dialog.setContentText("Vui lòng nhập lý do xóa (*):");
 
         Optional<String> result = dialog.showAndWait();
 
-        // 2. Nếu người dùng bấm OK và có nhập chữ
         if (result.isPresent()) {
             String reason = result.get().trim();
 
@@ -651,27 +867,45 @@ public class SellerItemController {
                 return;
             }
 
-            // 3. Gọi API truyền đúng 2 tham số: itemId và lý do xóa (reason) đúng như hàm trong ClientItemApi yêu cầu
-            SocketResponse response = itemApi.deleteItem(selectedItem.getItemId(), reason);
+            // Gửi yêu cầu xóa lên Server (Server sẽ chuyển trạng thái của item thành INACTIVE trong DB)
+            SocketResponse response = itemApi.deleteItem(selectedItemLocal.getItemId(), reason);
 
             if (!isSuccessful(response)) {
                 showError(response == null ? "Xóa thất bại. Server không phản hồi hợp lệ." : response.getMessage());
                 return;
             }
 
-            // 4. Thông báo và làm mới giao diện
-            showInfo(response.getMessage());
-            showMessage("Xóa sản phẩm thành công.");
+            // =========================================================================
+            // GIẢI PHÁP CHO DTO BẤT BIẾN (IMMUTABLE):
+            // Gọi hàm refresh để kéo dữ liệu trạng thái INACTIVE mới tinh từ Server về bảng
+            // =========================================================================
+            refreshSellerItems(false);
 
-            if (formEditContainer != null && formEditContainer.isVisible()) {
-                formEditContainer.setVisible(false);
-                formEditContainer.setManaged(false);
+            // Đồng bộ đóng form bên phải nếu đang chọn xem chính sản phẩm vừa xóa
+            if (this.selectedItem != null && selectedItemLocal.getItemId().equals(this.selectedItem.getItemId())) {
+                if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
+                if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
+
                 this.originalFormText = "";
                 this.currentEditingItem = null;
+                this.selectedItem = null;
+
+                checkAndCollapseRightContainer();
             }
 
-            refreshSellerItems(false);
-            checkAndCollapseRightContainer();
+            showInfo(response.getMessage());
+            showMessage("Sản phẩm đã được chuyển sang trạng thái ngừng hoạt động (INACTIVE).");
+
+            // Chạy lại bộ lọc hiển thị dựa trên chế độ xem hiện tại (Ẩn nếu chọn "Chỉ ACTIVE", hiện cuối bảng nếu chọn "Hiện tất cả")
+            applyStatusFilterAndSort();
+
+            if (sellerItemsTable != null) {
+                sellerItemsTable.getSelectionModel().clearSelection();
+                if (!sellerItemsTable.getItems().isEmpty()) {
+                    sellerItemsTable.getSelectionModel().select(0);
+                }
+                sellerItemsTable.refresh();
+            }
         }
     }
 
@@ -732,6 +966,12 @@ public class SellerItemController {
         if (endTimeField != null) endTimeField.clear();
 
         checkAndCollapseRightContainer();
+
+        applyStatusFilterAndSort();
+        if (sellerItemsTable != null) {
+            sellerItemsTable.refresh();
+        }
+
         refreshSellerItems(false);
     }
 
@@ -836,27 +1076,25 @@ public class SellerItemController {
             return;
         }
 
-        // 1. Lấy toàn bộ danh sách từ Server về
         List<ItemSummaryDTO> allItems = itemApi.parseItemSummaryList(response);
 
-        // 2. [CẬP NHẬT]: Lọc sạch, chỉ giữ lại các vật phẩm KHÔNG PHẢI là "INACTIVE"
-        List<ItemSummaryDTO> activeItems = allItems.stream()
-                .filter(item -> item != null && !"INACTIVE".equalsIgnoreCase(item.getStatus()))
-                .toList();
+        // CHUẨN HÓA: Đổ nguyên vẹn danh sách gốc từ Server trả về (giữ lại cả các item INACTIVE)
+        sellerItems.setAll(allItems);
 
-        // 3. Đổ danh sách đã lọc sạch vào bảng dữ liệu thay vì allItems ban đầu
-        sellerItems.setAll(activeItems);
+        // Chạy lại bộ lọc ẩn/hiện theo chế độ đang chọn (Chỉ hiện ACTIVE hoặc Hiện tất cả)
+        applyStatusFilterAndSort();
+        if (sellerItemsTable != null) {
+            sellerItemsTable.refresh();
+        }
 
-        // 4. Cập nhật lại logic chọn dòng (Sử dụng danh sách activeItems mới)
         if (selectedItem != null) {
             selectItemInTable(selectedItem.getItemId());
-        } else if (!activeItems.isEmpty()) {
-            setSelectedItem(activeItems.get(0));
+        } else if (!sellerItems.isEmpty()) {
+            setSelectedItem(sellerItems.get(0));
         }
 
         if (showResultMessage) {
-            // Thông báo số lượng sản phẩm đang hoạt động thực tế trên màn hình
-            showMessage("Đã tải " + activeItems.size() + " sản phẩm đang hoạt động.");
+            showMessage("Đã đồng bộ danh sách kho vật phẩm.");
         }
     }
 
