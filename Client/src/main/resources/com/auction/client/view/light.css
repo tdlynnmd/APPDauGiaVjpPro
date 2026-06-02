@@ -675,28 +675,49 @@
     -fx-text-fill: #1C1E21;
     -fx-font-weight: bold;
 }
-/* --- TỐI ƯU CHIỀU CAO VÀ CHỮ TRONG BẢNG (LIGHT MODE) --- */
+/* --- TỐI ƯU HIỂN THỊ CHỮ VÀ TRẠNG THÁI (LIGHT MODE) --- */
 .sim-table .table-cell {
     -fx-font-family: "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: #1C1E21 !important;
-    -fx-padding: 16px 20px; /* Ô mở rộng to ra tương tự trên nền sáng */
+    -fx-text-fill: #1C1E21 !important; /* Chữ tối rõ nét mặc định */
     -fx-alignment: center-left;
+    -fx-padding: 0 15px;
 }
 
-/* Định dạng riêng cho màu sắc trạng thái nổi bật */
+/* In đậm và phóng lớn riêng cột tên vật phẩm */
+.sim-table .table-cell.cell-item-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: #000000 !important; /* Đen tuyền sang trọng */
+}
+
+/* Đổi màu chữ Trạng thái động trên nền Light Mode */
 .sim-table .table-cell.status-active,
 .sim-table .table-cell.status-open {
     -fx-font-weight: bold;
-    -fx-text-fill: #1877F2 !important; /* Màu xanh dương thương hiệu cực nét cho Light Mode */
+    -fx-text-fill: #1877F2 !important; /* Xanh dương thương hiệu */
+}
+.sim-table .table-cell.status-close {
+    -fx-font-weight: bold;
+    -fx-text-fill: #D9534F !important; /* Màu đỏ sẫm dễ nhìn */
+}
+
+/* VẤN ĐỀ 1: Giảm độ tương phản dòng được chọn ở Light Mode */
+.sim-table .table-row-cell:filled:selected {
+    -fx-background-color: #E8F0FE !important; /* Xanh Pastel dịu nhẹ không chói mắt */
+}
+.sim-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #1C1E21 !important; /* Giữ chữ màu tối dễ đọc */
+}
+.sim-table .table-row-cell:filled:selected .table-cell.status-active,
+.sim-table .table-row-cell:filled:selected .table-cell.status-open {
+    -fx-text-fill: #1877F2 !important; /* Giữ màu trạng thái xanh thương hiệu */
 }
 
 /* Ẩn triệt để các hàng thừa không chứa dữ liệu phía dưới */
-.sim-table .table-row-cell:empty {
-    -fx-background-color: transparent !important;
-    -fx-border-color: transparent !important;
-}
+.sim-table .table-row-cell:empty,
 .sim-table .table-row-cell:empty .table-cell {
+    -fx-background-color: transparent !important;
     -fx-border-color: transparent !important;
     -fx-text-fill: transparent !important;
 }
