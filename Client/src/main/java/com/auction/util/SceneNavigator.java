@@ -41,6 +41,8 @@ public class SceneNavigator {
     private static final String ADMIN_DASHBOARD_VIEW = "/com/auction/client/view/admin-dashboard.fxml";
     private static final String WALLET_VIEW = "/com/auction/client/view/wallet.fxml";
     private static final String MY_BIDS_VIEW = "/com/auction/client/view/my-bids.fxml";
+    private static final String ACCOUNT_VIEW = "/com/auction/client/view/account.fxml";
+
 
 
     private SceneNavigator() {
@@ -85,11 +87,15 @@ public class SceneNavigator {
     public static void showWallet() {
         loadScene(WALLET_VIEW, "Wallet");
     }
+    public static void showAccount() {
+        loadScene(ACCOUNT_VIEW, "Account");
+    }
 
     public static void showLiveBidding(String auctionId) {
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new IllegalArgumentException("auctionId must not be empty.");
         }
+
 
         FXMLLoader loader = loadSceneAndReturnLoader(LIVE_BIDDING_VIEW, "Live Bidding");
 
