@@ -218,13 +218,14 @@ public class UserDAOImpl implements UserDAO {
     // 🔥 SỬA: Loại bỏ khối try-catch, ném SQLException ra ngoài Service bọc lót Transaction
     @Override
     public boolean addJoinedAuction(Connection conn, String userId, String auctionId) throws SQLException {
-        String sql = "INSERT INTO bidder_joined_auctions (user_id, auction_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1))";
+        String sql = "INSERT IGNORE INTO bidder_joined_auctions (user_id, auction_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1))";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.setString(2, auctionId);
 
-            return stmt.executeUpdate() > 0;
+            stmt.executeUpdate();
+            return true;
         }
     }
 
@@ -321,7 +322,9 @@ public class UserDAOImpl implements UserDAO {
 
         switch (role) {
             case BIDDER:
-                return new Bidder(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
+                Bidder bidder = new Bidder(id, username, email, passwordHash, role, available, frozen, status, createdAt, updatedAt);
+                loadJoinedAuctionsForBidder(rs.getStatement().getConnection(), bidder);
+                return bidder;
 
             case SELLER:
                 double rating = rs.getDouble("rating");
@@ -333,6 +336,20 @@ public class UserDAOImpl implements UserDAO {
 
             default:
                 throw new SQLException("Unsupported user role: " + role);
+        }
+    }
+
+    private void loadJoinedAuctionsForBidder(Connection conn, Bidder bidder) {
+        String sql = "SELECT BIN_TO_UUID(auction_id, 1) AS auction_id FROM bidder_joined_auctions WHERE user_id = UUID_TO_BIN(?, 1)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, bidder.getId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    bidder.addJoinedAuction(rs.getString("auction_id"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi loadJoinedAuctionsForBidder: " + e.getMessage());
         }
     }
 }

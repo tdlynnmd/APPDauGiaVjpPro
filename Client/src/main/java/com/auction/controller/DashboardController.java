@@ -257,8 +257,8 @@ public class DashboardController {
         // Xóa session phía Client.
         // Sau bước này, Dashboard không còn biết user hiện tại là ai.
         ClientSession.clear();
-        com.auction.network.ClientNetworkManager.resetConnection();
         com.auction.service.ClientSocketService.reset();
+        com.auction.network.ClientNetworkManager.resetConnection();
         // Quay về màn hình đăng nhập.
         SceneNavigator.showLogin();
     }

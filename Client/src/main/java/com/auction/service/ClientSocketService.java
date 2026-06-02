@@ -267,7 +267,9 @@ public class ClientSocketService {
                 String rawMessage = reader.readLine();
 
                 if (rawMessage == null) {
-                    handleConnectionClosed();
+                    if (running) {
+                        handleConnectionClosed();
+                    }
                     break;
                 }
 
