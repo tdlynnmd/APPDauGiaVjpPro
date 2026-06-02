@@ -28,8 +28,23 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * MyBidsController - Phiên bản đã gia cố logic bảo mật mảng,
- * tích hợp lắng nghe thời gian thực ô tự điền số dòng và sửa lỗi đứng TableView.
+ * MyBidsController la controller phia Client cho man hinh "My Bids".
+ *
+ * Chuc nang:
+ * - Hien thi lich su cac lan dat gia cua Bidder dang dang nhap.
+ * - Ho tro phan trang.
+ * - Chi cho BIDDER vao man hinh nay.
+ *
+ * Lien he voi backend:
+ * - Controller goi ClientBidHistoryApi.
+ * - ClientBidHistoryApi gui action GET_MY_BID_HISTORY.
+ * - Server RequestDispatcher lay bidderId tu ClientSession phia Server.
+ * - UserController va BidTransactionService tra ve PageDTO<BidTransactionDTO>.
+ *
+ * Luu y hien tai:
+ * - BidTransactionDTO chua co auctionId/itemName.
+ * - Vi vay man hinh nay hien thi duoc amount, time, status.
+ * - Neu sau nay muon bam vao dong bid de mo auction detail, can mo rong DTO backend.
  */
 public class MyBidsController {
     private static final int DEFAULT_PAGE_SIZE = 10;

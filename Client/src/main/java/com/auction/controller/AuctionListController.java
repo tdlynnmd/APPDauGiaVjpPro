@@ -19,12 +19,27 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * AuctionListController - Phiên bản chuẩn SIM.
- * Nút Làm mới đóng vai trò F5 Reload (giữ nguyên từ khóa tìm kiếm và số lượng dòng/trang đang điền).
+ * AuctionListController là Controller phía Client cho màn hình danh sách đấu giá.
+ *
+ * Vai trò:
+ * - Gọi ClientAuctionApi để gửi request GET_ACTIVE_AUCTIONS sang Server.
+ * - Nhận SocketResponse từ Server.
+ * * - Parse response.body thành List<AuctionSummaryDTO>.
+ * * - Hiển thị danh sách phiên đấu giá lên TableView.
+ *
+ * Lưu ý:
+ * - Controller chỉ xử lý giao diện và gọi API phía Client.
+ * - Controller không tự làm việc trực tiếp với Socket.
+ * - Controller không xử lý nghiệp vụ đấu giá.
+ * - Server mới là nơi kiểm tra quyền và lấy dữ liệu thật.
  */
 public class AuctionListController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
 
+    /*
+     * ObservableList là danh sách dữ liệu mà TableView theo dõi.
+     * Khi auctionItems thay đổi, TableView có thể cập nhật lại giao diện.
+     */
     private final ObservableList<AuctionSummaryDTO> allServerAuctions = FXCollections.observableArrayList();
     private final ObservableList<AuctionSummaryDTO> paginatedAuctions = FXCollections.observableArrayList();
     private FilteredList<AuctionSummaryDTO> filteredAuctions;
