@@ -525,10 +525,17 @@ class UserServiceTest {
 
         assertDoesNotThrow(() -> userService.lockUserAccount("admin-1", "user-online-123", UserStatus.BANNED));
 
-        Thread.sleep(350);
+        // Chờ tối đa 3 giây (3000ms) để luồng chạy ẩn FORCE_LOGOUT_SCHEDULER (hoãn 300ms) hoàn tất xử lý
+        boolean isLoggedOut = false;
+        for (int i = 0; i < 60; i++) {
+            if (UserManage.getInstance().getUser("user-online-123") == null && !connectionManage.isUserOnline("user-online-123")) {
+                isLoggedOut = true;
+                break;
+            }
+            Thread.sleep(50);
+        }
 
-        assertNull(UserManage.getInstance().getUser("user-online-123"));
-        assertFalse(connectionManage.isUserOnline("user-online-123"));
+        assertTrue(isLoggedOut, "Người dùng phải bị ngắt kết nối và xóa khỏi bộ nhớ đệm RAM trong vòng 3 giây");
     }
 
     @Test
