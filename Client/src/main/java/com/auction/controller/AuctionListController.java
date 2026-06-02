@@ -8,372 +8,322 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * AuctionListController là Controller phía Client cho màn hình danh sách đấu giá.
- *
- * Vai trò:
- * - Gọi ClientAuctionApi để gửi request GET_ACTIVE_AUCTIONS sang Server.
- * - Nhận SocketResponse từ Server.
- * * - Parse response.body thành List<AuctionSummaryDTO>.
- * * - Hiển thị danh sách phiên đấu giá lên TableView.
- *
- * Lưu ý:
- * - Controller chỉ xử lý giao diện và gọi API phía Client.
- * - Controller không tự làm việc trực tiếp với Socket.
- * - Controller không xử lý nghiệp vụ đấu giá.
- * - Server mới là nơi kiểm tra quyền và lấy dữ liệu thật.
+ * AuctionListController - Phiên bản chuẩn SIM.
+ * Nút Làm mới đóng vai trò F5 Reload (giữ nguyên từ khóa tìm kiếm và số lượng dòng/trang đang điền).
  */
 public class AuctionListController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
 
-    /*
-     * ObservableList là danh sách dữ liệu mà TableView theo dõi.
-     * Khi auctionItems thay đổi, TableView có thể cập nhật lại giao diện.
-     */
-    private final ObservableList<AuctionSummaryDTO> auctionItems = FXCollections.observableArrayList();
+    private final ObservableList<AuctionSummaryDTO> allServerAuctions = FXCollections.observableArrayList();
+    private final ObservableList<AuctionSummaryDTO> paginatedAuctions = FXCollections.observableArrayList();
+    private FilteredList<AuctionSummaryDTO> filteredAuctions;
 
-    /*
-     * Dùng để format LocalDateTime thành chuỗi dễ đọc trên bảng.
-     */
-    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private int currentAuctionPage = 1;
+    private int auctionPageSize = 10; // Giá trị khởi tạo mặc định ban đầu
 
-    /**
-     * Hãy đảm bảo bạn đã đặt fx:id="rootPane" cho StackPane ngoài cùng trong Scene Builder.
-     */
-    @FXML
-    private javafx.scene.layout.StackPane rootPane;
+    @FXML private javafx.scene.layout.StackPane rootPane;
+    @FXML private TableView<AuctionSummaryDTO> auctionTable;
+    @FXML private TableColumn<AuctionSummaryDTO, String> itemNameColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, Number> currentPriceColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> statusColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> endTimeColumn;
+    @FXML private Label messageLabel;
 
-    /**
-     FXML cần có: <TableView fx:id="auctionTable" ...>
-     */
-    @FXML
-    private TableView<AuctionSummaryDTO> auctionTable;
+    @FXML private TextField searchAuctionField;
+    @FXML private TextField pageSizeField; // Ô tự điền kích thước trang cạnh nút Làm mới
+    @FXML private Button prevPageButton;
+    @FXML private Button nextPageButton;
+    @FXML private Label pageInfoLabel;
 
-    /**
-     FXML cần có: <TableColumn fx:id="itemNameColumn" ...>
-     */
-    @FXML
-    private TableColumn<AuctionSummaryDTO, String> itemNameColumn;
-
-    /**
-     * FXML cần có: <TableColumn fx:id="currentPriceColumn" ...>
-     */
-    @FXML
-    private TableColumn<AuctionSummaryDTO, Number> currentPriceColumn;
-
-    /**
-     * FXML cần có: <TableColumn fx:id="statusColumn" ...>
-     */
-    @FXML
-    private TableColumn<AuctionSummaryDTO, String> statusColumn;
-
-    /**
-     * FXML cần có: <TableColumn fx:id="endTimeColumn" ...>
-     */
-    @FXML
-    private TableColumn<AuctionSummaryDTO, String> endTimeColumn;
-
-    /**
-     * FXML cần có: <Label fx:id="messageLabel" ...>
-     Label này dùng để hiển thị trạng thái tải dữ liệu hoặc lỗi nhẹ.
-     */
-    @FXML
-    private Label messageLabel;
-
-    /**
-     * initialize() được JavaFX tự động gọi sau khi load auction-list.fxml.
-     * Luồng:
-     * 1. Cấu hình các cột của TableView.
-     * 2. Gắn auctionItems vào TableView.
-     * 3. Gọi Server để tải danh sách phiên đấu giá.
-     * 4. Tự động kiểm tra trạng thái theme toàn cục để áp màu chuẩn ngay từ lúc mở màn hình.
-     */
     @FXML
     public void initialize() {
-        // --- Phần kiểm tra và nạp theme đồng bộ khi vừa load giao diện ---
         if (rootPane != null) {
             rootPane.getStylesheets().clear();
-            String initialPath = com.auction.util.SceneNavigator.isAppDarkMode
+            String initialPath = SceneNavigator.isAppDarkMode
                     ? "/com/auction/client/view/dark.css"
                     : "/com/auction/client/view/light.css";
             try {
-                String css = java.util.Objects.requireNonNull(getClass().getResource(initialPath)).toExternalForm();
+                String css = Objects.requireNonNull(getClass().getResource(initialPath)).toExternalForm();
                 rootPane.getStylesheets().add(css);
             } catch (Exception e) {
-                System.out.println("Không tìm thấy file CSS khởi tạo tại " + initialPath);
-                e.printStackTrace();
+                System.out.println("Không tìm thấy file CSS khởi tạo!");
             }
         }
 
+        filteredAuctions = new FilteredList<>(allServerAuctions, p -> true);
         setupTableColumns();
-        auctionTable.setItems(auctionItems);
-        loadActiveAuctions();
+        auctionTable.setItems(paginatedAuctions);
 
-        // Tự động gọi hàm thiết lập Placeholder động dựa trên theme toàn cục hiện tại lúc khởi tạo
-        updateTablePlaceholder(com.auction.util.SceneNavigator.isAppDarkMode);
-    }
-
-    /**
-     * Hàm bổ trợ cập nhật Placeholder dựa trên Theme để tách biệt "vibe" hiển thị.
-     * Đã được tối ưu hóa thẩm mỹ: Đồng bộ font nghiêng (italic), độ đậm và phối màu chuẩn Vibe Ngày/Đêm.
-     */
-    private void updateTablePlaceholder(boolean isDarkMode) {
-        VBox emptyBox = new VBox(12); // Khoảng cách giữa icon và chữ là 12px
-        emptyBox.setStyle("-fx-alignment: center; -fx-padding: 30;");
-
-        Label iconLabel = new Label();
-        Label msgLabel = new Label();
-
-        // Gán class CSS chung để chữ tự động thừa hưởng các thuộc tính nền tảng nếu có
-        msgLabel.getStyleClass().add("status-message-label");
-
-        if (isDarkMode) {
-            // --- VIBE ĐÊM: Sàn đấu ngầm, kịch tính, công nghệ huyền bí ---
-            iconLabel.setText("🏴‍☠️🔨");
-            iconLabel.setStyle("-fx-font-size: 42px;");
-
-            msgLabel.setText("Sàn đấu ngầm đang trống... Hãy ẩn mình chờ thời cuộc.");
-            // SỬA MÀU: Dùng màu vàng cát/vàng Gold mờ (#E5B869) để tiệp với ánh Neon tiêu đề, giảm chói mắt
-            msgLabel.setStyle("-fx-font-size: 14px; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-font-style: italic; " +
-                    "-fx-text-fill: #E5B869;");
-        } else {
-            // --- VIBE NGÀY: Hiện đại, chuyên nghiệp, Clean UI thương mại điện tử ---
-            iconLabel.setText("📦");
-            iconLabel.setStyle("-fx-font-size: 38px; -fx-opacity: 0.75;");
-
-            msgLabel.setText("Hiện tại không có phiên đấu giá nào khả dụng. Vui lòng quay lại sau.");
-            // ĐỒNG BỘ: Ép font nghiêng (italic), tăng độ đậm (bold) và dùng màu Xanh Thẫm Công Nghệ (#1E3A8A) cực sang
-            msgLabel.setStyle("-fx-font-size: 14px; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-font-style: italic; " +
-                    "-fx-text-fill: #1E3A8A;");
+        // Lắp bộ lắng nghe thay đổi số lượng dòng/trang thời gian thực
+        if (pageSizeField != null) {
+            pageSizeField.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal == null || newVal.trim().isEmpty()) {
+                    return; // Người dùng đang xóa để gõ số mới, không xử lý ngay tránh chia cho 0
+                }
+                try {
+                    int parsedSize = Integer.parseInt(newVal.trim());
+                    if (parsedSize > 0) {
+                        this.auctionPageSize = parsedSize;
+                        this.currentAuctionPage = 1; // Đổi cấu hình thì ép về trang đầu
+                        applySearchFilterAndPagination();
+                    }
+                } catch (NumberFormatException e) {
+                    // Ký tự lỗi thì bỏ qua
+                }
+            });
         }
 
-        emptyBox.getChildren().addAll(iconLabel, msgLabel);
-        auctionTable.setPlaceholder(emptyBox); // Cập nhật lại vùng hiển thị trống của bảng
+        // Lắp bộ lắng nghe tìm kiếm thời gian thực
+        if (searchAuctionField != null) {
+            searchAuctionField.textProperty().addListener((obs, oldVal, newVal) -> {
+                currentAuctionPage = 1;
+                applySearchFilterAndPagination();
+            });
+        }
+
+        loadActiveAuctions();
+        updateTablePlaceholder(SceneNavigator.isAppDarkMode);
     }
 
     /**
-     * Cấu hình cách mỗi cột lấy dữ liệu từ AuctionSummaryDTO.
-     * TableView không tự biết field nào hiển thị ở cột nào,
-     * nên ta phải chỉ rõ bằng setCellValueFactory().
-     * NÂNG CẤP: Format tiền tệ VNĐ, căn lề tự động, nhuộm màu trạng thái, đồng bộ chữ đậm nghiêng của ngày giờ.
+     * Thuật toán bóc tách dữ liệu mảng độc lập
      */
-    private void setupTableColumns() {
-        /*
-         Cột tên vật phẩm. Lấy dữ liệu từ AuctionSummaryDTO.getItemName().
-         */
-        itemNameColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getItemName())
-        );
-        itemNameColumn.setCellFactory(column -> new javafx.scene.control.TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item);
-                    setStyle("-fx-font-weight: bold;"); // Làm đậm tên vật phẩm để làm nổi bật thông tin cốt lõi
-                }
-            }
+    private void applySearchFilterAndPagination() {
+        if (filteredAuctions == null) return;
+
+        // Xóa trạng thái chọn dòng cũ để TableView nạp trang mới mượt mà
+        if (auctionTable != null) {
+            auctionTable.getSelectionModel().clearSelection();
+        }
+
+        String keyword = (searchAuctionField != null) ? searchAuctionField.getText().trim().toLowerCase() : "";
+
+        // Lọc dữ liệu theo từ khóa
+        filteredAuctions.setPredicate(auction -> {
+            if (keyword.isEmpty()) return true;
+            boolean matchesName = auction.getItemName() != null && auction.getItemName().toLowerCase().contains(keyword);
+            boolean matchesId = String.valueOf(auction.getAuctionId()).contains(keyword);
+            return matchesName || matchesId;
         });
 
-        /*
-         * Cột giá hiện tại. Lấy dữ liệu từ AuctionSummaryDTO.getCurrentPrice().
-         */
-        currentPriceColumn.setCellValueFactory(cellData ->
-                new SimpleDoubleProperty(cellData.getValue().getCurrentPrice())
-        );
-        currentPriceColumn.setCellFactory(column -> new javafx.scene.control.TableCell<>() {
-            private final java.text.DecimalFormat formatter = new java.text.DecimalFormat("#,###");
-            @Override
-            protected void updateItem(Number price, boolean empty) {
-                super.updateItem(price, empty);
-                if (empty || price == null) {
-                    setText(null);
-                } else {
-                    // Sửa lỗi hiển thị 2.5E7 bằng formatter và thêm hậu tố mệnh giá VNĐ
-                    setText(formatter.format(price.doubleValue()) + " VNĐ");
-                    setStyle("-fx-font-weight: bold; -fx-alignment: center-right;"); // Căn phải cột tiền tệ theo quy chuẩn kế toán
-                }
-            }
-        });
+        SortedList<AuctionSummaryDTO> sortedAuctions = new SortedList<>(filteredAuctions);
+        sortedAuctions.comparatorProperty().bind(auctionTable.comparatorProperty());
 
-        /*
-         * Cột trạng thái phiên đấu giá. Ví dụ: OPEN, RUNNING, FINISHED.
-         */
-        statusColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getStatus())
-        );
-        statusColumn.setCellFactory(column -> new javafx.scene.control.TableCell<>() {
-            @Override
-            protected void updateItem(String status, boolean empty) {
-                super.updateItem(status, empty);
-                if (empty || status == null) {
-                    setText(null);
-                } else {
-                    setText(status);
-                    setStyle("-fx-alignment: center; -fx-font-weight: bold;"); // Căn giữa chữ trạng thái
+        int totalItems = sortedAuctions.size();
+        int totalPages = (int) Math.ceil((double) totalItems / auctionPageSize);
+        if (totalPages == 0) totalPages = 1;
 
-                    // Thêm các class CSS đặc trưng tương ứng với từng trạng thái để nhuộm màu riêng biệt
-                    getStyleClass().removeAll("status-running", "status-open", "status-finished");
-                    if ("RUNNING".equalsIgnoreCase(status)) {
-                        getStyleClass().add("status-running");
-                    } else if ("OPEN".equalsIgnoreCase(status)) {
-                        getStyleClass().add("status-open");
-                    } else if ("FINISHED".equalsIgnoreCase(status)) {
-                        getStyleClass().add("status-finished");
-                    }
-                }
-            }
-        });
+        if (currentAuctionPage > totalPages) currentAuctionPage = totalPages;
+        if (currentAuctionPage < 1) currentAuctionPage = 1;
 
-        /*
-         * Cột thời gian kết thúc. Nếu endTime null thì hiển thị chuỗi rỗng để tránh lỗi NullPointerException.
-         */
-        java.time.format.DateTimeFormatter vnFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
-        endTimeColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getEndTime() == null) {
-                return new SimpleStringProperty("");
-            }
+        int startIndex = (currentAuctionPage - 1) * auctionPageSize;
+        int endIndex = Math.min(startIndex + auctionPageSize, totalItems);
 
-            // Đảo cấu trúc định dạng thời gian sang dạng Việt Nam (HH:mm dd/MM/yyyy) cho dễ đọc
-            return new SimpleStringProperty(
-                    cellData.getValue().getEndTime().format(vnFormatter)
-            );
-        });
-        endTimeColumn.setCellFactory(column -> new javafx.scene.control.TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item);
-                    setStyle("-fx-alignment: center;"); // Căn giữa cột thời gian cho bố cục đối xứng gọn gàng
-                }
+        paginatedAuctions.clear();
+        if (startIndex < totalItems && startIndex >= 0) {
+            for (int i = startIndex; i < endIndex; i++) {
+                paginatedAuctions.add(sortedAuctions.get(i));
             }
-        });
+        }
+
+        if (pageInfoLabel != null) {
+            pageInfoLabel.setText(String.format("Trang %d / %d", currentAuctionPage, totalPages));
+        }
+        if (prevPageButton != null) {
+            prevPageButton.setDisable(currentAuctionPage == 1);
+        }
+        if (nextPageButton != null) {
+            nextPageButton.setDisable(currentAuctionPage >= totalPages);
+        }
     }
 
-    /**
-     * Gửi request GET_ACTIVE_AUCTIONS sang Server và cập nhật TableView.
-     * Đây là điểm nối chính giữa màn hình Auction List và Server.
-     */
+    @FXML
+    private void handlePrevPage() {
+        if (currentAuctionPage > 1) {
+            currentAuctionPage--;
+            applySearchFilterAndPagination();
+        }
+    }
+
+    @FXML
+    private void handleNextPage() {
+        if (filteredAuctions == null) return;
+        int totalItems = filteredAuctions.size();
+        int totalPages = (int) Math.ceil((double) totalItems / auctionPageSize);
+        if (currentAuctionPage < totalPages) {
+            currentAuctionPage++;
+            applySearchFilterAndPagination();
+        }
+    }
+
+    @FXML
+    private void handleSearchAction() {
+        currentAuctionPage = 1;
+        applySearchFilterAndPagination();
+        showMessage("Đã lọc danh sách theo từ khóa tìm kiếm.");
+    }
+
+    // NÚT LÀM MỚI CHUẨN ĐÚNG Ý BẠN: ĐÓNG VAI TRÒ "RELOAD BẢNG"
+    @FXML
+    private void handleRefresh() {
+        // Cập nhật lại số lượng dòng từ ô nhập text hiện tại (nếu hợp lệ), giữ nguyên cấu hình người dùng gõ
+        if (pageSizeField != null && !pageSizeField.getText().trim().isEmpty()) {
+            try {
+                int parsedSize = Integer.parseInt(pageSizeField.getText().trim());
+                if (parsedSize > 0) {
+                    this.auctionPageSize = parsedSize;
+                }
+            } catch (NumberFormatException e) {
+                // Giữ nguyên kích thước cũ nếu trong ô có ký tự lạ
+            }
+        }
+
+        // Kéo lại mảng dữ liệu mới từ Server mà không phá hủy bộ lọc tìm kiếm hiện tại
+        loadActiveAuctions();
+    }
+
     private void loadActiveAuctions() {
-        showMessage("Đang tải danh sách phiên đấu giá...");
-
-        // ClientAuctionApi tạo SocketRequest(GET_ACTIVE_AUCTIONS), gửi sang Server và nhận về SocketResponse.
+        showMessage("Đang làm mới danh sách...");
         SocketResponse response = auctionApi.getActiveAuctions();
 
-        //Nếu response null, tức là API không trả được kết quả hợp lệ.
-        if (response == null) {
-            // showError("Server không trả về phản hồi hợp lệ.");
-            // return;
-        }
-
-        //Nếu Server trả success=false, hiển thị message do Server gửi về.
         if (response != null && !response.isSuccess()) {
             showError(response.getMessage());
             return;
         }
 
-        // GET_ACTIVE_AUCTIONS thành công thì response.body là List<AuctionSummaryDTO>.
         List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
+        allServerAuctions.setAll(auctions);
 
-        /*
-         * Cập nhật ObservableList.
-         * TableView đang theo dõi auctionItems nên bảng sẽ được cập nhật theo.
-         */
-        auctionItems.setAll(auctions);
+        // Chạy lại hàm bóc tách để cập nhật lên giao diện bảng tức thì
+        applySearchFilterAndPagination();
 
-        if (auctionItems.isEmpty()) {
+        if (allServerAuctions.isEmpty()) {
             showMessage("Hiện chưa có phiên đấu giá nào đang hoạt động.");
         } else {
-            showMessage("Tìm thấy " + auctionItems.size() + " phiên đấu giá.");
+            showMessage("Đã cập nhật. Tìm thấy tổng cộng " + allServerAuctions.size() + " phiên đấu giá.");
         }
     }
 
-    /**
-     FXML cần có <Button text="Refresh" onAction="#handleRefresh" ... />
-     Khi người dùng bấm Refresh, Client gọi lại Server để lấy danh sách mới.
-     */
-    @FXML
-    private void handleRefresh() {
-        loadActiveAuctions();
+    private void updateTablePlaceholder(boolean isDarkMode) {
+        VBox emptyBox = new VBox(12);
+        emptyBox.setStyle("-fx-alignment: center; -fx-padding: 30;");
+        Label iconLabel = new Label();
+        Label msgLabel = new Label();
+        msgLabel.getStyleClass().add("status-message-label");
+
+        if (isDarkMode) {
+            iconLabel.setText("🏴‍☠️🔨");
+            iconLabel.setStyle("-fx-font-size: 42px;");
+            msgLabel.setText("Sàn đấu ngầm đang trống... Hãy ẩn mình chờ thời cuộc.");
+            msgLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-font-style: italic; -fx-text-fill: #E5B869;");
+        } else {
+            iconLabel.setText("📦");
+            iconLabel.setStyle("-fx-font-size: 38px; -fx-opacity: 0.75;");
+            msgLabel.setText("Hiện tại không có phiên đấu giá nào khả dụng. Vui lòng quay lại sau.");
+            msgLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-font-style: italic; -fx-text-fill: #1E3A8A;");
+        }
+
+        emptyBox.getChildren().addAll(iconLabel, msgLabel);
+        auctionTable.setPlaceholder(emptyBox);
     }
 
-    /**
-     FXML cần có: <Button text="View Detail" onAction="#handleViewDetail" ... />
-     Giai đoạn này ta chỉ kiểm tra đã chọn phiên chưa.
-     Sau khi có AuctionDetailController, hàm này sẽ truyền auctionId sang màn chi tiết.
-     */
+    private void setupTableColumns() {
+        itemNameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getItemName()));
+        itemNameColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) setText(null);
+                else {
+                    setText(item);
+                    setStyle("-fx-font-weight: bold;");
+                }
+            }
+        });
+
+        currentPriceColumn.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getCurrentPrice()));
+        currentPriceColumn.setCellFactory(column -> new TableCell<>() {
+            private final java.text.DecimalFormat formatter = new java.text.DecimalFormat("#,###");
+            @Override
+            protected void updateItem(Number price, boolean empty) {
+                super.updateItem(price, empty);
+                if (empty || price == null) setText(null);
+                else {
+                    setText(formatter.format(price.doubleValue()) + " VNĐ");
+                    setStyle("-fx-font-weight: bold; -fx-alignment: center-right;");
+                }
+            }
+        });
+
+        statusColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getStatus()));
+        statusColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                if (empty || status == null) setText(null);
+                else {
+                    setText(status);
+                    setStyle("-fx-alignment: center; -fx-font-weight: bold;");
+                    getStyleClass().removeAll("status-running", "status-open", "status-finished");
+                    if ("RUNNING".equalsIgnoreCase(status)) getStyleClass().add("status-running");
+                    else if ("OPEN".equalsIgnoreCase(status)) getStyleClass().add("status-open");
+                    else if ("FINISHED".equalsIgnoreCase(status)) getStyleClass().add("status-finished");
+                }
+            }
+        });
+
+        java.time.format.DateTimeFormatter vnFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+        endTimeColumn.setCellValueFactory(cellData -> {
+            if (cellData.getValue().getEndTime() == null) return new SimpleStringProperty("");
+            return new SimpleStringProperty(cellData.getValue().getEndTime().format(vnFormatter));
+        });
+        endTimeColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) setText(null);
+                else {
+                    setText(item);
+                    setStyle("-fx-alignment: center;");
+                }
+            }
+        });
+    }
+
     @FXML
     private void handleViewDetail() {
         AuctionSummaryDTO selectedAuction = auctionTable.getSelectionModel().getSelectedItem();
-
         if (selectedAuction == null) {
             showError("Vui lòng chọn một phiên đấu giá.");
             return;
         }
-
-        /*
-         * Chuyển sang màn chi tiết phiên đấu giá.
-         * SceneNavigator sẽ load auction-detail.fxml,
-         * sau đó truyền selectedAuction.getAuctionId() vào AuctionDetailController.
-         */
         SceneNavigator.showAuctionDetail(selectedAuction.getAuctionId());
     }
 
-    /**
-     * FXML cần có: <Button text="Back" onAction="#handleBack" ... />
-     * Quay về Dashboard.
-     */
     @FXML
     private void handleBack() {
         SceneNavigator.showDashboard();
     }
 
-    //Hiển thị message nhẹ trên màn hình.
     private void showMessage(String message) {
-        if (messageLabel != null) {
-            messageLabel.setText(message);
-        }
+        if (messageLabel != null) messageLabel.setText(message);
     }
 
-    /**
-     * Hiển thị lỗi.
-     * Vừa đưa lên messageLabel nếu có,
-     * vừa bật Alert để người dùng nhìn thấy rõ.
-     */
     private void showError(String message) {
         showMessage(message);
-
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Lỗi");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-
-    //Hiển thị thông báo thông thường.
-    private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Thông báo");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
