@@ -13,11 +13,13 @@ import com.auction.util.SceneNavigator;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -29,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * LiveBiddingController la Controller cho man hinh dau gia truc tiep.
@@ -98,6 +101,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
      * Dung de tranh add listener lap nhieu lan.
      */
     private boolean listenerRegistered;
+
+    @FXML
+    private Parent rootContainer; // Thêm container gốc để hỗ trợ load stylesheet động khi đổi theme
 
     /**
      * FXML can co: <Label fx:id="itemNameLabel" ... />
@@ -185,6 +191,12 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     @FXML
     private Button placeBidButton;
 
+    @FXML
+    private Button refreshButton; // ID điều khiển nút làm mới khi hệ thống đang bận
+
+    @FXML
+    private Button backButton; // ID điều khiển nút quay lại khi hệ thống đang bận
+
     /**
      * FXML can co: <TableView fx:id="bidHistoryTable" ... />
      */
@@ -223,9 +235,24 @@ public class LiveBiddingController implements RealtimeUpdateListener {
      */
     @FXML
     public void initialize() {
+        applyTheme();
         setupBidHistoryTable();
         setBidControlsDisabled(true);
         showMessage("Chua chon phien dau gia.");
+    }
+
+    private void applyTheme() {
+        if (rootContainer == null) return;
+        rootContainer.getStylesheets().clear();
+        String cssPath = SceneNavigator.isAppDarkMode
+                ? "/com/auction/client/view/dark.css"
+                : "/com/auction/client/view/light.css";
+        try {
+            String css = Objects.requireNonNull(getClass().getResource(cssPath)).toExternalForm();
+            rootContainer.getStylesheets().add(css);
+        } catch (Exception e) {
+            System.out.println("Không thể nạp theme cho Live Bidding: " + cssPath);
+        }
     }
 
     /**
@@ -255,8 +282,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         this.auctionId = auctionId.trim();
 
         registerRealtimeListener();
-        loadAuctionDetail();
-        enterCurrentLiveRoom();
+
+        // TỐI ƯU: Chạy gộp cả 2 hành động tải dữ liệu và kết nối phòng tuần tự ngầm
+        loadAuctionDetailAndEnterRoom();
     }
 
     /**
@@ -271,8 +299,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                 new SimpleStringProperty(safeText(cellData.getValue().getBidderName()))
         );
 
+        // ĐÃ SỬA: Thay đổi sang kiểu Object bọc Number để đồng bộ chuẩn với JavaFX TableColumn<..., Number>
         bidAmountColumn.setCellValueFactory(cellData ->
-                new SimpleDoubleProperty(cellData.getValue().getAmount())
+                new SimpleObjectProperty<>(cellData.getValue().getAmount())
         );
 
         bidTimeColumn.setCellValueFactory(cellData ->
@@ -299,59 +328,83 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     }
 
     /**
-     * Goi LIVE_ENTERED de Server dua socket hien tai vao live room cua phien.
+     * TỐI ƯU HỢP NHẤT: Chạy ngầm tiến trình kéo dữ liệu ban đầu và tham gia vào live room để tránh đứng hình UI
      */
-    private void enterCurrentLiveRoom() {
-        if (isBlank(auctionId) || liveRoomJoined) {
-            return;
-        }
+    private void loadAuctionDetailAndEnterRoom() {
+        setBusy(true);
+        showMessage("Đang đồng bộ dữ liệu và kết nối phòng trực tiếp...");
 
-        SocketResponse response = auctionApi.enterLiveRoom(auctionId);
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                // 1. Tải chi tiết phiên đấu giá trước
+                SocketResponse detailResponse = auctionApi.getAuctionDetail(auctionId);
+                if (detailResponse != null && detailResponse.isSuccess()) {
+                    currentAuctionDetail = auctionApi.parseAuctionDetail(detailResponse);
+                }
 
-        if (response == null) {
-            showError("Server khong tra ve phan hoi khi vao live room.");
-            return;
-        }
+                // 2. Tiến hành kết nối vào phòng live trực tiếp
+                if (!liveRoomJoined) {
+                    SocketResponse enterResponse = auctionApi.enterLiveRoom(auctionId);
+                    if (enterResponse != null && enterResponse.isSuccess()) {
+                        liveRoomJoined = true;
+                    }
+                }
+                return null;
+            }
+        };
 
-        if (!response.isSuccess()) {
-            showError(response.getMessage());
-            return;
-        }
+        task.setOnSucceeded(event -> {
+            setBusy(false);
+            if (currentAuctionDetail != null) {
+                displayAuctionDetail(currentAuctionDetail);
+                if (liveRoomJoined) {
+                    showMessage("Da ket noi live room cua phien dau gia.");
+                } else {
+                    showError("Kết nối Realtime thất bại, vui lòng làm mới!");
+                }
+            } else {
+                showError("Khong the doc du lieu chi tiet phien dau gia.");
+            }
+        });
 
-        liveRoomJoined = true;
-        showMessage("Da ket noi live room cua phien dau gia.");
+        task.setOnFailed(event -> {
+            setBusy(false);
+            showError("Không thể hoàn tất kết nối mạng đến phòng live.");
+        });
+
+        executeThread(task, "live-init-flow");
     }
 
     /**
      * Load chi tiet phien dau gia de hien thi lan dau hoac refresh sau khi co thay doi.
+     *
+     * ĐÃ SỬA: Chuyển hoàn toàn tác vụ kéo dữ liệu mạng chạy ngầm để không block luồng UI hoặc luồng Socket.
      */
     private void loadAuctionDetail() {
         if (isBlank(auctionId)) {
-            showError("Khong tim thay phien dau gia.");
             return;
         }
 
-        SocketResponse response = auctionApi.getAuctionDetail(auctionId);
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.getAuctionDetail(auctionId);
+            }
+        };
 
-        if (response == null) {
-            showError("Server khong tra ve phan hoi hop le.");
-            return;
-        }
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                AuctionDetailDTO detail = auctionApi.parseAuctionDetail(response);
+                if (detail != null) {
+                    currentAuctionDetail = detail;
+                    displayAuctionDetail(detail);
+                }
+            }
+        });
 
-        if (!response.isSuccess()) {
-            showError(response.getMessage());
-            return;
-        }
-
-        AuctionDetailDTO detail = auctionApi.parseAuctionDetail(response);
-
-        if (detail == null) {
-            showError("Khong the doc du lieu chi tiet phien dau gia.");
-            return;
-        }
-
-        currentAuctionDetail = detail;
-        displayAuctionDetail(detail);
+        executeThread(task, "bg-load-detail");
     }
 
     /**
@@ -360,8 +413,8 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     private void displayAuctionDetail(AuctionDetailDTO detail) {
         setLabelText(itemNameLabel, detail.getItemName());
         setLabelText(sellerLabel, "Nguoi ban: " + safeText(detail.getSellerUsername()));
-        setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(detail.getCurrentPrice()));
-        setLabelText(stepPriceLabel, "Buoc gia: " + formatMoney(detail.getStepPrice()));
+        setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(detail.getCurrentPrice()) + " VNĐ");
+        setLabelText(stepPriceLabel, "Buoc gia: " + formatMoney(detail.getStepPrice()) + " VNĐ");
         setLabelText(statusLabel, "Trang thai: " + safeText(detail.getStatus()));
         setLabelText(endTimeLabel, "Ket thuc: " + formatDateTime(detail.getEndTime()));
 
@@ -411,34 +464,50 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice();
 
             if (amount < minimumAmount) {
-                showError("Gia dat toi thieu la " + formatMoney(minimumAmount) + ".");
+                showError("Gia dat toi thieu la " + formatMoney(minimumAmount) + " VNĐ.");
                 return;
             }
         }
 
-        SocketResponse response = auctionApi.placeBid(auctionId, amount);
+        setBusy(true);
+        showMessage("Đang xử lý yêu cầu đặt giá trực tiếp...");
 
-        if (response == null) {
-            showError("Server khong tra ve phan hoi hop le.");
-            return;
-        }
+        // ĐÃ SỬA: Đưa API đặt giá chạy ngầm tránh lag đứng giao diện chính
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.placeBid(auctionId, amount);
+            }
+        };
 
-        if (!response.isSuccess()) {
-            showError(response.getMessage());
-            return;
-        }
+        task.setOnSucceeded(event -> {
+            setBusy(false);
+            SocketResponse response = task.getValue();
 
-        if (bidAmountField != null) {
-            bidAmountField.clear();
-        }
+            if (response == null || !response.isSuccess()) {
+                showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+                return;
+            }
 
-        showMessage(response.getMessage());
+            if (bidAmountField != null) {
+                bidAmountField.clear();
+            }
 
-        /*
-         * BID_UPDATE event se cap nhat gia realtime.
-         * Refresh them chi tiet de bang lich su bid hien thi day du hon.
-         */
-        loadAuctionDetail();
+            showMessage(response.getMessage() == null ? "Đặt giá thành công!" : response.getMessage());
+
+            /*
+             * BID_UPDATE event se cap nhat gia realtime.
+             * Refresh them chi tiet de bang lich su bid hien thi day du hon.
+             */
+            loadAuctionDetail();
+        });
+
+        task.setOnFailed(event -> {
+            setBusy(false);
+            showError("Giao dịch đặt giá thất bại do lỗi mạng.");
+        });
+
+        executeThread(task, "live-place-bid");
     }
 
     /**
@@ -446,7 +515,7 @@ public class LiveBiddingController implements RealtimeUpdateListener {
      */
     @FXML
     private void handleRefresh() {
-        loadAuctionDetail();
+        loadAuctionDetailAndEnterRoom();
     }
 
     /**
@@ -477,20 +546,40 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         if (currentAuctionDetail != null) {
             double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice();
             if (maxBid < minimumAmount) {
-                showError("Gia toi da phai toi thieu la " + formatMoney(minimumAmount) + ".");
+                showError("Gia toi da phai toi thieu la " + formatMoney(minimumAmount) + " VNĐ.");
                 return;
             }
         }
 
-        SocketResponse response = auctionApi.setupAutoBid(auctionId, maxBid, increment);
+        setBusy(true);
+        showMessage("Đang thiết lập cấu hình tự động đặt giá...");
 
-        if (response == null || !response.isSuccess()) {
-            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
-            return;
-        }
+        // ĐÃ SỬA: Chạy ngầm tác vụ đăng ký AutoBid qua Task
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.setupAutoBid(auctionId, maxBid, increment);
+            }
+        };
 
-        showMessage(response.getMessage());
+        task.setOnSucceeded(event -> {
+            setBusy(false);
+            SocketResponse response = task.getValue();
+            if (response == null || !response.isSuccess()) {
+                showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+                return;
+            }
+            showMessage(response.getMessage());
+        });
+
+        task.setOnFailed(event -> {
+            setBusy(false);
+            showError("Lỗi đường truyền mạng khi cài đặt Auto-bid.");
+        });
+
+        executeThread(task, "live-setup-autobid");
     }
+
     private Double readAmount(TextField field, String emptyMessage) {
         if (field == null || isBlank(field.getText())) {
             showError(emptyMessage);
@@ -498,7 +587,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         try {
-            double amount = Double.parseDouble(field.getText().trim().replace(",", "."));
+            // Tối ưu hóa: làm sạch khoảng trắng và định dạng dấu phẩy trước khi ép kiểu
+            String cleanText = field.getText().trim().replace(" ", "").replace(",", "");
+            double amount = Double.parseDouble(cleanText);
             if (amount <= 0) {
                 showError("So tien phai lon hon 0.");
                 return null;
@@ -517,17 +608,37 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             return;
         }
 
-        SocketResponse response = auctionApi.cancelAutoBid(auctionId);
+        setBusy(true);
+        showMessage("Đang hủy cấu hình tự động đặt giá...");
 
-        if (response == null || !response.isSuccess()) {
-            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
-            return;
-        }
+        // ĐÃ SỬA: Chạy ngầm tác vụ huỷ AutoBid qua Task
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.cancelAutoBid(auctionId);
+            }
+        };
 
-        if (maxAutoBidField != null) maxAutoBidField.clear();
-        if (autoBidIncrementField != null) autoBidIncrementField.clear();
+        task.setOnSucceeded(event -> {
+            setBusy(false);
+            SocketResponse response = task.getValue();
+            if (response == null || !response.isSuccess()) {
+                showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
+                return;
+            }
 
-        showMessage(response.getMessage());
+            if (maxAutoBidField != null) maxAutoBidField.clear();
+            if (autoBidIncrementField != null) autoBidIncrementField.clear();
+
+            showMessage(response.getMessage());
+        });
+
+        task.setOnFailed(event -> {
+            setBusy(false);
+            showError("Hủy Auto-bid thất bại do lỗi kết nối mạng.");
+        });
+
+        executeThread(task, "live-cancel-autobid");
     }
 
     /**
@@ -593,16 +704,19 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         Platform.runLater(() -> {
-            setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(currentPrice));
+            setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(currentPrice) + " VNĐ");
             setLabelText(highestBidderLabel, "Dang dan dau: " + safeText(highestBidderName));
             showMessage(safeText(event.getMessage()));
-
-            /*
-             * Body realtime chi co thay doi moi nhat.
-             * Muon cap nhat bang lich su bid day du thi can reload chi tiet.
-             */
-            loadAuctionDetail();
         });
+
+        /*
+         * Body realtime chi co thay doi moi nhat.
+         * Muon cap nhat bang lich su bid day du thi can reload chi tiet.
+         *
+         * ĐÃ SỬA: loadAuctionDetail() đã được thiết lập chạy ngầm hoàn toàn nên có thể
+         * tách ra khỏi Platform.runLater, loại bỏ rủi ro đứng hình UI khi nhận event dồn dập.
+         */
+        loadAuctionDetail();
     }
 
     /**
@@ -686,7 +800,7 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             }
 
             if (finalPrice != null) {
-                setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(finalPrice));
+                setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(finalPrice) + " VNĐ");
             }
 
             showMessage(!isBlank(message) ? message : safeText(event.getMessage()));
@@ -713,16 +827,24 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
     /**
      * Roi live room tren Server (LIVE_EXITED) va go listener tren Client.
+     *
+     * ĐÃ SỬA: Đưa tiến trình thoát phòng mạng lên một Thread độc lập chạy ngầm để người dùng
+     * bấm nút Back được quay ra màn hình danh sách ngay lập tức, không bị trễ mạng.
      */
     private void cleanupLiveRoom() {
         if (liveRoomJoined && !isBlank(auctionId)) {
-            SocketResponse response = auctionApi.exitLiveRoom(auctionId);
-
-            if (response == null || !response.isSuccess()) {
-                System.err.println("[LiveBiddingController] Khong the exit live room auctionId = " + auctionId);
-            }
-
+            String targetId = this.auctionId;
             liveRoomJoined = false;
+
+            Thread exitWorker = new Thread(() -> {
+                try {
+                    auctionApi.exitLiveRoom(targetId);
+                } catch (Exception e) {
+                    System.err.println("[LiveBiddingController] Khong the exit live room auctionId = " + targetId);
+                }
+            }, "live-exit-worker");
+            exitWorker.setDaemon(true);
+            exitWorker.start();
         }
 
         unregisterRealtimeListener();
@@ -750,7 +872,10 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         try {
-            String rawAmount = bidAmountField.getText().trim().replace(",", ".");
+            // Tối ưu hóa: làm sạch chuỗi nhập liệu tự động trước khi ép kiểu số
+            String rawAmount = bidAmountField.getText().trim()
+                    .replace(" ", "")
+                    .replace(",", "");
             double amount = Double.parseDouble(rawAmount);
 
             if (amount <= 0) {
@@ -921,10 +1046,48 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         if (bidAmountField != null) {
             bidAmountField.setDisable(disabled);
         }
-
         if (placeBidButton != null) {
             placeBidButton.setDisable(disabled);
         }
+        if (maxAutoBidField != null) {
+            maxAutoBidField.setDisable(disabled);
+        }
+        if (autoBidIncrementField != null) {
+            autoBidIncrementField.setDisable(disabled);
+        }
+        if (setupAutoBidButton != null) {
+            setupAutoBidButton.setDisable(disabled);
+        }
+        if (cancelAutoBidButton != null) {
+            cancelAutoBidButton.setDisable(disabled);
+        }
+    }
+
+    /**
+     * ĐÃ THÊM: Tiện ích vô hiệu hoá điều hướng khi các Task ngầm đang tải dữ liệu qua mạng
+     */
+    private void setBusy(boolean busy) {
+        Platform.runLater(() -> {
+            boolean active = canPlaceBid(currentAuctionDetail == null ? "RUNNING" : currentAuctionDetail.getStatus());
+            if (active) {
+                setBidControlsDisabled(busy);
+            }
+            if (backButton != null) {
+                backButton.setDisable(busy);
+            }
+            if (refreshButton != null) {
+                refreshButton.setDisable(busy);
+            }
+        });
+    }
+
+    /**
+     * ĐÃ THÊM: Helper khởi chạy Thread công nhân (Worker Daemon) cho Task
+     */
+    private void executeThread(Task<?> task, String threadName) {
+        Thread worker = new Thread(task, threadName);
+        worker.setDaemon(true);
+        worker.start();
     }
 
     /**
@@ -999,11 +1162,13 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     private void showError(String message) {
         showMessage(message);
 
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Loi");
-        alert.setHeaderText(null);
-        alert.setContentText(safeText(message));
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Loi");
+            alert.setHeaderText(null);
+            alert.setContentText(safeText(message));
+            alert.showAndWait();
+        });
     }
 
     private boolean isCurrentUserBidder() {
