@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -237,6 +238,31 @@ public class ClientAuctionApi {
                     "CONNECTION_ERROR"
             );
         }
+    }
+    /**
+     * GET_SELLER_AUCTIONS
+     * Chuc nang: Seller lay danh sach cac phien dau gia do chinh minh tao.
+     * Client khong gui sellerId, server lay sellerId tu session.
+     */
+    public SocketResponse getSellerAuctions() {
+        return sendRequest(ActionType.GET_SELLER_AUCTIONS, new JsonObject());
+    }
+
+    /**
+     * UPDATE_AUCTION
+     * Chuc nang: Seller cap nhat phien dau gia chua chay.
+     * Chi cap nhat stepPrice, startTime, endTime; server se check owner va status OPEN.
+     */
+    public SocketResponse updateAuction(String auctionId, double stepPrice,
+                                        LocalDateTime startTime, LocalDateTime endTime) {
+        UpdateAuctionRequest request = new UpdateAuctionRequest(
+                auctionId,
+                stepPrice,
+                startTime,
+                endTime
+        );
+
+        return sendRequest(ActionType.UPDATE_AUCTION, request);
     }
 
     /**
