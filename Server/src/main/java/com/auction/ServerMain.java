@@ -14,8 +14,8 @@ import com.auction.network.SocketServer;
  * - Không chứa dữ liệu cấu hình cứng (Hardcoded), không chứa logic nghiệp vụ.
  * - Chỉ đóng vai trò là "chìa khóa vặn nổ máy" kích hoạt chuỗi vòng đời hệ thống.
  */
-public class Main {
-    private static final Logger log = LoggerFactory.getLogger(Main.class);
+public class ServerMain {
+    private static final Logger log = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) {
         System.out.println("=========================================================");

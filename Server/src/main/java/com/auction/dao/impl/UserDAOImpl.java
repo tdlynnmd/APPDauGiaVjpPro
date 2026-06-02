@@ -352,4 +352,25 @@ public class UserDAOImpl implements UserDAO {
             System.err.println("❌ Lỗi loadJoinedAuctionsForBidder: " + e.getMessage());
         }
     }
+
+    @Override
+    public boolean updateProfile(Connection conn, String userId, String username, String email) throws SQLException {
+        String sql = "UPDATE users SET username = ?, email = ?, updated_at = NOW() WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, email);
+            stmt.setString(3, userId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    @Override
+    public boolean updatePassword(Connection conn, String userId, String hashedPassword) throws SQLException {
+        String sql = "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, hashedPassword);
+            stmt.setString(2, userId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
 }

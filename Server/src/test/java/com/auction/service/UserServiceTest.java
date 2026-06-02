@@ -347,7 +347,7 @@ class UserServiceTest {
         userDAO.findByIdResult = bannedBidder;
 
         WalletException exception = assertThrows(WalletException.class, () -> userService.withdrawMoney("bidder-banned", 100.0));
-        assertEquals(WalletErrorCode.TRANSACTION_FAILED.getCode(), exception.getErrorCode());
+        assertEquals(WalletErrorCode.ACCOUNT_BANNED.getCode(), exception.getErrorCode());
     }
 
     @Test

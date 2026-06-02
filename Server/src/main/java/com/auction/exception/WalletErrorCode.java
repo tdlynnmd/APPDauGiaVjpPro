@@ -7,7 +7,8 @@ public enum WalletErrorCode {
     FREEZE_MONEY_FAILED("WAL_ACC_003", "System failed to hold/freeze the bidding amount securely"),
     UNFREEZE_MONEY_FAILED("WAL_ACC_004", "System failed to release the frozen amount for outbid user"),
     DEDUCTION_FAILED("WAL_ACC_005", "Failed to permanently deduct money from the winner's wallet"),
-    TRANSACTION_FAILED("WAL_ACC_004", "Wallet transaction persistence failed"); // 🔥 BỔ SUNG cho trường hợp insert/update DB hụt
+    TRANSACTION_FAILED("WAL_ACC_006", "Wallet transaction persistence failed"),
+    ACCOUNT_BANNED("WAL_ACC_007", "Account is currently banned from performing financial transactions.");
 
     private final String code;
     private final String message;

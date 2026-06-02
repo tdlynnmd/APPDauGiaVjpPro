@@ -23,6 +23,8 @@ public interface AuctionDAO {
 
     void updateStatus(Connection conn, String auctionId, String status) throws SQLException;
 
+    boolean updateAuctionDetails(Connection conn, String auctionId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) throws SQLException;
+
 
     /**
      * Tìm tất cả các phiên đấu giá do một Seller cụ thể tạo ra

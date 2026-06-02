@@ -128,6 +128,19 @@ public class AuctionDAOImpl implements AuctionDAO {
         }
     }
 
+    @Override
+    public boolean updateAuctionDetails(Connection conn, String auctionId, double stepPrice, LocalDateTime startTime, LocalDateTime endTime) throws SQLException {
+        String sql = "UPDATE auctions SET step_price = ?, start_time = ?, end_time = ?, updated_at = NOW() WHERE id = UUID_TO_BIN(?, 1)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, stepPrice);
+            stmt.setTimestamp(2, Timestamp.valueOf(startTime));
+            stmt.setTimestamp(3, Timestamp.valueOf(endTime));
+            stmt.setString(4, auctionId);
+
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
     /**
      * Helper Method: Chuyển đổi dòng dữ liệu (ResultSet) thành Object Auction
      * Hàm này vốn dĩ đã throws SQLException sẵn nên cấu trúc giữ nguyên rất sạch sẽ

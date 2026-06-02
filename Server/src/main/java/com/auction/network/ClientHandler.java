@@ -31,8 +31,8 @@ public class ClientHandler implements Runnable {
     public void run() {
         ClientSession session = null;
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+            PrintWriter writer = new PrintWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8), true);
 
             // 🔥 TỐI ƯU SOCKET: Đặt Read Timeout = 60 giây.
             // Nếu Client không gửi bất kỳ dữ liệu nào (kể cả PING keep-alive) trong 60 giây,

@@ -216,6 +216,16 @@ class BidTransactionServiceTest {
         public boolean updateStatus(Connection conn, String userId, String name) throws SQLException {
             return false;
         }
+
+        @Override
+        public boolean updateProfile(Connection conn, String userId, String username, String email) throws SQLException {
+            return false;
+        }
+
+        @Override
+        public boolean updatePassword(Connection conn, String userId, String hashedPassword) throws SQLException {
+            return false;
+        }
     }
 
     // =========================================================

@@ -16,8 +16,8 @@ public class ClientNetworkManager {
         // === GIỮ NGUYÊN CODE CŨ KHỞI TẠO BAN ĐẦU ===
         try {
             this.socket = new Socket("localhost", 5555);
-            this.writer = new PrintWriter(socket.getOutputStream(), true);
-            this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.writer = new PrintWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8), true);
+            this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
         } catch (IOException e) { e.printStackTrace(); }
     }
 

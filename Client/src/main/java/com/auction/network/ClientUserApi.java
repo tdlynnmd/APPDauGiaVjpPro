@@ -5,6 +5,8 @@ import com.auction.dto.SocketRequest;
 import com.auction.dto.SocketResponse;
 import com.auction.dto.UserDTO;
 import com.auction.dto.WithdrawRequest;
+import com.auction.dto.UpdateProfileRequest;
+import com.auction.dto.UpdatePasswordRequest;
 import com.auction.enums.ActionType;
 import com.auction.service.ClientSocketService;
 import com.auction.utils.GsonProvider;
@@ -40,6 +42,26 @@ public class ClientUserApi {
      */
     public SocketResponse getUserProfile() {
         return sendRequest(ActionType.GET_USER_PROFILE, new JsonObject());
+    }
+
+    /**
+     * UPDATE_PROFILE
+     *
+     * Gửi yêu cầu cập nhật thông tin cá nhân.
+     */
+    public SocketResponse updateProfile(String username, String email) {
+        UpdateProfileRequest request = new UpdateProfileRequest(username, email);
+        return sendRequest(ActionType.UPDATE_PROFILE, request);
+    }
+
+    /**
+     * UPDATE_PASSWORD
+     *
+     * Gửi yêu cầu thay đổi mật khẩu.
+     */
+    public SocketResponse updatePassword(String oldPassword, String newPassword) {
+        UpdatePasswordRequest request = new UpdatePasswordRequest(oldPassword, newPassword);
+        return sendRequest(ActionType.UPDATE_PASSWORD, request);
     }
 
     /**

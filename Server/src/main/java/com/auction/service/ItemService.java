@@ -55,7 +55,7 @@ public class ItemService {
 
             boolean isSavedDB = itemDAO.insertItem(conn, newItem); // Truyền conn đã mở
             if (!isSavedDB) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Persisting new item failed.");
+                throw new AuctionException(AuctionErrorCode.ITEM_SAVE_FAILED, "Persisting new item failed.");
             }
             productManage.addProduct(newItem);
             return toItemDetailDTO(newItem);
@@ -63,7 +63,7 @@ public class ItemService {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Factory payload evaluation error: " + e.getMessage());
         } catch (SQLException e) {
             // Hứng lỗi SQLException từ tầng DAO ném lên để cô lập lỗi hạ tầng
-            throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database transaction failed at addItem: " + e.getMessage());
+            throw new AuctionException(AuctionErrorCode.ITEM_SAVE_FAILED, "Database transaction failed at addItem: " + e.getMessage());
         }
     }
 
@@ -99,10 +99,10 @@ public class ItemService {
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                 boolean isUpdatedDB = itemDAO.updateItem(conn, liveItem); // Truyền conn đã mở
                 if (!isUpdatedDB) {
-                    throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Synchronizing modified item properties to store failed.");
+                    throw new AuctionException(AuctionErrorCode.UPDATE_FAILED, "Synchronizing modified item properties to store failed.");
                 }
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database transaction failed at updateItemInfo: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.UPDATE_FAILED, "Database transaction failed at updateItemInfo: " + e.getMessage());
             }
 
             productManage.updateProduct(itemId, liveItem);
@@ -162,11 +162,11 @@ public class ItemService {
 
                 boolean isUpdatedDB = itemDAO.updateStatus(conn, itemId, newStatus.name());
                 if (!isUpdatedDB) {
-                    throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Failed to update item status.");
+                    throw new AuctionException(AuctionErrorCode.ITEM_STATUS_UPDATE_FAILED, "Failed to update item status.");
                 }
 
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database link failed at updateItemStatus: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.ITEM_STATUS_UPDATE_FAILED, "Database link failed at updateItemStatus: " + e.getMessage());
             }
 
             Item ramItem = productManage.getProduct(itemId);
@@ -258,7 +258,7 @@ public class ItemService {
                 // Giả định Hard Delete: Giả sử itemDAO của Sơn đã có phương thức deleteItem hoặc tương đương
                 boolean isDeletedDB = itemDAO.updateStatus(conn, itemId, "BANNED"); // Hoặc gọi itemDAO.deleteItem(conn, itemId);
                 if (!isDeletedDB) {
-                    throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database persistent rejection for deleting item.");
+                    throw new AuctionException(AuctionErrorCode.ITEM_DELETE_FAILED, "Database persistent rejection for deleting item.");
                 }
 
                 // Bước B: Ghi Audit Log bảo mật bọc chung mạch Transaction của Admin
@@ -279,7 +279,7 @@ public class ItemService {
                         log.error("[DB Transaction] 🚨 Lỗi khẩn cấp không thể rollback: {}", ex.getMessage(), ex);
                     }
                 }
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Censorship transaction failed: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.ITEM_DELETE_FAILED, "Censorship transaction failed: " + e.getMessage());
             } finally {
                 if (conn != null) {
                     try {

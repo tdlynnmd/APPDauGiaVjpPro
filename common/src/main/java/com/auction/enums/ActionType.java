@@ -21,6 +21,8 @@ public enum ActionType {
     CREATE_AUCTION,             // tạo phiên đấu giá mới, chỉ seller và admin được gọi
     PLACE_BID,                  // đặt giá vào 1 phiên dddassu giá, chỉ bidder
     SELLER_CANCEL_AUCTION,              // hủy phiên đấu giá, seller gọi
+    GET_SELLER_AUCTIONS,        // lấy danh sách phiên do seller tạo
+    UPDATE_AUCTION,             // cập nhật thông số phiên chưa chạy, seller gọi
     BID_UPDATE,
     TIME_UPDATE,
     STATUS_UPDATED,
@@ -64,6 +66,8 @@ public enum ActionType {
     // USER MANAGEMENT ACTIONS
     // =========================================================================
     GET_USER_PROFILE,           // lấy thông tin profile của người dùng hiện tại
+    UPDATE_PROFILE,             // cập nhật thông tin cá nhân (username, email)
+    UPDATE_PASSWORD,            // thay đổi mật khẩu
     DEPOSIT_MONEY,              // nạp tiền vào tài khoản (bidder)
     WITHDRAW_MONEY,             // rút tiền từ tài khoản (bidder)
     CMD_ADMIN_GET_USERS,         // xem danh sách user (admin only)

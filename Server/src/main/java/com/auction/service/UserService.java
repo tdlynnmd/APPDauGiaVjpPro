@@ -19,8 +19,11 @@ import com.auction.exception.WalletException;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.UserManage;
 import com.auction.models.User.*;
+import com.auction.network.ClientSession;
 import com.auction.utils.GsonProvider;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -104,7 +107,7 @@ public class UserService {
                 }
 
                 if (bidder.getStatus() == UserStatus.BANNED) {
-                    throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Account is currently banned.");
+                    throw new WalletException(WalletErrorCode.ACCOUNT_BANNED);
                 }
             }
 
@@ -164,7 +167,7 @@ public class UserService {
     public UserDTO getUserProfile(String userId) {
         User user = getOrLoadUser(userId);
         if (user == null) {
-            throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "User not found.");
+            throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND, "User not found.");
         }
         User ramUser = userManage.getUser(userId);
         return getUserDTO(user, ramUser);
@@ -312,5 +315,125 @@ public class UserService {
             }
         }
         return user;
+    }
+
+    /**
+     * Cập nhật thông tin Profile cá nhân (username, email)
+     */
+    public UserDTO updateProfile(String userId, UpdateProfileRequest request) {
+        if (request == null) {
+            throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Request content must not be null.");
+        }
+        String username = request.getUsername();
+        String email = request.getEmail();
+
+        if (username == null || username.trim().isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Username cannot be empty.");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Email cannot be empty.");
+        }
+
+        // Ràng buộc tính duy nhất (Uniqueness constraints)
+        Optional<User> existingByUsername = userDAO.findByUsername(username);
+        if (existingByUsername.isPresent() && !existingByUsername.get().getId().equals(userId)) {
+            throw new AuthenticationException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        Optional<User> existingByEmail = userDAO.findByEmail(email);
+        if (existingByEmail.isPresent() && !existingByEmail.get().getId().equals(userId)) {
+            throw new AuthenticationException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        User user = getOrLoadUser(userId);
+        if (user == null) {
+            throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
+        }
+
+        // Khóa đồng bộ mịn trên chính ID của User để an toàn đa luồng trên RAM
+        synchronized (userId.intern()) {
+            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+                conn.setAutoCommit(false);
+                boolean isUpdated = userDAO.updateProfile(conn, userId, username, email);
+                if (!isUpdated) {
+                    throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Failed to update profile details in the database.");
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database transaction failed at updateProfile: " + e.getMessage());
+            }
+
+            // Đồng bộ RAM
+            user.setUsername(username);
+            user.setEmail(email);
+
+            User ramUser = userManage.getUser(userId);
+            if (ramUser != null) {
+                synchronized (ramUser) {
+                    ramUser.setUsername(username);
+                    ramUser.setEmail(email);
+                }
+            }
+        }
+
+        return getUserProfile(userId);
+    }
+
+    /**
+     * Cập nhật mật khẩu an toàn và hủy bỏ các kết nối socket khác
+     */
+    public void updatePassword(String userId, UpdatePasswordRequest request, ClientSession currentSession) {
+        if (request == null) {
+            throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Request content must not be null.");
+        }
+        String oldPassword = request.getOldPassword();
+        String newPassword = request.getNewPassword();
+
+        if (oldPassword == null || oldPassword.isEmpty() || newPassword == null || newPassword.isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Old password and new password cannot be empty.");
+        }
+
+        User user = getOrLoadUser(userId);
+        if (user == null) {
+            throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
+        }
+
+        synchronized (userId.intern()) {
+            // Xác thực mật khẩu cũ
+            if (!user.checkPassword(oldPassword)) {
+                throw new AuthenticationException(AuthErrorCode.OLD_PASSWORD_INCORRECT);
+            }
+
+            // Kiểm tra độ dài mật khẩu mới
+            if (newPassword.length() < 8) {
+                throw new AuthenticationException(AuthErrorCode.PASSWORD_TOO_SHORT);
+            }
+
+            // Mã hóa mật khẩu mới
+            String hashedPassword = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, newPassword.toCharArray());
+
+            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+                conn.setAutoCommit(false);
+                boolean isUpdated = userDAO.updatePassword(conn, userId, hashedPassword);
+                if (!isUpdated) {
+                    throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Failed to update password in the database.");
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database transaction failed at updatePassword: " + e.getMessage());
+            }
+
+            // Đồng bộ RAM
+            user.setPassword(hashedPassword);
+            User ramUser = userManage.getUser(userId);
+            if (ramUser != null) {
+                synchronized (ramUser) {
+                    ramUser.setPassword(hashedPassword);
+                }
+            }
+
+            // Cưỡng chế đăng xuất tất cả thiết bị khác của người dùng này ngoại trừ thiết bị hiện tại
+            ConnectionManage.getInstance().forceDisconnectOtherDevices(userId, currentSession);
+        }
     }
 }

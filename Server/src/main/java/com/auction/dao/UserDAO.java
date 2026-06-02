@@ -53,4 +53,8 @@ public interface UserDAO {
 
     // 🔥 SỬA: Nhận Connection từ ngoài truyền vào (để bọc lót Transaction cưỡng chế Kick/Ban từ Admin), ném SQLException ra ngoài
     boolean updateStatus(Connection conn, String userId, String name) throws SQLException;
+
+    boolean updateProfile(Connection conn, String userId, String username, String email) throws SQLException;
+
+    boolean updatePassword(Connection conn, String userId, String hashedPassword) throws SQLException;
 }

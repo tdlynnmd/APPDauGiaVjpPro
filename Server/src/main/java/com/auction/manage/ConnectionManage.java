@@ -79,6 +79,24 @@ public class ConnectionManage {
         }
     }
 
+    // Cưỡng chế ngắt toàn bộ kết nối các thiết bị khác của User ngoại trừ thiết bị hiện tại
+    public void forceDisconnectOtherDevices(String userId, ClientSession currentSession) {
+        Set<ClientSession> sessions = activeConnections.get(userId);
+        if (sessions != null) {
+            for (ClientSession session : sessions) {
+                if (session != currentSession) {
+                    try {
+                        session.close();
+                        sessions.remove(session);
+                        log.info("Server: Đã cưỡng chế đóng 1 kết nối Socket thiết bị khác của User [{}].", userId);
+                    } catch (Exception e) {
+                        log.error("❌ Lỗi khi đóng kết nối thiết bị khác của User [{}]: {}", userId, e.getMessage(), e);
+                    }
+                }
+            }
+        }
+    }
+
     // Kiểm tra xem User có đang mở App trên bất kỳ thiết bị nào không
     public boolean isUserOnline(String userId) {
         return activeConnections.containsKey(userId);

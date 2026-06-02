@@ -10,6 +10,8 @@ public class AuctionSummaryDTO {
     private double currentPrice;
     private String status;
     private LocalDateTime endTime;
+    private LocalDateTime startTime;
+    private double stepPrice;
 
     /**
      * Constructor rỗng cần cho Gson khi parse JSON thành object.
@@ -23,6 +25,16 @@ public class AuctionSummaryDTO {
         this.currentPrice = currentPrice;
         this.status = status;
         this.endTime = endTime;
+    }
+
+    public AuctionSummaryDTO(String auctionId, String itemName, double currentPrice, String status, LocalDateTime endTime, LocalDateTime startTime, double stepPrice) {
+        this.auctionId = auctionId;
+        this.itemName = itemName;
+        this.currentPrice = currentPrice;
+        this.status = status;
+        this.endTime = endTime;
+        this.startTime = startTime;
+        this.stepPrice = stepPrice;
     }
 
     public String getAuctionId() {
@@ -43,5 +55,21 @@ public class AuctionSummaryDTO {
 
     public LocalDateTime getEndTime() {
         return endTime;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public double getStepPrice() {
+        return stepPrice;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public void setStepPrice(double stepPrice) {
+        this.stepPrice = stepPrice;
     }
 }

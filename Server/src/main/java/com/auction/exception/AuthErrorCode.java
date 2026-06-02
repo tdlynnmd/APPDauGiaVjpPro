@@ -16,6 +16,7 @@ public enum AuthErrorCode {
     PASSWORD_NULL_EMPTY("AUTH_PASSWORD_001", "Password must not be empty"),
     PASSWORD_TOO_SHORT("AUTH_PASSWORD_002", "Password must be at least 8 characters long"),
     PASSWORD_WEAK("AUTH_PASSWORD_003", "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@#$%^&+=!)"),
+    OLD_PASSWORD_INCORRECT("AUTH_PASSWORD_004", "Old password does not match system records."),
 
     ROLE_INVALID("AUTH_ROLE_001", "Invalid role. Allowed roles are ADMIN, SELLER, and BIDDER"),
     UNKNOWN_ERROR("AUTH_UNKNOWN_001", "Unknown error"),

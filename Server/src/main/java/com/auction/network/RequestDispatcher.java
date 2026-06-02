@@ -107,11 +107,15 @@ public class RequestDispatcher {
                     case AUCTION_SUBSCRIBED -> handleAuctionSubscribed(socketRequest, session);
                     case AUCTION_UNSUBSCRIBED -> handleAuctionUnsubscribed(socketRequest, session);
                     case SELLER_CANCEL_AUCTION -> handleCancelAuction(socketRequest, session);
+                    case GET_SELLER_AUCTIONS -> handleGetSellerAuctions(socketRequest, session);
+                    case UPDATE_AUCTION -> handleUpdateAuction(socketRequest, session);
 
                     // ================================================================
                     // 🛡️ PHÂN HỆ NGHIỆP VỤ USER (UserController)
                     // ================================================================
                     case GET_USER_PROFILE -> handleGetUserProfile(socketRequest, session);
+                    case UPDATE_PROFILE -> handleUpdateProfile(socketRequest, session);
+                    case UPDATE_PASSWORD -> handleUpdatePassword(socketRequest, session);
                     case DEPOSIT_MONEY -> handleDepositMoney(socketRequest, session);
                     case WITHDRAW_MONEY -> handleWithdrawMoney(socketRequest, session);
 
@@ -170,6 +174,20 @@ public class RequestDispatcher {
 
         UserDTO profile = userController.getUserProfile(userId);
         sendSuccess(session, socketRequest, "Lấy thông tin profile thành công.", profile);
+    }
+
+    private void handleUpdateProfile(SocketRequest socketRequest, ClientSession session) {
+        String userId = session.getUserId();
+        UpdateProfileRequest request = gson.fromJson(socketRequest.getBody(), UpdateProfileRequest.class);
+        UserDTO updatedUser = userController.updateProfile(userId, request);
+        sendSuccess(session, socketRequest, "Cập nhật thông tin cá nhân thành công.", updatedUser);
+    }
+
+    private void handleUpdatePassword(SocketRequest socketRequest, ClientSession session) {
+        String userId = session.getUserId();
+        UpdatePasswordRequest request = gson.fromJson(socketRequest.getBody(), UpdatePasswordRequest.class);
+        userController.updatePassword(userId, request, session);
+        sendSuccess(session, socketRequest, "Thay đổi mật khẩu thành công. Các thiết bị khác đã bị đăng xuất.", null);
     }
 
     private void handleDepositMoney(SocketRequest socketRequest, ClientSession session) {
@@ -356,6 +374,19 @@ public class RequestDispatcher {
         CancelAuctionRequest request = gson.fromJson(socketRequest.getBody(), CancelAuctionRequest.class);
         auctionController.cancelAuctionBySeller(sellerId, request);
         sendSuccess(session, socketRequest, "Hủy phiên đấu giá thành công.", null);
+    }
+
+    private void handleGetSellerAuctions(SocketRequest socketRequest, ClientSession session) {
+        String sellerId = session.getUserId();
+        List<AuctionSummaryDTO> result = auctionController.getSellerAuctions(sellerId);
+        sendSuccess(session, socketRequest, "Lấy danh sách phiên đấu giá thành công.", result);
+    }
+
+    private void handleUpdateAuction(SocketRequest socketRequest, ClientSession session) {
+        String sellerId = session.getUserId();
+        UpdateAuctionRequest request = gson.fromJson(socketRequest.getBody(), UpdateAuctionRequest.class);
+        auctionController.updateAuction(sellerId, request);
+        sendSuccess(session, socketRequest, "Cập nhật phiên đấu giá thành công.", null);
     }
 
     // =========================================================================

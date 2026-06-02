@@ -143,4 +143,21 @@ public class AuctionController {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
         auctionService.cancelAutoBid(bidderId, request.getAuctionId());
     }
+
+    /**
+     * Lấy danh sách các phiên đấu giá do Seller tạo
+     * GET_SELLER_AUCTIONS
+     */
+    public List<AuctionSummaryDTO> getSellerAuctions(String sellerId) {
+        return auctionService.getSellerAuctions(sellerId);
+    }
+
+    /**
+     * Cập nhật phiên đấu giá chưa chạy (Dành cho Seller)
+     * UPDATE_AUCTION
+     */
+    public void updateAuction(String sellerId, UpdateAuctionRequest request) {
+        if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
+        auctionService.updateAuction(sellerId, request);
+    }
 }

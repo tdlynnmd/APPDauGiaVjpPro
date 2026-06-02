@@ -56,6 +56,10 @@ public class AuthorizationService {
             Map.entry(ActionType.CREATE_AUCTION.name(), Set.of(UserRole.SELLER)),
             Map.entry(ActionType.SELLER_CANCEL_AUCTION.name(), Set.of(UserRole.SELLER)), // Seller tự hủy phòng trống
             Map.entry(ActionType.SELLER_DELETE_ITEM.name(), Set.of(UserRole.SELLER)),   // Seller tự xóa sản phẩm chưa đấu giá
+            Map.entry(ActionType.GET_SELLER_AUCTIONS.name(), Set.of(UserRole.SELLER)),
+            Map.entry(ActionType.UPDATE_AUCTION.name(), Set.of(UserRole.SELLER)),
+            Map.entry(ActionType.UPDATE_PROFILE.name(), Set.of(UserRole.ADMIN, UserRole.SELLER, UserRole.BIDDER)),
+            Map.entry(ActionType.UPDATE_PASSWORD.name(), Set.of(UserRole.ADMIN, UserRole.SELLER, UserRole.BIDDER)),
 
             // -----------------------------------------------------------------
             // PHÂN HỆ DÀNH CHO NGƯỜI ĐẤU GIÁ (BIDDER)

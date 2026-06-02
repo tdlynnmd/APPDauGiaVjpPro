@@ -257,7 +257,7 @@ class AuctionServiceTest {
                 itemId, "seller-1", 100000, startTime(), endTime()
         ));
 
-        assertAuctionError(exception, AuctionErrorCode.DATABASE_ERROR);
+        assertAuctionError(exception, AuctionErrorCode.AUCTION_SAVE_FAILED);
         verify(auctionDAO).insertAuction(any(Connection.class), any(Auction.class));
         verify(itemDAO, never()).updateStatus(any(Connection.class), eq(itemId), anyString());
     }
@@ -325,6 +325,7 @@ class AuctionServiceTest {
         auctionManage.addAuction(auction);
 
         Bidder bidder = new Bidder("bidder-fail-db", "khach", "k@gmail.com", "P@ss123", UserRole.BIDDER, 50000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
         setBidderOnline("bidder-fail-db", true); // Ép trạng thái Online trên RAM thật
 
         when(userDAO.freezeMoney(any(Connection.class), eq("bidder-fail-db"), anyDouble())).thenReturn(true);

@@ -220,7 +220,7 @@ class ItemServiceTest {
         when(itemDAO.insertItem(any(Connection.class), any(Item.class))).thenReturn(false);
 
         AuctionException exception = assertThrows(AuctionException.class, () -> itemService.addItem(ItemType.ELECTRONICS, electronicsData()));
-        assertAuctionError(exception, AuctionErrorCode.DATABASE_ERROR);
+        assertAuctionError(exception, AuctionErrorCode.ITEM_SAVE_FAILED);
     }
 
     @Test
@@ -371,7 +371,7 @@ class ItemServiceTest {
         when(itemDAO.updateStatus(any(Connection.class), eq("item-1"), eq(ItemStatus.SOLD.name()))).thenReturn(false);
 
         AuctionException exception = assertThrows(AuctionException.class, () -> itemService.updateItemStatus("item-1", ItemStatus.SOLD));
-        assertAuctionError(exception, AuctionErrorCode.DATABASE_ERROR);
+        assertAuctionError(exception, AuctionErrorCode.ITEM_STATUS_UPDATE_FAILED);
     }
 
     @Test
@@ -497,7 +497,7 @@ class ItemServiceTest {
         incomingData.put("name", "Laptop Dell Updated");
 
         AuctionException exception = assertThrows(AuctionException.class, () -> itemService.updateItemInfo("item-update-fail", ItemType.ELECTRONICS, incomingData));
-        assertAuctionError(exception, AuctionErrorCode.DATABASE_ERROR);
+        assertAuctionError(exception, AuctionErrorCode.UPDATE_FAILED);
     }
 
     @Test

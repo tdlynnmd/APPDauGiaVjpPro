@@ -8,6 +8,7 @@ import com.auction.dao.impl.*;
 import com.auction.dto.AuctionDetailDTO;
 import com.auction.dto.AuctionSummaryDTO;
 import com.auction.dto.BidTransactionDTO;
+import com.auction.dto.UpdateAuctionRequest;
 import com.auction.enums.AuctionStatus;
 import com.auction.enums.ItemStatus;
 import com.auction.enums.UserRole;
@@ -76,7 +77,7 @@ public class AuctionService {
 
                 boolean isAuctionSaved = auctionDAO.insertAuction(conn, newAuction);
                 if (!isAuctionSaved) {
-                    throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Internal data persistence failed for creating auction.");
+                    throw new AuctionException(AuctionErrorCode.AUCTION_SAVE_FAILED, "Internal data persistence failed for creating auction.");
                 }
 
                 boolean isItemUpdated = itemDAO.updateStatus(conn, itemId, ItemStatus.INACTIVE.name());
@@ -86,7 +87,7 @@ public class AuctionService {
 
                 conn.commit();
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Transaction failed at createAuction scope: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.AUCTION_SAVE_FAILED, "Transaction failed at createAuction scope: " + e.getMessage());
             }
 
             liveItem.setStatus(ItemStatus.INACTIVE);
@@ -167,12 +168,12 @@ public class AuctionService {
                     conn, auction.getId(), amount, bidder.getId(), newBidId, auction.getEndTime(), auction.getLiveStepPrice()
             );
             if (!updateAuctionDB) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Sync price to database failed.");
+                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Sync price to database failed.");
             }
 
             boolean insertedBid = bidTransactionDAO.insertBid(conn, resultBid);
             if (!insertedBid) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Failed to persist bid transaction.");
+                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Failed to persist bid transaction.");
             }
 
             if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
@@ -224,7 +225,7 @@ public class AuctionService {
             auction.rollbackBidInRam(oldHighestBidderId, oldPrice, oldEndTime);
 
             if (e instanceof com.auction.exception.BaseException) throw (com.auction.exception.BaseException) e;
-            throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Fatal crash during executeBidInternal: " + e.getMessage());
+            throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Fatal crash during executeBidInternal: " + e.getMessage());
         } finally {
             if (conn != null) {
                 try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
@@ -395,7 +396,7 @@ public class AuctionService {
                 }
 
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Finalization transaction failed: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.AUCTION_UPDATE_FAILED, "Finalization transaction failed: " + e.getMessage());
             }
 
             Map<String, Object> statusPayload = new HashMap<>();
@@ -560,10 +561,10 @@ public class AuctionService {
 
             if (operatorRole == UserRole.SELLER) {
                 if (!auction.getSellerId().equals(operatorId)) {
-                    throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Access denied: You do not own this auction room.");
+                    throw new AuthorizationException(AuthorizationErrorCode.RESOURCE_OWNERSHIP_VIOLATION, "Access denied: You do not own this auction room.");
                 }
-                if (auction.getHighestBidderId() != null) {
-                    throw new AuctionException(AuctionErrorCode.CANNOT_CANCEL_AUCTION_RUNNING, "Cannot cancel an auction that already has active bids.");
+                if (auction.getStatus() == AuctionStatus.RUNNING || auction.getHighestBidderId() != null) {
+                    throw new AuctionException(AuctionErrorCode.CANNOT_CANCEL_AUCTION_RUNNING, "Cannot cancel an auction that is currently running or already has active bids.");
                 }
             }
 
@@ -609,7 +610,7 @@ public class AuctionService {
                 if (conn != null) {
                     try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
                 }
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Cancellation transaction failed: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.AUCTION_CANCEL_FAILED, "Cancellation transaction failed: " + e.getMessage());
             } finally {
                 if (conn != null) {
                     try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
@@ -650,9 +651,9 @@ public class AuctionService {
         if (!bidder.getJoinedAuctionIds().contains(auctionId)) {
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                 boolean savedToDB = userDAO.addJoinedAuction(conn, bidder.getId(), auctionId);
-                if (!savedToDB) { throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Failed to save joined auction."); }
+                if (!savedToDB) { throw new AuctionException(AuctionErrorCode.JOIN_AUCTION_FAILED, "Failed to save joined auction."); }
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database link failed at joinAuction: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.JOIN_AUCTION_FAILED, "Database link failed at joinAuction: " + e.getMessage());
             }
 
             synchronized (bidder.getId().intern()) {
@@ -728,7 +729,7 @@ public class AuctionService {
         try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
             userDAO.removeJoinedAuction(conn, bidder.getId(), auctionId);
         } catch (SQLException e) {
-            throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Database link failed at leaveAuction: " + e.getMessage());
+            throw new AuctionException(AuctionErrorCode.LEAVE_AUCTION_FAILED, "Database link failed at leaveAuction: " + e.getMessage());
         }
 
         synchronized (bidder.getId().intern()) { bidder.removeJoinedAuction(auctionId); }
@@ -756,7 +757,7 @@ public class AuctionService {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Operator identity token cannot be null.");
         }
         User user = userDAO.findById(bidderId)
-                .orElseThrow(() -> new AuctionException(AuctionErrorCode.DATABASE_ERROR, "User authentication failed at persistence boundary."));
+                .orElseThrow(() -> new AuthenticationException(AuthErrorCode.USER_NOT_FOUND, "User authentication failed: user not found."));
 
         if (!(user instanceof Bidder)) {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "The requested operation restriction rule requires a BIDDER profile scope.");
@@ -801,7 +802,7 @@ public class AuctionService {
 
                 boolean success = autoBidDAO.insertOrUpdate(conn, autoBid);
                 if (!success) {
-                    throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Failed to save auto-bid configuration.");
+                    throw new AuctionException(AuctionErrorCode.AUTO_BID_SAVE_FAILED, "Failed to save auto-bid configuration.");
                 }
 
                 // Auto watch/join auction in DB
@@ -811,7 +812,7 @@ public class AuctionService {
 
                 conn.commit();
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Setup auto-bid failed: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.AUTO_BID_SAVE_FAILED, "Setup auto-bid failed: " + e.getMessage());
             }
 
             // Sync RAM
@@ -851,12 +852,127 @@ public class AuctionService {
                     conn.rollback();
                 }
             } catch (SQLException e) {
-                throw new AuctionException(AuctionErrorCode.DATABASE_ERROR, "Cancel auto-bid failed: " + e.getMessage());
+                throw new AuctionException(AuctionErrorCode.AUTO_BID_CANCEL_FAILED, "Cancel auto-bid failed: " + e.getMessage());
             }
 
             // Sync RAM
             auction.removeAutoBidInRam(bidder.getId());
             log.info("[Auto-Bidding] ❌ Đã hủy Auto-Bid cho User: {}", bidder.getUsername());
+        }
+    }
+
+    /**
+     * Lấy danh sách các phiên đấu giá do Seller tạo
+     */
+    public List<AuctionSummaryDTO> getSellerAuctions(String sellerId) {
+        if (sellerId == null || sellerId.trim().isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Seller ID cannot be empty.");
+        }
+        List<Auction> dbAuctions = auctionDAO.findBySellerId(sellerId);
+        List<AuctionSummaryDTO> summaries = new ArrayList<>();
+        for (Auction dbAuction : dbAuctions) {
+            // Xem thử có phiên live trên RAM không để lấy trạng thái mới nhất
+            Auction ramAuction = auctionManage.getAuctionById(dbAuction.getId());
+            Auction finalAuction = (ramAuction != null) ? ramAuction : dbAuction;
+
+            // Load Item nếu chưa có
+            if (finalAuction.getItem() == null) {
+                var item = productManage.getProduct(finalAuction.getItemId());
+                if (item == null) {
+                    item = itemDAO.findById(finalAuction.getItemId()).orElse(null);
+                }
+                finalAuction.setItem(item);
+            }
+
+            String itemName = (finalAuction.getItem() != null) ? finalAuction.getItem().getName() : "Vật phẩm #" + finalAuction.getItemId();
+
+            // Cập nhật trạng thái theo mốc thời gian thực tế
+            finalAuction.refreshStatus(LocalDateTime.now());
+
+            summaries.add(new AuctionSummaryDTO(
+                    finalAuction.getId(),
+                    itemName,
+                    finalAuction.getCurrentPrice(),
+                    finalAuction.getStatus().name(),
+                    finalAuction.getEndTime(),
+                    finalAuction.getStartTime(),
+                    finalAuction.getStepPrice()
+            ));
+        }
+        return summaries;
+    }
+
+    /**
+     * Cập nhật thông số phiên đấu giá chưa chạy (startTime, endTime, stepPrice)
+     */
+    public void updateAuction(String sellerId, UpdateAuctionRequest request) {
+        if (request == null) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Request request content cannot be null.");
+        }
+        String auctionId = request.getAuctionId();
+        double stepPrice = request.getStepPrice();
+        LocalDateTime startTime = request.getStartTime();
+        LocalDateTime endTime = request.getEndTime();
+
+        if (auctionId == null || auctionId.trim().isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID cannot be empty.");
+        }
+        if (stepPrice <= 0) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Step price must be greater than zero.");
+        }
+        if (startTime == null || endTime == null) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Start time and End time cannot be null.");
+        }
+        if (!startTime.isBefore(endTime)) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Start time must be before End time.");
+        }
+        if (startTime.isBefore(LocalDateTime.now())) {
+            throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Start time must be in the future.");
+        }
+
+        Auction auction = getAuctionContext(auctionId);
+
+        // Bảo vệ đa luồng: Lock đối tượng auction khi thực hiện thay đổi
+        synchronized (auction) {
+            // Kiểm tra sở hữu
+            if (!auction.getSellerId().equals(sellerId)) {
+                throw new AuthorizationException(AuthorizationErrorCode.RESOURCE_OWNERSHIP_VIOLATION, "Access denied: You do not own this auction room.");
+            }
+
+            // Cập nhật trạng thái trước khi kiểm tra
+            auction.refreshStatus(LocalDateTime.now());
+
+            // Chỉ cho phép update khi trạng thái là OPEN
+            if (auction.getStatus() != AuctionStatus.OPEN) {
+                throw new AuctionException(AuctionErrorCode.CANNOT_UPDATE_RUNNING_AUCTION, "Cannot update an auction that is currently running or finished.");
+            }
+
+            Connection conn = null;
+            try {
+                conn = com.auction.config.DatabaseConnection.getConnection();
+                conn.setAutoCommit(false);
+
+                boolean dbUpdated = auctionDAO.updateAuctionDetails(conn, auctionId, stepPrice, startTime, endTime);
+                if (!dbUpdated) {
+                    throw new AuctionException(AuctionErrorCode.AUCTION_UPDATE_FAILED, "Failed to update auction details in the database.");
+                }
+
+                conn.commit();
+                System.out.println("[DB Transaction] ✅ Đã cập nhật thông tin phiên đấu giá xuống DB.");
+            } catch (SQLException e) {
+                if (conn != null) {
+                    try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+                }
+                throw new AuctionException(AuctionErrorCode.AUCTION_UPDATE_FAILED, "Update auction transaction failed: " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+                }
+            }
+
+            // Đồng bộ lên RAM
+            auction.updateDetails(stepPrice, startTime, endTime);
+            System.out.println("[RAM Sync] 🔄 Đã đồng bộ thông tin cập nhật lên RAM cho phiên: " + auctionId);
         }
     }
 }

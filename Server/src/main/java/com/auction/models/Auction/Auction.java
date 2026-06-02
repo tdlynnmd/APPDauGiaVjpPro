@@ -221,6 +221,18 @@ public class Auction extends Entity implements Serializable {
     }
 
     /**
+     * Cập nhật thông số phiên đấu giá trên RAM đồng thời thiết lập lại các mốc Anti-sniping
+     */
+    public synchronized void updateDetails(double stepPrice, LocalDateTime startTime, LocalDateTime endTime) {
+        this.stepPrice = stepPrice;
+        this.liveStepPrice = stepPrice;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.originalEndTime = endTime;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * Cập nhật trạng thái phiên dựa trên thời gian thực
      */
     public void refreshStatus(LocalDateTime now) {

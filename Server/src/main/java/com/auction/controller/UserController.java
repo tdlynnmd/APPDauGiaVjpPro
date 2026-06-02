@@ -3,6 +3,7 @@ package com.auction.controller;
 import com.auction.dto.*;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
+import com.auction.network.ClientSession;
 import com.auction.service.BidTransactionService;
 import com.auction.service.UserService;
 
@@ -72,5 +73,25 @@ public class UserController {
                 request.getPage(),
                 request.getPageSize()
         );
+    }
+
+    /**
+     * Cập nhật thông tin Profile cá nhân (username, email)
+     */
+    public UserDTO updateProfile(String userId, UpdateProfileRequest request) {
+        if (request == null) {
+            throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
+        }
+        return userService.updateProfile(userId, request);
+    }
+
+    /**
+     * Cập nhật mật khẩu an toàn và ngắt kết nối các thiết bị khác
+     */
+    public void updatePassword(String userId, UpdatePasswordRequest request, ClientSession currentSession) {
+        if (request == null) {
+            throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
+        }
+        userService.updatePassword(userId, request, currentSession);
     }
 }
