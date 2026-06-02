@@ -14,6 +14,7 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
 <StackPane fx:id="rootContainer" prefHeight="750.0" prefWidth="1200.0" styleClass="sim-container" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
     <children>
@@ -31,11 +32,10 @@
                                 <Button onAction="#handleOpenFormForEdit" styleClass="sim-btn-action" text="📝 Sửa Vật Phẩm" />
                                 <Button onAction="#handleOpenFormForAuction" styleClass="sim-btn-action" text="🔨 Tạo Phiên Đấu Giá" />
                                 <Button onAction="#handleDeleteItem" styleClass="sim-btn-danger" text="🚮 Xóa Vật Phẩm" />
-                                <Button onAction="#handleLoadSellerItems" styleClass="sim-btn-secondary" text="🔄 Làm mới bảng" />
                             </children>
-                     <padding>
-                        <Insets bottom="15.0" />
-                     </padding>
+                            <padding>
+                                <Insets bottom="15.0" />
+                            </padding>
                         </HBox>
                         <HBox alignment="CENTER_LEFT">
                             <children>
@@ -50,20 +50,52 @@
             <center>
                 <HBox spacing="10.0" style="-fx-padding: 10;">
                     <children>
+
                         <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                             <children>
+
+                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                    <children>
+                                        <TextField fx:id="searchField" prefWidth="280.0" promptText="Tìm kiếm theo tên vật phẩm..." styleClass="sim-input" />
+                                        <Button fx:id="searchButton" onAction="#handleSearch" styleClass="sim-btn-action" text="Tìm kiếm 🔍" />
+                                        <Button onAction="#handleClearSearch" styleClass="sim-btn-secondary" text="Xóa bộ lọc" />
+                                        <Pane HBox.hgrow="ALWAYS" />
+                                        <Label text="Kích thước trang:" />
+                                        <TextField fx:id="pageSizeField" prefWidth="50.0" text="10" styleClass="sim-input" />
+                                        <Button fx:id="refreshButton" onAction="#handleLoadSellerItems" styleClass="sim-btn-secondary" text="🔄 Làm mới" />
+                                    </children>
+                                    <padding>
+                                        <Insets bottom="5.0" />
+                                    </padding>
+                                </HBox>
+
                                 <TableView fx:id="sellerItemsTable" styleClass="sim-table" VBox.vgrow="ALWAYS">
                                     <placeholder>
                                         <Label text="Không có sản phẩm nào trong danh sách" />
                                     </placeholder>
                                     <columns>
-                                        <TableColumn fx:id="itemIdColumn" prefWidth="200.0" text="Mã Sản Phẩm" />
-                                        <TableColumn fx:id="itemNameColumn" prefWidth="300.0" text="Tên Vật Phẩm" />
-                                        <TableColumn fx:id="itemTypeColumn" prefWidth="150.0" text="Phân Loại" />
-                                        <TableColumn fx:id="startingPriceColumn" prefWidth="200.0" text="Giá Khởi Điểm" />
-                                        <TableColumn fx:id="statusColumn" prefWidth="150.0" text="Trạng Thái" />
+                                        <TableColumn fx:id="itemIdColumn" prefWidth="180.0" text="Mã Sản Phẩm" />
+                                        <TableColumn fx:id="itemNameColumn" prefWidth="280.0" text="Tên Vật Phẩm" />
+                                        <TableColumn fx:id="itemTypeColumn" prefWidth="130.0" text="Phân Loại" />
+                                        <TableColumn fx:id="startingPriceColumn" prefWidth="180.0" text="Giá Khởi Điểm" />
+                                        <TableColumn fx:id="statusColumn" prefWidth="130.0" text="Trạng Thái" />
                                     </columns>
+                                    <columnResizePolicy>
+                                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                    </columnResizePolicy>
                                 </TableView>
+
+                                <HBox alignment="CENTER" spacing="15.0">
+                                    <children>
+                                        <Button fx:id="previousPageButton" onAction="#handlePreviousPage" styleClass="sim-btn-secondary" text="◀ Trang trước" />
+                                        <Label fx:id="pageLabel" style="-fx-font-weight: bold;" text="Trang 1 / --" />
+                                        <Button fx:id="nextPageButton" onAction="#handleNextPage" styleClass="sim-btn-secondary" text="Trang sau ▶" />
+                                    </children>
+                                    <padding>
+                                        <Insets top="5.0" />
+                                    </padding>
+                                </HBox>
+
                             </children>
                         </VBox>
 
