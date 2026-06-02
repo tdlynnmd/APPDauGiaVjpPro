@@ -51,7 +51,7 @@ public class SellerItemController {
 
     private ItemSummaryDTO selectedItem;
     private javafx.collections.transformation.FilteredList<ItemSummaryDTO> filteredItems;
-    private boolean showAllStatusesMode = false; // false: Chỉ hiện ACTIVE | true: Hiện tất cả
+    private boolean showAllStatusesMode = true; // false: Chỉ hiện ACTIVE | true: Hiện tất cả
     private boolean isNameAscending = true;
     private boolean isPriceAscending = true;
     private boolean isTypeAscending = true;
@@ -265,8 +265,31 @@ public class SellerItemController {
         // 4. Tải dữ liệu từ database lên bảng
         updateTypeSpecificFieldsVisibility(readItemType()); // Đưa hàm này xuống sát phần load dữ liệu
         handleLoadSellerItems();
+        // Chức năng: tự đồng bộ lại danh sách item để thấy INACTIVE/SOLD khi auction kết thúc
+        startSellerAutoRefresh();
+    }
+    // Chức năng: tự refresh màn seller định kỳ, thay cho realtime server push
+    private javafx.animation.Timeline sellerAutoRefreshTimeline;
+    // Chức năng: tự load lại item mỗi 5 giây để cập nhật trạng thái ACTIVE/INACTIVE/SOLD
+    private void startSellerAutoRefresh() {
+        if (sellerAutoRefreshTimeline != null) {
+            return;
+        }
+
+        sellerAutoRefreshTimeline = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), event -> refreshSellerItems(false))
+        );
+        sellerAutoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        sellerAutoRefreshTimeline.play();
     }
 
+    // Chức năng: dừng auto refresh khi rời màn để tránh chạy thừa
+    private void stopSellerAutoRefresh() {
+        if (sellerAutoRefreshTimeline != null) {
+            sellerAutoRefreshTimeline.stop();
+            sellerAutoRefreshTimeline = null;
+        }
+    }
     /**
      * Áp dụng theme hiện tại của ứng dụng dựa trên cấu hình hệ thống toàn cục.
      */
@@ -1152,6 +1175,8 @@ public class SellerItemController {
      */
     @FXML
     private void handleBack() {
+        // Chức năng: rời màn seller thì dừng auto refresh
+        stopSellerAutoRefresh();
         SceneNavigator.showDashboard();
     }
 
@@ -1736,6 +1761,13 @@ public class SellerItemController {
     private void handleOpenFormForAuction() {
         var selectedItem = sellerItemsTable.getSelectionModel().getSelectedItem();
         if (selectedItem == null) {
+            // Chức năng: chỉ cho tạo phiên đấu giá với sản phẩm đang ACTIVE.
+            // INACTIVE là đang bị khóa/đang đấu giá, SOLD là đã bán.
+            String status = selectedItem.getStatus() == null ? "" : selectedItem.getStatus().toUpperCase();
+            if (!"ACTIVE".equals(status)) {
+                showError("Chỉ có thể tạo phiên đấu giá cho sản phẩm ACTIVE. Sản phẩm hiện tại đang là " + status + ".");
+                return;
+            }
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setContentText("Vui lòng chọn một vật phẩm từ bảng danh sách trước khi tạo phiên đấu giá!");
             alert.showAndWait();
