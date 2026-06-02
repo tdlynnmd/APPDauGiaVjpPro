@@ -12,12 +12,20 @@ import javafx.fxml.FXML;
 import javafx.scene.Parent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * WalletController la controller phia Client cho man hinh vi cua Bidder.
@@ -48,6 +56,11 @@ public class WalletController {
     private final NumberFormat moneyFormat =
             NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
+    // Biến cờ hiệu quản lý luồng quét QR giả định
+    private boolean isDepositAction = true;
+    private Double pendingAmount = 0.0;
+    private boolean isProcessingTransaction = false;
+
     // =========================
     // FXML contract
     // =========================
@@ -63,6 +76,31 @@ public class WalletController {
     @FXML private Label messageLabel;
 
     @FXML private TextField amountField;
+
+    @FXML private HBox transactionBox;
+
+    // Các FXID mới phục vụ cấu trúc chia đôi và các ô tích chọn có chứa ảnh
+    @FXML private VBox formLeftPane;
+    @FXML private VBox qrRightPane;
+    @FXML private ToggleGroup paymentMethodGroup;
+    @FXML private ToggleButton momoToggle;
+    @FXML private ToggleButton zalopayToggle;
+    @FXML private ToggleButton bankingToggle;
+    @FXML private ToggleButton shopeepayToggle;
+
+    @FXML private ImageView momoLogo;
+    @FXML private ImageView zalopayLogo;
+    @FXML private ImageView bankingLogo;
+    @FXML private ImageView shopeepayLogo;
+
+    @FXML private Label qrTitleLabel;
+    @FXML private Label qrHintLabel;
+    @FXML private ImageView qrImageView;
+    @FXML private Button confirmQRButton;
+    @FXML private Button cancelQRButton;
+
+    // Khối thông báo đang cập nhật dành riêng cho Seller
+    @FXML private VBox sellerMaintenanceBox;
 
     @FXML private Button refreshButton;
     @FXML private Button depositButton;
@@ -81,6 +119,12 @@ public class WalletController {
             showError("Chi tai khoan Bidder hoac Seller moi duoc xem vi.");
             SceneNavigator.showDashboard();
             return;
+        }
+
+        // Mặc định ẩn hoàn toàn khung QR bên phải khi chưa phát lệnh giao dịch nào
+        if (qrRightPane != null) {
+            qrRightPane.setVisible(false);
+            qrRightPane.setManaged(false);
         }
 
         bindCurrentUserToHeader();
@@ -137,12 +181,40 @@ public class WalletController {
     private void applyWalletModeByRole() {
         boolean bidder = canUseWalletTransactions();
 
+        // 1. Điều khiển đóng/mở tính năng dựa theo vai trò (Guard logic cũ của bạn)
         setDisabled(depositButton, !bidder);
         setDisabled(withdrawButton, !bidder);
         setDisabled(amountField, !bidder);
 
-        if (!bidder) {
-            showMessage("Seller chi duoc xem so du vi. Chuc nang nap/rut hien chi danh cho Bidder.");
+        // Vô hiệu hóa các ô tích chọn nếu không phải là bidder
+        if (paymentMethodGroup != null && !bidder) {
+            momoToggle.setDisable(true);
+            zalopayToggle.setDisable(true);
+            bankingToggle.setDisable(true);
+            shopeepayToggle.setDisable(true);
+        }
+
+        // 2. KÍCH HOẠT GIAO DIỆN THÍCH ỨNG THÔNG MINH (Role-based UI)
+        if (bidder) {
+            if (transactionBox != null) {
+                transactionBox.setVisible(true);
+                transactionBox.setManaged(true);
+            }
+            if (sellerMaintenanceBox != null) {
+                sellerMaintenanceBox.setVisible(false);
+                sellerMaintenanceBox.setManaged(false);
+            }
+        } else {
+            if (transactionBox != null) {
+                transactionBox.setVisible(false);
+                transactionBox.setManaged(false);
+            }
+            if (sellerMaintenanceBox != null) {
+                sellerMaintenanceBox.setVisible(true);
+                sellerMaintenanceBox.setManaged(true);
+            }
+            // Cập nhật dòng chữ Footer thông báo chuyên nghiệp cho Seller
+            showMessage("Chế độ xem số dư ví (Dành riêng cho Seller). Chức năng đang cập nhật.");
         }
     }
 
@@ -168,17 +240,30 @@ public class WalletController {
      */
     @FXML
     private void handleRefresh() {
+        // Nếu đang mở QR mà ấn refresh, ta đưa giao diện về trạng thái gốc trước khi tải lại
+        resetFormToNormalState();
         loadWalletProfile();
+    }
+
+    /**
+     * Lấy chuỗi tên phương thức đang được tích chọn trong ToggleGroup
+     */
+    private String getSelectedPaymentMethodName() {
+        if (paymentMethodGroup == null || paymentMethodGroup.getSelectedToggle() == null) {
+            return null;
+        }
+        ToggleButton selected = (ToggleButton) paymentMethodGroup.getSelectedToggle();
+        if (selected == momoToggle) return "Ví MoMo";
+        if (selected == zalopayToggle) return "Ví ZaloPay";
+        if (selected == bankingToggle) return "Ngân Hàng Điện Tử";
+        if (selected == shopeepayToggle) return "ShopeePay";
+        return "Cổng thanh toán";
     }
 
     /**
      * FXML action: bam nut Nap tien.
      *
-     * Luong chuan:
-     * - Doc amount tu amountField.
-     * - Validate client-side de bat loi nhanh.
-     * - Gui DEPOSIT_MONEY qua ClientWalletApi.
-     * - Server tra UserDTO moi, controller cap nhat UI + ClientSession.
+     * CHỈNH SỬA: Đọc số tiền, kiểm tra ô tích chọn ➔ Mở khung QR bên phải, làm mờ form bên trái.
      */
     @FXML
     private void handleDeposit() {
@@ -186,25 +271,29 @@ public class WalletController {
             showError("Seller chi duoc xem vi, khong duoc nap tien.");
             return;
         }
+
+        String method = getSelectedPaymentMethodName();
+        if (method == null) {
+            showError("Vui lòng click chọn một ô phương thức thanh toán (MoMo, ZaloPay...) phía dưới.");
+            return;
+        }
+
         Double amount = readAmountFromInput();
         if (amount == null) {
             return;
         }
 
-        runWalletAction(
-                "Dang nap tien...",
-                () -> walletApi.depositMoney(amount)
-        );
+        isDepositAction = true;
+        pendingAmount = amount;
+
+        // Kích hoạt luồng dựng QR và làm mờ bảng bên trái
+        activateQRLayoutFlow(true, amount, method);
     }
 
     /**
      * FXML action: bam nut Rut tien.
      *
-     * Luong chuan:
-     * - Doc amount tu amountField.
-     * - Validate amount > 0.
-     * - Gui WITHDRAW_MONEY qua ClientWalletApi.
-     * - Server se check so du kha dung va trang thai tai khoan.
+     * CHỈNH SỬA: Kiểm tra số dư khả dụng, ô tích chọn ➔ Mở khung QR bên phải, làm mờ form bên trái.
      */
     @FXML
     private void handleWithdraw() {
@@ -212,6 +301,13 @@ public class WalletController {
             showError("Seller chi duoc xem vi, khong duoc rut tien trong phien ban hien tai.");
             return;
         }
+
+        String method = getSelectedPaymentMethodName();
+        if (method == null) {
+            showError("Vui lòng click chọn một ô phương thức để nhận tiền rút.");
+            return;
+        }
+
         Double amount = readAmountFromInput();
         if (amount == null) {
             return;
@@ -223,10 +319,105 @@ public class WalletController {
             return;
         }
 
-        runWalletAction(
-                "Dang rut tien...",
-                () -> walletApi.withdrawMoney(amount)
-        );
+        isDepositAction = false;
+        pendingAmount = amount;
+
+        // Kích hoạt luồng dựng QR và làm mờ bảng bên trái
+        activateQRLayoutFlow(false, amount, method);
+    }
+
+    /**
+     * Kích hoạt chế độ mở rộng QR bên phải và làm mờ toàn bộ form nhập bên trái
+     */
+    private void activateQRLayoutFlow(boolean isDeposit, double amount, String method) {
+        if (qrRightPane == null || formLeftPane == null) return;
+
+        String formattedMoney = moneyFormat.format(amount);
+        if (isDeposit) {
+            setLabelText(qrTitleLabel, "MÃ QR NẠP TIỀN (" + method.toUpperCase() + ")");
+            setLabelText(qrHintLabel, "Quét mã để nạp số tiền: " + formattedMoney);
+        } else {
+            setLabelText(qrTitleLabel, "MÃ QR RÚT TIỀN (" + method.toUpperCase() + ")");
+            setLabelText(qrHintLabel, "Quét mã để xác nhận chuyển " + formattedMoney + " về tài khoản.");
+        }
+
+        // 1. Đẩy khung QR hiện ra bên phải
+        qrRightPane.setVisible(true);
+        qrRightPane.setManaged(true);
+
+        // 2. LÀM MỜ TOÀN BỘ PHẦN BÊN TRÁI để nổi bật vùng quét QR
+        formLeftPane.setDisable(true);
+
+        showMessage("Đang chờ quét mã QR giao dịch...");
+    }
+
+    /**
+     * FXML action mới: Xử lý nút hủy (X). Hiển thị cảnh báo đổi ý trước khi đóng.
+     */
+    @FXML
+    private void handleCancelQR() {
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Hủy giao dịch");
+        confirmAlert.setHeaderText(null);
+        confirmAlert.setContentText("Bạn có chắc chắn muốn hủy bỏ giao dịch hiện tại và đóng mã QR không?");
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Nếu đồng ý thoát: đưa form về trạng thái mở ban đầu
+            resetFormToNormalState();
+            showMessage("Đã hủy yêu cầu giao dịch.");
+        }
+    }
+
+    /**
+     * Khôi phục form bên trái sáng lên bình thường và ẩn phần QR bên phải đi
+     */
+    private void resetFormToNormalState() {
+        if (qrRightPane != null) {
+            qrRightPane.setVisible(false);
+            qrRightPane.setManaged(false);
+        }
+        if (formLeftPane != null) {
+            formLeftPane.setDisable(false);
+        }
+        if (amountField != null) {
+            amountField.clear();
+        }
+        if (paymentMethodGroup != null && paymentMethodGroup.getSelectedToggle() != null) {
+            paymentMethodGroup.getSelectedToggle().setSelected(false);
+        }
+    }
+
+    /**
+     * FXML action mới: Xác nhận đã quét mã QR.
+     * Lúc này hệ thống chính thức đẩy lệnh Socket Request lên Server.
+     */
+    @FXML
+    private void handleConfirmQRAction() {
+        if (pendingAmount <= 0) {
+            showError("Yêu cầu giao dịch không hợp lệ.");
+            return;
+        }
+
+        this.isProcessingTransaction = true;
+
+        if (isDepositAction) {
+            runWalletAction(
+                    "Dang nap tien sau khi quet ma QR...",
+                    () -> walletApi.depositMoney(pendingAmount)
+            );
+        } else {
+            runWalletAction(
+                    "Dang rut tien sau khi quet ma QR...",
+                    () -> walletApi.withdrawMoney(pendingAmount)
+            );
+        }
+
+        // Sau khi đẩy lệnh đi, đóng QR và mở lại khóa form trái
+        if (qrRightPane != null) {
+            qrRightPane.setVisible(false);
+            qrRightPane.setManaged(false);
+        }
     }
 
     /**
@@ -298,38 +489,59 @@ public class WalletController {
     private void handleWalletResponse(SocketResponse response) {
         if (response == null) {
             showError("Server khong tra ve phan hoi.");
+            // Nếu thất bại, mở lại form bên trái cho user thao tác lại
+            if (formLeftPane != null) formLeftPane.setDisable(false);
             return;
         }
 
         if (!response.isSuccess()) {
-            showError(response.getMessage() == null
-                    ? "Thao tac vi that bai."
-                    : response.getMessage());
+            showError(response.getMessage() == null ? "Thao tac vi that bai." : response.getMessage());
+            // Nếu thất bại, mở lại form bên trái cho user thao tác lại
+            if (formLeftPane != null) formLeftPane.setDisable(false);
             return;
         }
 
         UserDTO updatedUser = walletApi.parseUser(response);
         if (updatedUser == null) {
             showError("Server tra ve du lieu vi khong hop le.");
+            if (formLeftPane != null) formLeftPane.setDisable(false);
             return;
         }
 
-        /*
-         * Cap nhat ClientSession bang UserDTO moi.
-         * Can giu lai token cu vi saveLoginSession se ghi de ca token va user.
-         */
         ClientSession.saveLoginSession(ClientSession.getToken(), updatedUser);
-
         renderBalances(updatedUser);
         bindCurrentUserToHeader();
 
+        // CHÍNH THỨC RESET BIẾN VÀ MỞ KHÓA GIAO DIỆN KHI THÀNH CÔNG THẬT SỰ
+        this.pendingAmount = 0.0;
+        if (formLeftPane != null) {
+            formLeftPane.setDisable(false); // Mở khóa form nhập bên trái
+        }
         if (amountField != null) {
             amountField.clear();
         }
+        if (paymentMethodGroup != null && paymentMethodGroup.getSelectedToggle() != null) {
+            paymentMethodGroup.getSelectedToggle().setSelected(false);
+        }
 
         showMessage("Cap nhat vi thanh cong.");
-    }
 
+        if (this.isProcessingTransaction) {
+            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+            successAlert.setTitle("Giao dịch thành công");
+            successAlert.setHeaderText(null);
+
+            if (isDepositAction) {
+                successAlert.setContentText("Chúc mừng! Bạn đã nạp tiền vào ví thành công.\nSố dư khả dụng hiện tại: " + moneyFormat.format(updatedUser.getAvailableBalance()));
+            } else {
+                successAlert.setContentText("Yêu cầu rút tiền thành công!\nHệ thống đang chuyển tiền về tài khoản của bạn.\nSố dư khả dụng hiện tại: " + moneyFormat.format(updatedUser.getAvailableBalance()));
+            }
+
+            successAlert.showAndWait();
+
+            this.isProcessingTransaction = false;
+        }
+    }
     /**
      * Doc va validate amount tu TextField.
      *
@@ -391,9 +603,14 @@ public class WalletController {
         Platform.runLater(() -> {
             boolean transactionAllowed = canUseWalletTransactions();
 
-            setDisabled(depositButton, busy || !transactionAllowed);
-            setDisabled(withdrawButton, busy || !transactionAllowed);
-            setDisabled(amountField, busy || !transactionAllowed);
+            // Chỉ thực hiện khóa/mở nút nếu vai trò hiện tại có quyền giao dịch
+            if (transactionAllowed) {
+                setDisabled(depositButton, busy);
+                setDisabled(withdrawButton, busy);
+                setDisabled(amountField, busy);
+                setDisabled(confirmQRButton, busy);
+                setDisabled(cancelQRButton, busy);
+            }
         });
     }
 

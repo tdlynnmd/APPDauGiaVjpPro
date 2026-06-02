@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:id="rootContainer" prefHeight="720.0" prefWidth="1100.0" spacing="25.0" styleClass="wallet-root" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://fxml.com/fxml/1" fx:controller="com.auction.controller.WalletController">
+
+    <padding>
+        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="wallet-header">
+        <Button fx:id="backButton" onAction="#handleBack" styleClass="btn-back" text="⬅ Quay Lại" />
+        <VBox HBox.hgrow="ALWAYS">
+            <Label fx:id="usernameLabel" styleClass="header-username" text="Tên tài khoản" />
+            <HBox alignment="CENTER_LEFT" spacing="5.0">
+                <Label styleClass="text-muted" text="Vai trò:" />
+                <Label fx:id="roleLabel" styleClass="badge-role" text="VAI TRÒ" />
+            </HBox>
+        </VBox>
+
+        <Button fx:id="historyButton" styleClass="btn-history" text="📜 Lịch Sử Giao Dịch" />
+
+        <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="btn-refresh" text="🔄 Làm Mới" />
+    </HBox>
+
+    <GridPane hgap="20.0" styleClass="balance-grid" vgap="20.0">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="33.33" />
+            <ColumnConstraints percentWidth="33.33" />
+            <ColumnConstraints percentWidth="33.33" />
+        </columnConstraints>
+
+        <VBox styleClass="balance-card, card-available" GridPane.columnIndex="0">
+            <Label styleClass="card-title" text="Số Dư Khả Dụng" />
+            <Label fx:id="availableBalanceLabel" styleClass="card-value" text="0 VNĐ" />
+        </VBox>
+
+        <VBox styleClass="balance-card, card-frozen" GridPane.columnIndex="1">
+            <Label styleClass="card-title" text="Số Tiền Đóng Băng" />
+            <Label fx:id="frozenBalanceLabel" styleClass="card-value" text="0 VNĐ" />
+        </VBox>
+
+        <VBox styleClass="balance-card, card-total" GridPane.columnIndex="2">
+            <Label styleClass="card-title" text="Tổng Số Dư" />
+            <Label fx:id="totalBalanceLabel" styleClass="card-value" text="0 VNĐ" />
+        </VBox>
+        <rowConstraints>
+            <RowConstraints />
+        </rowConstraints>
+    </GridPane>
+
+    <VBox alignment="CENTER" styleClass="content-body" VBox.vgrow="ALWAYS">
+        <HBox fx:id="transactionBox" alignment="CENTER" spacing="80.0" styleClass="transaction-box" VBox.vgrow="ALWAYS">
+            <padding>
+                <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
+            </padding>
+
+            <VBox fx:id="formLeftPane" alignment="CENTER" minWidth="500.0" spacing="25.0" styleClass="form-left-pane" HBox.hgrow="ALWAYS">
+                <Label styleClass="section-title" text="Thao Tác Tài Chính Ví" />
+
+                <VBox alignment="CENTER" spacing="10.0" styleClass="input-amount-wrapper">
+                    <Label styleClass="field-label" text="Nhập số tiền giao dịch (VNĐ):" />
+                    <TextField fx:id="amountField" maxWidth="350.0" promptText="Ví dụ: 100,000" styleClass="money-input" />
+                </VBox>
+
+                <HBox alignment="CENTER" spacing="25.0" styleClass="action-btn-group">
+                    <Button fx:id="depositButton" onAction="#handleDeposit" styleClass="btn-action, btn-deposit" text="💵 Nạp Tiền" />
+                    <Button fx:id="withdrawButton" onAction="#handleWithdraw" styleClass="btn-action, btn-withdraw" text="🏧 Rút Tiền" />
+                </HBox>
+
+                <VBox alignment="CENTER" spacing="12.0" styleClass="methods-wrapper">
+                    <Label styleClass="field-label" text="Chọn phương thức thanh toán / nhận tiền:" />
+                    <HBox alignment="CENTER" spacing="20.0" styleClass="methods-toggle-group">
+                        <ToggleButton fx:id="momoToggle" styleClass="method-card">
+                            <toggleGroup>
+                                <ToggleGroup fx:id="paymentMethodGroup" />
+                            </toggleGroup>
+                            <graphic>
+                                <VBox alignment="CENTER" spacing="8.0">
+                                    <ImageView fx:id="momoLogo" fitHeight="55.0" fitWidth="55.0" pickOnBounds="true" preserveRatio="true">
+                                        <image>
+                                            <Image url="@/image/Momo.png" />
+                                        </image>
+                                    </ImageView>
+                                    <Label styleClass="method-card-text" text="Ví MoMo" />
+                                </VBox>
+                            </graphic>
+                        </ToggleButton>
+
+                        <ToggleButton fx:id="zalopayToggle" styleClass="method-card" toggleGroup="$paymentMethodGroup">
+                            <graphic>
+                                <VBox alignment="CENTER" spacing="8.0">
+                                    <ImageView fx:id="zalopayLogo" fitHeight="55.0" fitWidth="55.0" pickOnBounds="true" preserveRatio="true">
+                                        <image>
+                                            <Image url="@/image/ZaloPay.png" />
+                                        </image>
+                                    </ImageView>
+                                    <Label styleClass="method-card-text" text="Ví ZaloPay" />
+                                </VBox>
+                            </graphic>
+                        </ToggleButton>
+
+                        <ToggleButton fx:id="bankingToggle" styleClass="method-card" toggleGroup="$paymentMethodGroup">
+                            <graphic>
+                                <VBox alignment="CENTER" spacing="8.0">
+                                    <ImageView fx:id="bankingLogo" fitHeight="55.0" fitWidth="55.0" pickOnBounds="true" preserveRatio="true">
+                                        <image>
+                                            <Image url="@/image/E-Bank.png" />
+                                        </image>
+                                    </ImageView>
+                                    <Label styleClass="method-card-text" text="E-Banking" />
+                                </VBox>
+                            </graphic>
+                        </ToggleButton>
+
+                        <ToggleButton fx:id="shopeepayToggle" styleClass="method-card" toggleGroup="$paymentMethodGroup">
+                            <graphic>
+                                <VBox alignment="CENTER" spacing="8.0">
+                                    <ImageView fx:id="shopeepayLogo" fitHeight="55.0" fitWidth="55.0" pickOnBounds="true" preserveRatio="true">
+                                        <image>
+                                            <Image url="@/image/ShopeePay.png" />
+                                        </image>
+                                    </ImageView>
+                                    <Label styleClass="method-card-text" text="ShopeePay" />
+                                </VBox>
+                            </graphic>
+                        </ToggleButton>
+                    </HBox>
+                </VBox>
+            </VBox>
+
+            <VBox fx:id="qrRightPane" alignment="CENTER" minWidth="450.0" spacing="25.0" styleClass="qr-right-pane" HBox.hgrow="ALWAYS">
+                <padding>
+                    <Insets bottom="15.0" left="25.0" right="25.0" top="15.0" />
+                </padding>
+                <HBox alignment="TOP_RIGHT" styleClass="qr-header-actions">
+                    <Button fx:id="cancelQRButton" onAction="#handleCancelQR" styleClass="btn-cancel-qr" text="❌ Hủy Giao Dịch" />
+                </HBox>
+                <Label fx:id="qrTitleLabel" styleClass="qr-big-title" text="MÃ QR THANH TOÁN" />
+                <ImageView fx:id="qrImageView" fitHeight="250.0" fitWidth="250.0" pickOnBounds="true" preserveRatio="true" styleClass="qr-big-image">
+                    <image>
+                        <Image url="@/image/QR_wallet.png" />
+                    </image>
+                </ImageView>
+                <Label fx:id="qrHintLabel" styleClass="qr-big-hint" text="Vui lòng quét mã..." />
+                <Button fx:id="confirmQRButton" onAction="#handleConfirmQRAction" styleClass="btn-confirm-qr" text="✅ Xác Nhận Đã Quét Mã" />
+            </VBox>
+        </HBox>
+
+        <VBox fx:id="sellerMaintenanceBox" alignment="CENTER" spacing="15.0" styleClass="maintenance-box">
+            <Label styleClass="maintenance-title" text="🛠 THÔNG BÁO HỆ THỐNG" />
+            <Label styleClass="maintenance-text" text="Hiện tại chưa có thêm chức năng của Wallet dành cho Seller" />
+            <Label styleClass="maintenance-subtext" text="Vui lòng quay lại sau hoặc cày Come My Way của a Tùng MTP!!" />
+        </VBox>
+    </VBox>
+
+    <HBox alignment="CENTER_LEFT" styleClass="status-bar">
+        <Label fx:id="messageLabel" styleClass="status-text" text="Trạng thái hệ thống" />
+    </HBox>
+</VBox>

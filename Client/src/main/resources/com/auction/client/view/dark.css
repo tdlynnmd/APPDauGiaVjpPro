@@ -728,3 +728,291 @@
     -fx-border-color: transparent !important;
     -fx-text-fill: transparent !important;
 }
+/* ==========================================================================
+   CẬP NHẬT CSS CHO GIAO DIỆN VÍ (WALLET - DARK MODE)
+   ========================================================================== */
+
+/* Nền tổng thể của trang ví */
+.wallet-root {
+    -fx-background-color: -fx-bg-main;
+}
+
+/* 1. TỐI ƯU HEADER BAR THÀNH THANH BANNER SANG TRỌNG */
+.wallet-header {
+    -fx-background-color: -fx-bg-card;
+    -fx-padding: 15px 25px;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.25), 8, 0, 0, 4);
+}
+.header-username {
+    -fx-font-size: 20px;
+    -fx-font-weight: 900;
+    -fx-text-fill: -fx-text-main;
+}
+.badge-role {
+    -fx-background-color: rgba(245, 158, 11, 0.15);
+    -fx-text-fill: -fx-primary-color;
+    -fx-padding: 4px 10px;
+    -fx-background-radius: 6;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+/* Các nút chức năng trên đầu */
+.btn-back {
+    -fx-background-color: #3A3B3C;
+    -fx-text-fill: #E4E6EB;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 8px 16px;
+    -fx-cursor: hand;
+}
+.btn-back:hover {
+    -fx-background-color: #4E4F50;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+.btn-refresh {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-primary-color;
+    -fx-border-color: -fx-primary-color;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 16px;
+    -fx-cursor: hand;
+}
+.btn-refresh:hover {
+    -fx-background-color: rgba(245, 158, 11, 0.12);
+}
+
+/* 2. ĐỔI MÀU NỀN TOÀN BỘ Ô SỐ DƯ (KHỐI SẬM PASTEL ĐÊM) */
+.balance-card {
+    -fx-background-radius: 14;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);
+}
+.card-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.card-value {
+    -fx-font-size: 26px;
+    -fx-font-weight: 900;
+}
+
+/* Phối màu đêm dịu mắt nhưng cực nét */
+.card-available {
+    -fx-background-color: #143F2E; /* Nền lục tối */
+    -fx-border-color: #27AE60;
+    -fx-border-width: 1;
+    -fx-border-radius: 14;
+}
+.card-available .card-title { -fx-text-fill: #2ECC71; }
+.card-available .card-value { -fx-text-fill: #2ECC71; }
+
+.card-frozen {
+    -fx-background-color: #4A1C1C; /* Nền đỏ tối */
+    -fx-border-color: #E74C3C;
+    -fx-border-width: 1;
+    -fx-border-radius: 14;
+}
+.card-frozen .card-title { -fx-text-fill: #FF6666; }
+.card-frozen .card-value { -fx-text-fill: #FF4D4D; }
+
+.card-total {
+    -fx-background-color: #1F3A52; /* Nền lam huyền bí */
+    -fx-border-color: #2980B9;
+    -fx-border-width: 1;
+    -fx-border-radius: 14;
+}
+.card-total .card-title { -fx-text-fill: #5DADE2; }
+.card-total .card-value { -fx-text-fill: -fx-primary-color; }
+
+
+/* ==========================================================================
+   KHỐI THAO TÁC CHÍNH (CHIA ĐÔI LAYOUT)
+   ========================================================================== */
+.content-body {
+    -fx-padding: 5px 0 0 0;
+}
+
+/* 3. LÀM NỔI BẬT CHỮ THAO TÁC TÀI CHÍNH VÍ */
+.section-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 900;
+    -fx-text-fill: -fx-primary-color; /* Ép hẳn sang màu vàng hổ phách thương hiệu */
+}
+
+/* Khối form bên trái */
+.form-left-pane {
+    -fx-background-color: -fx-bg-card;
+    -fx-background-radius: 16;
+    -fx-padding: 35px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 8);
+}
+
+/* Ô nhập tiền */
+.money-input {
+    -fx-background-color: #3A3B3C;
+    -fx-text-fill: -fx-text-main;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 20px;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-alignment: center;
+}
+.money-input:focused {
+    -fx-background-color: #242526;
+    -fx-border-color: -fx-primary-color;
+    -fx-border-width: 2;
+}
+
+/* 5. ĐỔI CON TRỎ CHUỘT VÀ LÀM NỔI BẬT KHI HOVER */
+.btn-action {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 25px;
+    -fx-background-radius: 8;
+    -fx-pref-width: 160px;
+    -fx-cursor: hand;
+}
+.btn-deposit {
+    -fx-background-color: -fx-primary-color;
+    -fx-text-fill: #18191A;
+}
+.btn-deposit:hover {
+    -fx-background-color: #D9822B;
+    -fx-effect: dropshadow(three-pass-box, rgba(245,158,11,0.4), 10, 0, 0, 4);
+}
+
+.btn-withdraw {
+    -fx-background-color: #4E5D6C;
+    -fx-text-fill: white;
+}
+.btn-withdraw:hover {
+    -fx-background-color: #3A4652;
+    -fx-effect: dropshadow(three-pass-box, rgba(78,93,108,0.4), 10, 0, 0, 4);
+}
+
+/* Ô tích chọn phương thức */
+.method-card {
+    -fx-background-color: #242526;
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 15px;
+    -fx-pref-width: 110px;
+    -fx-pref-height: 110px;
+    -fx-cursor: hand;
+}
+.method-card:hover {
+    -fx-border-color: -fx-primary-color;
+    -fx-background-color: #2D2E2F;
+}
+.method-card:selected {
+    -fx-background-color: rgba(245, 158, 11, 0.08);
+    -fx-border-color: -fx-primary-color;
+    -fx-border-width: 2.5;
+    -fx-effect: dropshadow(three-pass-box, rgba(245,158,11,0.3), 8, 0, 0, 4);
+}
+.method-card-text {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #B0B3B8;
+}
+.method-card:selected .method-card-text {
+    -fx-text-fill: -fx-primary-color;
+}
+
+/* ==========================================================================
+   KHỐI HIỂN THỊ MÃ QR BÊN PHẢI (KHI TRƯỢT MỞ)
+   ========================================================================== */
+.qr-right-pane {
+    -fx-background-color: -fx-bg-card;
+    -fx-background-radius: 16;
+    -fx-padding: 20px 35px 35px 35px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 8);
+}
+
+/* 4. SỬA CHỮ QR MÀU ĐỎ THÀNH MÀU VÀNG HỔ PHÁCH CHỦ ĐẠO (ĐỒNG BỘ DARK SYSTEM) */
+.qr-big-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-text-fill: -fx-primary-color; /* Màu vàng cam sang trọng an toàn */
+}
+.qr-big-image {
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 2;
+    -fx-padding: 8px;
+    -fx-background-color: white; /* Giữ nền lõi trắng tinh cho camera dễ quét */
+}
+.qr-big-hint {
+    -fx-font-size: 14px;
+    -fx-text-fill: #E4E6EB;
+    -fx-font-weight: bold;
+}
+
+/* Nút hủy giao dịch (X) */
+.btn-cancel-qr {
+    -fx-background-color: #522C2C;
+    -fx-text-fill: #FF8080;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+}
+.btn-cancel-qr:hover { -fx-background-color: #6E3B3B; }
+
+/* Nút Xác nhận đã quét mã */
+.btn-confirm-qr {
+    -fx-background-color: #2ECC71;
+    -fx-text-fill: #18191A;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 35px;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-confirm-qr:hover {
+    -fx-background-color: #27AE60;
+    -fx-effect: dropshadow(three-pass-box, rgba(46,204,113,0.4), 10, 0, 0, 4);
+}
+
+/* MÀN HÌNH BẢO TRÌ BẢO MẬT CHO SELLER & STATUS FOOTER */
+.maintenance-box {
+    -fx-background-color: -fx-bg-card;
+    -fx-background-radius: 16;
+    -fx-padding: 60px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 8);
+}
+.maintenance-title { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: -fx-primary-color; }
+.maintenance-text { -fx-font-size: 16px; -fx-text-fill: -fx-text-main; }
+.maintenance-subtext { -fx-font-size: 14px; -fx-text-fill: #747679; }
+
+.status-bar {
+    -fx-padding: 6px 12px;
+    -fx-background-color: #242526;
+    -fx-background-radius: 4;
+}
+.wallet-scroll-root {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+.btn-history {
+    -fx-background-color: #3A3B3C;
+    -fx-text-fill: #E4E6EB;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+}
+
+/* Hiệu ứng di chuột (Hover) */
+.btn-history:hover {
+    -fx-background-color: #4E4F50;
+}
