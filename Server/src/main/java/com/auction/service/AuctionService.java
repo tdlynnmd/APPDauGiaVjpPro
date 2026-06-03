@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class AuctionService {
@@ -47,6 +48,131 @@ public class AuctionService {
     private final ItemDAO itemDAO = new ItemDAOImpl();
     private final BidTransactionDAO bidTransactionDAO = new BidTransactionDAOImpl();
     private final LogDAO logDAO = new LogDAOImpl();
+    private final AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
+
+    // 🔥 HẠ TẦNG HÀNG ĐỢI BẤT ĐỒNG BỘ ĐỂ GIẢM TẢI DATABASE
+    private final Queue<BidTask> dbQueue = new ConcurrentLinkedQueue<>();
+    private final ExecutorService dbWriterExecutor = Executors.newSingleThreadExecutor();
+    private static boolean asyncEnabled = true;
+
+    public static void setAsyncEnabled(boolean enabled) {
+        asyncEnabled = enabled;
+    }
+
+    /**
+     * DTO đóng gói ảnh chụp trạng thái (Snapshot) của lệnh thầu để luồng ngầm xử lý DB
+     */
+    private static class BidTask {
+        String bidderId;
+        String auctionId;
+        double amount;
+        String newBidId;
+        String oldHighestBidderId;
+        String oldWinningBidId;
+        double oldPrice;
+        LocalDateTime endTime;
+        double liveStepPrice;
+        LocalDateTime time;
+
+        public BidTask(String bidderId, String auctionId, double amount, String newBidId,
+                       String oldHighestBidderId, String oldWinningBidId, double oldPrice,
+                       LocalDateTime endTime, double liveStepPrice, LocalDateTime time) {
+            this.bidderId = bidderId;
+            this.auctionId = auctionId;
+            this.amount = amount;
+            this.newBidId = newBidId;
+            this.oldHighestBidderId = oldHighestBidderId;
+            this.oldWinningBidId = oldWinningBidId;
+            this.oldPrice = oldPrice;
+            this.endTime = endTime;
+            this.liveStepPrice = liveStepPrice;
+            this.time = time;
+        }
+    }
+
+    /**
+     * CONSTRUCTOR: Khởi chạy luồng ngầm chuyên tiêu thụ task từ hàng đợi để lưu xuống MySQL tuần tự
+     */
+    public AuctionService() {
+        dbWriterExecutor.submit(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    BidTask task = dbQueue.poll();
+                    if (task != null) {
+                        persistBidToDatabase(task);
+                    } else {
+                        Thread.sleep(10); // Tránh chiếm dụng CPU khi hàng đợi rỗng
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    log.error("❌ Lỗi ngầm khi thực thi lưu dữ liệu từ Queue xuống Database: {}", e.getMessage(), e);
+                }
+            }
+        });
+    }
+
+    /**
+     * LUỒNG GHI NGẦM MYSQL: Thực thi tuần tự các câu lệnh ghi DB mà không block các luồng thầu realtime
+     */
+    private void persistBidToDatabase(BidTask task) {
+        try {
+            persistBidToDatabaseInternal(task);
+        } catch (Exception e) {
+            log.error("❌ [Async DB Writer] Thất bại khi đồng bộ dữ liệu lệnh thầu của user {} xuống MySQL: {}", task.bidderId, e.getMessage());
+        }
+    }
+
+    private void persistBidToDatabaseInternal(BidTask task) throws Exception {
+        Connection conn = null;
+        try {
+            conn = com.auction.config.DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Đóng băng tiền của người đặt giá mới
+            boolean freezeSuccess = userDAO.freezeMoney(conn, task.bidderId, task.amount);
+            if (!freezeSuccess) {
+                throw new WalletException(WalletErrorCode.DEDUCTION_FAILED);
+            }
+
+            // 2. Đồng bộ giá và winner mới lên bảng đấu giá dưới DB
+            boolean updateAuctionDB = auctionDAO.updatePriceAndWinner(
+                    conn, task.auctionId, task.amount, task.bidderId, task.newBidId, task.endTime, task.liveStepPrice
+            );
+            if (!updateAuctionDB) {
+                throw new SQLException("Sync price to database failed.");
+            }
+
+            // 3. Ghi lịch sử giao dịch thầu mới thành công vào bảng logs giao dịch
+            BidTransaction resultBid = new BidTransaction(task.newBidId, task.auctionId, task.bidderId, task.amount, task.time, com.auction.enums.BidStatus.ACCEPTED);
+            boolean insertedBid = bidTransactionDAO.insertBid(conn, resultBid);
+            if (!insertedBid) {
+                throw new SQLException("Failed to persist bid transaction.");
+            }
+
+            // 4. Giải tỏa tiền đóng băng và hoàn trả cọc cho người giữ giá cũ dưới DB
+            if (task.oldHighestBidderId != null) {
+                userDAO.unfreezeMoney(conn, task.oldHighestBidderId, task.oldPrice);
+                if (task.oldWinningBidId != null) {
+                    bidTransactionDAO.updateStatusByBidId(conn, task.oldWinningBidId, com.auction.enums.BidStatus.REFUNDED.name());
+                }
+            }
+
+            // 5. Lưu liên kết phòng đã tham gia
+            userDAO.addJoinedAuction(conn, task.bidderId, task.auctionId);
+
+            conn.commit();
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            throw e;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+        }
+    }
 
     /**
      * TẠO PHÒNG ĐẤU GIÁ MỚI (Giữ nguyên)
@@ -117,19 +243,19 @@ public class AuctionService {
     }
 
     /**
-     * THỰC THI ĐẶT GIÁ REALTIME (Đã chuyển đổi sang bốc Bidder ID nội bộ)
+     * THỰC THI ĐẶT GIÁ REALTIME (Áp dụng hàng đợi bất đồng bộ)
      */
     public void processBid(String bidderId, String auctionId, double amount) {
         Bidder bidder = getBidderContext(bidderId);
         validateBidInput(bidder, auctionId, amount);
-
         Auction auction = getAuctionContext(auctionId);
 
         if (!connectionManage.isUserOnline(bidder.getId())) {
             throw new AuctionException(AuctionErrorCode.BIDDER_NOT_ONLINE);
         }
 
-        synchronized (auction) {
+        // 🔥 ĐỒNG BỘ Ổ KHÓA CHUNG: Khóa theo chuỗi định danh ID phòng đấu giá để bảo vệ RAM an toàn tuyệt đối
+        synchronized (auctionId.trim().intern()) {
             if (auction.getStatus() != AuctionStatus.RUNNING) {
                 throw new AuctionException(AuctionErrorCode.AUCTION_NOT_RUNNING);
             }
@@ -138,7 +264,7 @@ public class AuctionService {
                 throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
             }
 
-            // Thực thi đặt giá thủ công cho User
+            // Thực thi xử lý lưu thông tin và hoán chuyển dòng tiền tức thời trên RAM live
             executeBidInternal(bidder, auction, amount);
 
             // Kích hoạt chuỗi đấu giá tự động để tranh chấp thầu
@@ -153,126 +279,110 @@ public class AuctionService {
         LocalDateTime oldEndTime = auction.getEndTime();
 
         String newBidId = UUID.randomUUID().toString();
-        Connection conn = null;
+        LocalDateTime currentActionTime = LocalDateTime.now();
 
-        try {
-            conn = com.auction.config.DatabaseConnection.getConnection();
-            conn.setAutoCommit(false);
+        // Kiểm tra ví tiền khả dụng trực tiếp trên bộ nhớ đệm RAM live (Chống Over-drafting cực nhanh)
+        if (bidder.getAvailableBalance() < amount) {
+            throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+        }
 
-            boolean freezeSuccess = userDAO.freezeMoney(conn, bidder.getId(), amount);
-            if (!freezeSuccess) {
-                throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+        // 1. ĐỒNG BỘ DÒNG TIỀN TRÊN RAM CHO NGƯỜI ĐẶT GIÁ HIỆN TẠI
+        synchronized (bidder.getId().intern()) {
+            if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
+                bidder.unfreeze(oldPrice); // Tự đè giá chính mình: giải phóng cọc cũ trên RAM ra trước
             }
+            bidder.freeze(amount);
+            bidder.addJoinedAuction(auction.getId());
+        }
 
-            BidTransaction resultBid = auction.placeBid(bidder, amount, newBidId);
-
-            boolean updateAuctionDB = auctionDAO.updatePriceAndWinner(
-                    conn, auction.getId(), amount, bidder.getId(), newBidId, auction.getEndTime(), auction.getLiveStepPrice()
-            );
-            if (!updateAuctionDB) {
-                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Sync price to database failed.");
-            }
-
-            boolean insertedBid = bidTransactionDAO.insertBid(conn, resultBid);
-            if (!insertedBid) {
-                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Failed to persist bid transaction.");
-            }
-
-            if (oldHighestBidderId != null) {
-                userDAO.unfreezeMoney(conn, oldHighestBidderId, oldPrice);
-                if (oldWinningBidId != null) {
-                    bidTransactionDAO.updateStatusByBidId(conn, oldWinningBidId, com.auction.enums.BidStatus.REFUNDED.name());
-                }
-            }
-
-            if (!bidder.getJoinedAuctionIds().contains(auction.getId())) {
-                userDAO.addJoinedAuction(conn, bidder.getId(), auction.getId());
-            }
-
-            conn.commit();
-            System.out.println("[DB Transaction] ✅ Commit thành công luồng đặt giá xuống Database cho: " + bidder.getUsername() + ", Giá: " + amount);
-
-            // 1. Đồng bộ RAM cho Người đặt giá hiện tại
-            synchronized (bidder.getId().intern()) {
-                if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
-                    bidder.unfreeze(oldPrice);
-                }
-                bidder.freeze(amount);
-                if (!bidder.getJoinedAuctionIds().contains(auction.getId())) {
-                    bidder.addJoinedAuction(auction.getId());
-                }
-            }
-
-            // 2. Đồng bộ RAM cho người bị vượt giá cũ
-            if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
-                User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
-                if (oldRamUser instanceof Bidder oldBidderLive) {
-                    synchronized (oldHighestBidderId.intern()) {
-                        oldBidderLive.setAvailableBalance(oldBidderLive.getAvailableBalance() + oldPrice);
-                        oldBidderLive.setFrozenBalance(oldBidderLive.getFrozenBalance() - oldPrice);
-                        System.out.println("[RAM Sync] 🔄 Đã hoàn tiền trên RAM cho người bị vượt giá cũ: " + oldHighestBidderId);
-                    }
-                }
-            }
-
-            // Gửi cập nhật ví qua socket
-            try {
-                syncAndSendBalanceUpdate(bidder.getId());
-            } catch (Exception ex) {
-                System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder mới: " + ex.getMessage());
-            }
-            if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
-                User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
-                if (oldRamUser instanceof Bidder oldBidderLive) {
-                    try {
-                        syncAndSendBalanceUpdate(oldHighestBidderId);
-                    } catch (Exception ex) {
-                        System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder cũ: " + ex.getMessage());
-                    }
-                }
-            }
-
-            // 3. Đóng gói payload chứa thông tin Anti-sniping
-            BidTransactionDTO bidData = new BidTransactionDTO(
-                    bidder.getUsername(), amount, resultBid.getTime(), com.auction.enums.BidStatus.ACCEPTED.name(),
-                    auction.getEndTime(), auction.getLiveStepPrice()
-            );
-            bidData.setBidId(resultBid.getId());
-            bidData.setAuctionId(auction.getId());
-
-            AuctionEvent bidEvent = new AuctionEvent(auction.getId(), AuctionEventType.NEW_BID, bidData);
-            AuctionEventBus.getInstance().publish(bidEvent);
-
-        } catch (Exception e) {
-            if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            }
-
-            auction.rollbackBidInRam(oldHighestBidderId, oldPrice, oldEndTime);
-
-            if (e instanceof com.auction.exception.BaseException) throw (com.auction.exception.BaseException) e;
-            throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Fatal crash during executeBidInternal: " + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                } finally {
-                    try {
-                        conn.close();
-                    } catch (SQLException ex) {
-                        ex.printStackTrace();
-                    }
+        // 2. ĐỒNG BỘ DÒNG TIỀN TRÊN RAM CHO NGƯỜI BỊ VƯỢT GIÁ CŨ (NẾU LÀ NGƯỜI KHÁC)
+        if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+            User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
+            if (oldRamUser instanceof Bidder oldBidderLive) {
+                synchronized (oldHighestBidderId.intern()) {
+                    oldBidderLive.setAvailableBalance(oldBidderLive.getAvailableBalance() + oldPrice);
+                    oldBidderLive.setFrozenBalance(oldBidderLive.getFrozenBalance() - oldPrice);
+                    System.out.println("[RAM Sync Live] 🔄 Đã xả hoàn tiền trên RAM cho người bị vượt giá: " + oldHighestBidderId);
                 }
             }
         }
+
+        // 3. CẬP NHẬT TRẠNG THÁI PHÒNG LIVE TRÊN RAM ĐỂ PHỤC VỤ LƯỢT TIẾP THEO
+        BidTransaction resultBid = auction.placeBid(bidder, amount, newBidId);
+
+        // 4. 🔥 CHÍ MẠNG: Đẩy tác vụ ngầm vào hàng đợi hoặc thực thi đồng bộ tùy thuộc vào cờ asyncEnabled
+        BidTask task = new BidTask(
+                bidder.getId(), auction.getId(), amount, newBidId,
+                oldHighestBidderId, oldWinningBidId, oldPrice,
+                auction.getEndTime(), auction.getLiveStepPrice(), currentActionTime
+        );
+
+        if (asyncEnabled) {
+            dbQueue.add(task);
+        } else {
+            try {
+                persistBidToDatabaseInternal(task);
+            } catch (Exception e) {
+                // Revert RAM updates
+                // 1. Rollback bid in RAM
+                auction.rollbackBidInRam(oldHighestBidderId, oldPrice, oldEndTime);
+
+                // 2. Rollback bidder balance
+                synchronized (bidder.getId().intern()) {
+                    bidder.unfreeze(amount);
+                    if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
+                        bidder.freeze(oldPrice);
+                    }
+                }
+
+                // 3. Rollback old highest bidder balance (if it was a different user)
+                if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+                    User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
+                    if (oldRamUser instanceof Bidder oldBidderLive) {
+                        synchronized (oldHighestBidderId.intern()) {
+                            oldBidderLive.setAvailableBalance(oldBidderLive.getAvailableBalance() - oldPrice);
+                            oldBidderLive.setFrozenBalance(oldBidderLive.getFrozenBalance() + oldPrice);
+                        }
+                    }
+                }
+
+                if (e instanceof com.auction.exception.BaseException) {
+                    throw (com.auction.exception.BaseException) e;
+                }
+                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Fatal crash during executeBidInternal: " + e.getMessage());
+            }
+        }
+
+        // 5. GỬI CẬP NHẬT TRẠNG THÁI VÍ QUA SOCKET REALTIME SỬ DỤNG SỐ LIỆU RAM (KHÔNG ĐỌC DB)
+        try {
+            connectionManage.sendBalanceUpdate(bidder.getId(), bidder.getAvailableBalance(), bidder.getFrozenBalance());
+            if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+                User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
+                if (oldRamUser instanceof Bidder oldBidderLive) {
+                    connectionManage.sendBalanceUpdate(oldHighestBidderId, oldBidderLive.getAvailableBalance(), oldBidderLive.getFrozenBalance());
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("[WebSocket Error] Lỗi đẩy cập nhật số dư ví: " + ex.getMessage());
+        }
+
+        // 6. Đóng gói payload chứa thông tin Anti-sniping phát sự kiện toàn mạng
+        BidTransactionDTO bidData = new BidTransactionDTO(
+                bidder.getUsername(), amount, resultBid.getTime(), com.auction.enums.BidStatus.ACCEPTED.name(),
+                auction.getEndTime(), auction.getLiveStepPrice()
+        );
+        bidData.setBidId(resultBid.getId());
+        bidData.setAuctionId(auction.getId());
+
+        AuctionEvent bidEvent = new AuctionEvent(auction.getId(), AuctionEventType.NEW_BID, bidData);
+        AuctionEventBus.getInstance().publish(bidEvent);
     }
 
-
+    /**
+     * KÍCH HOẠT CHUỖI ĐẤU GIÁ TỰ ĐỘNG
+     */
     public void triggerAutoBids(Auction auction) {
         int loops = 0;
-        // Giới hạn tối đa 100 lượt đấu giá tự động liên tiếp để tránh quá tải server
         while (loops < 100) {
             double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
             List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
@@ -290,10 +400,14 @@ public class AuctionService {
 
             try {
                 Bidder challengerBidder = getBidderContext(challenger.getUserId());
+                
+                // Thực thi luồng xử lý thầu tự động qua RAM và đẩy tác vụ ngầm vào hàng đợi tương tự Manual Bid
                 executeBidInternal(challengerBidder, auction, bidAmount);
+
+                // Giả lập độ trễ (150ms) giúp Frontend hiển thị hiệu ứng tăng giá từ từ đều đặn kích thích thị giác
+                Thread.sleep(150);
             } catch (Exception e) {
                 log.warn("[Auto-Bidding] ❌ Lượt thầu tự động của user {} thất bại: {}", challenger.getUserId(), e.getMessage());
-                // Vô hiệu hóa auto bid nếu xảy ra lỗi (ví dụ không đủ tiền) để tránh spam
                 challenger.setActive(false);
                 try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                     autoBidDAO.disableAutoBid(conn, challenger.getId());
@@ -958,7 +1072,6 @@ public class AuctionService {
         return liveUser;
     }
 
-    private final AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
 
     public void setupAutoBid(String bidderId, String auctionId, double maxBid, double increment) {
         Bidder bidder = getBidderContext(bidderId);

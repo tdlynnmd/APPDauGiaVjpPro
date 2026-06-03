@@ -61,6 +61,7 @@ class AuctionServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        AuctionService.setAsyncEnabled(false);
         auctionService = new AuctionService();
 
         userDAO = mock(UserDAO.class);
