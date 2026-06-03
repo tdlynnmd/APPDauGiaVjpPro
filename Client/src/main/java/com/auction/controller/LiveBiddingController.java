@@ -27,6 +27,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -280,6 +281,17 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         this.auctionId = auctionId.trim();
+
+        /*
+         * Truyen auctionId cho controller bieu do.
+         *
+         * Vai tro:
+         * - Cho chart biet can load lich su bid cua phien nao.
+         * - Cho chart loc dung BID_UPDATE realtime cua phien hien tai.
+         */
+        if (bidPriceChartController != null) {
+            bidPriceChartController.setAuctionId(this.auctionId);
+        }
 
         registerRealtimeListener();
 
@@ -654,7 +666,14 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
         executeThread(task, "live-cancel-autobid");
     }
-
+    /**
+     * Controller con cua bieu do tang gia.
+     *
+     * JavaFX se inject field nay khi live-bidding.fxml include bid-price-chart.fxml
+     * bang fx:id="bidPriceChart".
+     */
+    @FXML
+    private BidPriceChartController bidPriceChartController;
     /**
      * ClientSocketService goi ham nay khi nhan duoc SocketResponse type = EVENT.
      *
@@ -911,7 +930,16 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             exitWorker.setDaemon(true);
             exitWorker.start();
         }
-
+        /*
+         * Don dep controller chart khi roi phong live.
+         *
+         * Vai tro:
+         * - Go realtime listener cua chart.
+         * - Tranh controller chart cu van nhan BID_UPDATE sau khi da quay lai man khac.
+         */
+        if (bidPriceChartController != null) {
+            bidPriceChartController.dispose();
+        }
         unregisterRealtimeListener();
     }
 

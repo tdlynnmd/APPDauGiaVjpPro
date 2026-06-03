@@ -1,10 +1,6 @@
 package com.auction.network;
 
-import com.auction.dto.BidTransactionDTO;
-import com.auction.dto.GetBidderHistoryRequest;
-import com.auction.dto.PageDTO;
-import com.auction.dto.SocketRequest;
-import com.auction.dto.SocketResponse;
+import com.auction.dto.*;
 import com.auction.enums.ActionType;
 import com.auction.service.ClientSocketService;
 import com.auction.utils.GsonProvider;
@@ -41,6 +37,30 @@ public class ClientBidHistoryApi {
     public SocketResponse getMyBidHistory(int page, int pageSize) {
         GetBidderHistoryRequest request = new GetBidderHistoryRequest(page, pageSize);
         return sendRequest(ActionType.GET_MY_BID_HISTORY, request);
+    }
+    /**
+     * Lay lich su dat gia cua mot phien dau gia cu the.
+     *
+     * Controller chart se truyen auctionId, page va pageSize.
+     * Server tra ve PageDTO<BidTransactionDTO> cua dung phien do.
+     */
+    public SocketResponse getAuctionBidHistory(String auctionId, int page, int pageSize) {
+        GetAuctionBidsRequest request = new GetAuctionBidsRequest(auctionId, page, pageSize);
+        return sendRequest(ActionType.GET_AUCTION_BID_HISTORY, request);
+    }
+
+    /**
+     * Parse response lich su bid theo phien thanh PageDTO.
+     *
+     * Neu response loi/rong thi tra page rong de chart khong bi crash UI.
+     */
+    public PageDTO<BidTransactionDTO> parseAuctionBidHistoryPage(SocketResponse response) {
+        if (hasNoUsableBody(response)) {
+            return new PageDTO<>(List.of(), 1, 0, 0);
+        }
+
+        Type pageType = new TypeToken<PageDTO<BidTransactionDTO>>() {}.getType();
+        return gson.fromJson(response.getBody(), pageType);
     }
 
     /**
