@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<VBox fx:id="rootContainer" spacing="15.0" styleClass="account-root" prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AccountController">
+<VBox fx:id="rootContainer" prefHeight="750.0" prefWidth="1050.0" spacing="15.0" styleClass="account-root" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AccountController">
     <padding>
         <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
     </padding>
@@ -21,7 +18,7 @@
             </children>
         </HBox>
 
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="account-scroll-pane" VBox.vgrow="ALWAYS">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="account-scroll-pane" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
             <content>
                 <VBox spacing="18.0" styleClass="account-content-container">
                     <padding>
@@ -31,7 +28,7 @@
 
                         <VBox spacing="14.0" styleClass="account-section-card">
                             <children>
-                                <Label text="THÔNG TIN TÀI KHOẢN" styleClass="account-section-title" />
+                                <Label styleClass="account-section-title" text="THÔNG TIN TÀI KHOẢN" />
                                 <HBox styleClass="account-info-row">
                                     <children>
                                         <Label styleClass="account-field-label" text="Mã tài khoản:" />
@@ -67,7 +64,7 @@
 
                         <VBox fx:id="walletSection" spacing="14.0" styleClass="account-section-card">
                             <children>
-                                <Label text="THÔNG TIN SỐ DƯ VÍ" styleClass="account-section-title" />
+                                <Label styleClass="account-section-title" text="THÔNG TIN SỐ DƯ VÍ" />
                                 <HBox styleClass="account-info-row">
                                     <children>
                                         <Label styleClass="account-field-label" text="Số dư khả dụng:" />
@@ -91,7 +88,7 @@
 
                         <VBox spacing="14.0" styleClass="account-section-card">
                             <children>
-                                <Label text="SỐ LIỆU ĐÁNH GIÁ &amp; HỆ THỐNG" styleClass="account-section-title" />
+                                <Label styleClass="account-section-title" text="SỐ LIỆU ĐÁNH GIÁ &amp; HỆ THỐNG" />
 
                                 <VBox fx:id="bidderSection" styleClass="account-nested-row">
                                     <children>
@@ -108,8 +105,8 @@
                                     <children>
                                         <HBox styleClass="account-info-row">
                                             <children>
-                                                <Label styleClass="account-field-label" text="Đánh giá độ uy tín từ người mua (Rating):" />
-                                                <Label fx:id="ratingLabel" styleClass="account-stat-value" text="0.0" />
+                                                <Label styleClass="account-field-label" text="Số view Come My Way trong 8p đầu:" />
+                                                <Label styleClass="account-stat-value" text="1.000.000" />
                                             </children>
                                         </HBox>
                                     </children>
