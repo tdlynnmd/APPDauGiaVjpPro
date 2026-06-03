@@ -7,8 +7,8 @@ import com.auction.util.ClientSession;
 import com.auction.util.SceneNavigator;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -17,7 +17,7 @@ import java.util.function.Supplier;
 public class SettingsController {
     private final ClientUserApi userApi = new ClientUserApi();
 
-    @FXML private Parent rootContainer;
+    @FXML private VBox rootContainer;
     @FXML private Label messageLabel;
     @FXML private Label currentThemeLabel;
 
