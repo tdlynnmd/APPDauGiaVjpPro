@@ -151,7 +151,29 @@ public class AuctionListController {
         SortedList<AuctionSummaryDTO> sortedAuctions = new SortedList<>(filteredAuctions);
         sortedAuctions.comparatorProperty().bind(auctionTable.comparatorProperty());
 
-        int totalItems = sortedAuctions.size();
+        java.util.List<AuctionSummaryDTO> activeList = new java.util.ArrayList<>();
+        java.util.List<AuctionSummaryDTO> finishedList = new java.util.ArrayList<>();
+        for (AuctionSummaryDTO a : sortedAuctions) {
+            String status = a.getStatus();
+            if ("RUNNING".equalsIgnoreCase(status) || "OPEN".equalsIgnoreCase(status)) {
+                activeList.add(a);
+            } else {
+                finishedList.add(a);
+            }
+        }
+
+        int activeCount = activeList.size();
+        int activePages = (int) Math.ceil((double) activeCount / auctionPageSize);
+        if (activePages == 0) activePages = 1;
+        int totalCapacity = activePages * auctionPageSize;
+        int finishedToShow = totalCapacity - activeCount;
+
+        java.util.List<AuctionSummaryDTO> combinedList = new java.util.ArrayList<>(activeList);
+        for (int i = 0; i < Math.min(finishedToShow, finishedList.size()); i++) {
+            combinedList.add(finishedList.get(i));
+        }
+
+        int totalItems = combinedList.size();
         int totalPages = (int) Math.ceil((double) totalItems / auctionPageSize);
         if (totalPages == 0) totalPages = 1;
 
@@ -164,7 +186,7 @@ public class AuctionListController {
         paginatedAuctions.clear();
         if (startIndex < totalItems && startIndex >= 0) {
             for (int i = startIndex; i < endIndex; i++) {
-                paginatedAuctions.add(sortedAuctions.get(i));
+                paginatedAuctions.add(combinedList.get(i));
             }
         }
 

@@ -399,7 +399,8 @@ public class AuctionService {
                     } else {
                         throw new WalletException(WalletErrorCode.DEDUCTION_FAILED);
                     }
-                    statusMessage = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC. Người thắng: ID " + winnerId + " với giá: " + finalPrice;
+                    String winnerName = userDAO.findById(winnerId).map(User::getUsername).orElse(winnerId);
+                    statusMessage = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC. Người thắng: " + winnerName + " với giá: " + finalPrice;
                     itemDAO.updateStatus(conn, auction.getItemId(), com.auction.enums.ItemStatus.SOLD.name());
 
                     var ramItem = productManage.getProduct(auction.getItemId());
@@ -532,7 +533,7 @@ public class AuctionService {
     public List<AuctionSummaryDTO> getAllActiveAuctions(String currentUserId) {
         List<AuctionSummaryDTO> resultList = new ArrayList<>();
         try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
-            List<Auction> dbAuctions = auctionDAO.findActiveAndRecentlyFinished(conn, LocalDateTime.now().minusMinutes(5));
+            List<Auction> dbAuctions = auctionDAO.findActiveAndRecentlyFinished(conn, LocalDateTime.now().minusHours(24));
             if (dbAuctions == null || dbAuctions.isEmpty()) {
                 return resultList;
             }

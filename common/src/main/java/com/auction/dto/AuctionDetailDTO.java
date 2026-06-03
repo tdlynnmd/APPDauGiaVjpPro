@@ -116,4 +116,8 @@ public class AuctionDetailDTO {
     public void setActiveAutoBidIncrement(double activeAutoBidIncrement) {
         this.activeAutoBidIncrement = activeAutoBidIncrement;
     }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }

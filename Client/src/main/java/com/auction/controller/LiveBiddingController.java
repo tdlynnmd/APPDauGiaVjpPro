@@ -840,12 +840,24 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         String status = readString(body, "status", "newStatus");
+        if (isBlank(status)) {
+            if (ACTION_AUCTION_ENDED.equals(getActionName(event))) {
+                status = "FINISHED";
+            } else if (ACTION_AUCTION_CANCELED.equals(getActionName(event))) {
+                status = "CANCELED";
+            }
+        }
+        String finalStatus = status;
         String message = readString(body, "message");
         Double finalPrice = readDouble(body, "finalPrice", "highestPrice", "currentPrice");
 
         Platform.runLater(() -> {
-            if (!isBlank(status)) {
-                setLabelText(statusLabel, "Trang thai: " + status);
+            if (!isBlank(finalStatus)) {
+                setLabelText(statusLabel, "Trang thai: " + finalStatus);
+                if (currentAuctionDetail != null) {
+                    currentAuctionDetail.setStatus(finalStatus);
+                }
+                setBidControlsDisabled(!canPlaceBid(finalStatus));
             }
 
             if (finalPrice != null) {
@@ -854,7 +866,7 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
             showMessage(!isBlank(message) ? message : safeText(event.getMessage()));
 
-            if (isTerminalStatus(status) || ACTION_AUCTION_ENDED.equals(getActionName(event))
+            if (isTerminalStatus(finalStatus) || ACTION_AUCTION_ENDED.equals(getActionName(event))
                     || ACTION_AUCTION_CANCELED.equals(getActionName(event))) {
                 setBidControlsDisabled(true);
 
@@ -865,7 +877,7 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                 unregisterRealtimeListener();
             }
 
-            if ("FINISHED".equalsIgnoreCase(status)) {
+            if ("FINISHED".equalsIgnoreCase(finalStatus)) {
                 showInfo(!isBlank(message) ? message : safeText(event.getMessage()));
             }
         });
