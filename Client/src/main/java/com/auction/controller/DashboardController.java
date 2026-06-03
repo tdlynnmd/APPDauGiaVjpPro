@@ -83,6 +83,11 @@ public class DashboardController {
     @FXML
     private Label miniBalanceLabel;
 
+    @FXML private Button sellerAuctionManagementButton;
+    @FXML private Region sellerAuctionManagementSpacer;
+
+    @FXML private Button settingsButton;
+
     @FXML
     public void initialize() {
         // --- ĐOẠN CODE TỰ ĐỘNG ÁP DỤNG THEME KHI VỪA MỞ MÀN HÌNH DASHBOARD ---
@@ -162,7 +167,7 @@ public class DashboardController {
         setElementVisible(myBidsButton, myBidsSpacer, false);
         setElementVisible(sellerManagementButton, sellerManagementSpacer, false);
         setElementVisible(adminPanelButton, adminPanelSpacer, false);
-
+        setElementVisible(sellerAuctionManagementButton, sellerAuctionManagementSpacer, false);
         // Nút Wallet không cần spacer riêng vì nó nằm cố định cạnh Settings
         setButtonVisible(walletButton, false);
 
@@ -182,6 +187,7 @@ public class DashboardController {
             setCardVisible(walletMiniCard, true);        } else if (role == UserRole.ADMIN) {
             setElementVisible(adminPanelButton, adminPanelSpacer, true);
             setCardVisible(walletMiniCard, false); // Admin không cần thẻ ví cá nhân, ẩn đi cho gọn gàng
+            setElementVisible(sellerAuctionManagementButton, sellerAuctionManagementSpacer, true);
         }
     }
 
@@ -231,6 +237,12 @@ public class DashboardController {
         SceneNavigator.showAdminDashboard();
     }
 
+    // Vai trò: seller vào màn quản lý phiên đấu giá đã tạo.
+    @FXML
+    private void handleSellerAuctionManagement() {
+        SceneNavigator.showSellerAuctionManagement();
+    }
+
     @FXML
     private void handleLogout() {
 
@@ -270,6 +282,12 @@ public class DashboardController {
     @FXML
     private void handleAccount() {
         SceneNavigator.showAccount();
+    }
+
+    // Vai trò: mở màn Settings.
+    @FXML
+    private void handleSettings() {
+        SceneNavigator.showSettings();
     }
     // --- HÀM XỬ LÝ SỰ KIỆN KHI CLICK VÀO NÚT EXIT APP MỚI ---
     @FXML

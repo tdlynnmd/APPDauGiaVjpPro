@@ -18,8 +18,6 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
 
 import java.text.NumberFormat;
 import java.util.List;
@@ -81,22 +79,6 @@ public class AccountController {
     @FXML private Button refreshButton;
     @FXML private Button backButton;
 
-// Profile update UI
-// Chuc nang: cho user doi username/email.
-// Backend action: UPDATE_PROFILE
-
-    @FXML private TextField usernameField;
-    @FXML private TextField emailField;
-    @FXML private Button updateProfileButton;
-
-// Password update UI
-// Chuc nang: cho user doi mat khau.
-// Backend action: UPDATE_PASSWORD
-
-    @FXML private PasswordField oldPasswordField;
-    @FXML private PasswordField newPasswordField;
-    @FXML private Button updatePasswordButton;
-
     /**
      * Hàm khởi tạo màn Account.
      *
@@ -139,118 +121,6 @@ public class AccountController {
     private void handleRefresh() {
         loadProfile();
     }
-    /**
-     * Chuc nang: cap nhat username/email cua tai khoan hien tai.
-     * Server se tu lay userId tu session, client khong gui userId de tranh gia mao.
-     */
-    @FXML
-    private void handleUpdateProfile() {
-        String username = usernameField == null ? null : usernameField.getText();
-        String email = emailField == null ? null : emailField.getText();
-
-        if (username == null || username.trim().isEmpty()) {
-            showMessage("Vui long nhap username moi.");
-            return;
-        }
-
-        if (email == null || email.trim().isEmpty()) {
-            showMessage("Vui long nhap email moi.");
-            return;
-        }
-
-        setBusy(true);
-        showMessage("Dang cap nhat thong tin ca nhan...");
-
-        Task<SocketResponse> task = new Task<>() {
-            @Override
-            protected SocketResponse call() {
-                return userApi.updateProfile(username.trim(), email.trim());
-            }
-        };
-
-        task.setOnSucceeded(event -> {
-            setBusy(false);
-            SocketResponse response = task.getValue();
-
-            if (response == null || !response.isSuccess()) {
-                showMessage(response == null ? "Server khong tra ve phan hoi." : response.getMessage());
-                return;
-            }
-
-            // UPDATE_PROFILE tra ve UserDTO moi, dung lai flow parse/render profile hien co.
-            handleProfileResponse(response);
-            showMessage("Cap nhat profile thanh cong.");
-        });
-
-        task.setOnFailed(event -> {
-            setBusy(false);
-            showMessage("Khong the cap nhat profile.");
-        });
-
-        Thread worker = new Thread(task, "account-update-profile-thread");
-        worker.setDaemon(true);
-        worker.start();
-    }
-
-    /**
-     * Chuc nang: doi mat khau tai khoan hien tai.
-     * Backend se check oldPassword, hash newPassword va ngat cac thiet bi khac.
-     */
-    @FXML
-    private void handleUpdatePassword() {
-        String oldPassword = oldPasswordField == null ? null : oldPasswordField.getText();
-        String newPassword = newPasswordField == null ? null : newPasswordField.getText();
-
-        if (oldPassword == null || oldPassword.isEmpty()) {
-            showMessage("Vui long nhap mat khau cu.");
-            return;
-        }
-
-        if (newPassword == null || newPassword.isEmpty()) {
-            showMessage("Vui long nhap mat khau moi.");
-            return;
-        }
-
-        if (newPassword.length() < 8) {
-            showMessage("Mat khau moi phai co it nhat 8 ky tu.");
-            return;
-        }
-
-        setBusy(true);
-        showMessage("Dang doi mat khau...");
-
-        Task<SocketResponse> task = new Task<>() {
-            @Override
-            protected SocketResponse call() {
-                return userApi.updatePassword(oldPassword, newPassword);
-            }
-        };
-
-        task.setOnSucceeded(event -> {
-            setBusy(false);
-            SocketResponse response = task.getValue();
-
-            if (response == null || !response.isSuccess()) {
-                showMessage(response == null ? "Server khong tra ve phan hoi." : response.getMessage());
-                return;
-            }
-
-            if (oldPasswordField != null) oldPasswordField.clear();
-            if (newPasswordField != null) newPasswordField.clear();
-
-            showMessage("Doi mat khau thanh cong.");
-        });
-
-        task.setOnFailed(event -> {
-            setBusy(false);
-            showMessage("Khong the doi mat khau.");
-        });
-
-        Thread worker = new Thread(task, "account-update-password-thread");
-        worker.setDaemon(true);
-        worker.start();
-    }
-
     /**
      * Xử lý nút Back trên màn Account.
      *
@@ -378,14 +248,6 @@ public class AccountController {
         setLabelText(userIdLabel, profile.getId());
         setLabelText(usernameLabel, profile.getUsername());
         setLabelText(emailLabel, profile.getEmail());
-
-        // Chuc nang: do profile hien tai vao form update de user sua nhanh.
-        if (usernameField != null) {
-            usernameField.setText(profile.getUsername());
-        }
-        if (emailField != null) {
-            emailField.setText(profile.getEmail());
-        }
 
         setLabelText(roleLabel, profile.getRole() == null ? "" : profile.getRole().name());
         setLabelText(statusLabel, profile.getStatus() == null ? "" : profile.getStatus().name());
@@ -522,12 +384,6 @@ public class AccountController {
     private void setBusy(boolean busy) {
         setDisabled(refreshButton, busy);
         setDisabled(backButton, busy);
-        setDisabled(updateProfileButton, busy);
-        setDisabled(updatePasswordButton, busy);
-        setDisabled(usernameField, busy);
-        setDisabled(emailField, busy);
-        setDisabled(oldPasswordField, busy);
-        setDisabled(newPasswordField, busy);
     }
 
     /**
