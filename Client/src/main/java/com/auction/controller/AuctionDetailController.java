@@ -29,10 +29,12 @@ import javafx.scene.image.ImageView;
 import javafx.scene.control.TableCell;
 import javafx.application.Platform;
 
+
 import com.auction.service.ClientSocketService;
 import com.auction.service.RealtimeUpdateListener;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
+import javafx.scene.layout.VBox;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -74,6 +76,9 @@ public class AuctionDetailController implements RealtimeUpdateListener {
 
     @FXML
     private Parent rootContainer; // Thêm container gốc để hỗ trợ load stylesheet động khi đổi theme
+
+    @FXML
+    private VBox loadingOverlay;
 
     /**
      * FXML cần có: <Label fx:id="itemNameLabel" ... />
@@ -188,19 +193,22 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         setupBidHistoryTable();
         applyLiveBiddingAccess();
         showMessage("Chưa chọn phiên đấu giá.");
+        Platform.runLater(this::applyTheme);
     }
 
     private void applyTheme() {
-        if (rootContainer == null) return;
-        rootContainer.getStylesheets().clear();
-        String cssPath = SceneNavigator.isAppDarkMode
-                ? "/com/auction/client/view/dark.css"
-                : "/com/auction/client/view/light.css";
+        if (rootContainer == null || rootContainer.getScene() == null) return;
+        Parent rootStackPane = rootContainer.getScene().getRoot();
+        if (rootStackPane == null) return;
+
+        // Xóa sạch stylesheet cũ ở tầng Root và nạp stylesheet mới
+        // Cơ chế này giúp lớp màn phủ loading ở ngoài BorderPane/VBox nhận diện được CSS mờ nền
+        rootStackPane.getStylesheets().clear();
+        String css = SceneNavigator.isAppDarkMode ? "/com/auction/client/view/dark.css" : "/com/auction/client/view/light.css";
         try {
-            String css = Objects.requireNonNull(getClass().getResource(cssPath)).toExternalForm();
-            rootContainer.getStylesheets().add(css);
+            rootStackPane.getStylesheets().add(Objects.requireNonNull(getClass().getResource(css)).toExternalForm());
         } catch (Exception e) {
-            System.out.println("Khong the nap theme cho Auction Detail: " + cssPath);
+            System.err.println("Lỗi nạp stylesheet ở Auction Detail: " + e.getMessage());
         }
     }
 
@@ -362,6 +370,13 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             applyLiveBiddingAccess(); // Cập nhật lại quyền hiển thị nút live room theo dữ liệu phiên mới nhất
             showMessage("Đã tải chi tiết phiên đấu giá.");
             enterLiveRoomIfNeeded();
+
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(false);
+                    loadingOverlay.setManaged(false); // Giải phóng vùng click chuột để tương tác với Table/Button
+                });
+            }
         });
 
         task.setOnFailed(event -> {
@@ -622,6 +637,11 @@ public class AuctionDetailController implements RealtimeUpdateListener {
      */
     @FXML
     private void handleRefresh() {
+        if (loadingOverlay != null) {
+            loadingOverlay.setVisible(true);
+            loadingOverlay.setManaged(true);
+        }
+
         loadAuctionDetail();
     }
 

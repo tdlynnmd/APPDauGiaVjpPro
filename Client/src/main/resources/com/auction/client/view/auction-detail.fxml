@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
@@ -10,99 +11,148 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="rootContainer" spacing="15.0" styleClass="ad-root" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AuctionDetailController">
+<StackPane prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AuctionDetailController">
+    <children>
 
-    <padding>
-        <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
-    </padding>
+        <VBox fx:id="rootContainer" spacing="15.0" styleClass="ad-root">
+            <padding>
+                <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
+            </padding>
+            <children>
 
-    <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-header">
-        <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-header-left-box">
-            <Button fx:id="backButton" onAction="#handleBack" styleClass="ad-btn-back" text="⬅ Quay Lại" />
-            <Label styleClass="ad-header-title" text="|  Chi tiết phiên đấu giá" />
-        </HBox>
-        <HBox HBox.hgrow="ALWAYS" />
-        <Button fx:id="openLiveBiddingButton" onAction="#handleOpenLiveBidding" styleClass="ad-btn-live" text="📺 Vào Phòng Live" />
-        <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="ad-btn-refresh" text="🔄 Làm Mới" />
-    </HBox>
-
-    <HBox spacing="25.0" VBox.vgrow="ALWAYS">
-
-        <VBox minWidth="520.0" spacing="12.0" styleClass="ad-pane-left" HBox.hgrow="ALWAYS">
-
-            <VBox alignment="CENTER" styleClass="ad-image-container">
-                <ImageView fx:id="itemImageView" fitHeight="275.0" fitWidth="275.0" pickOnBounds="true" preserveRatio="true" styleClass="ad-item-image">
-                    <image>
-                        <Image url="@/image/Logo_DHCN.png" />
-                    </image>
-                </ImageView>
-            </VBox>
-
-            <VBox spacing="10.0" styleClass="ad-info-card">
-                <Label fx:id="itemNameLabel" styleClass="ad-info-name" text="Tên vật phẩm đấu giá" wrapText="true" />
-
-                <HBox alignment="CENTER_LEFT" spacing="5.0">
-                    <Label styleClass="ad-info-seller-label" text="Người bán: " />
-                    <Label fx:id="sellerLabel" styleClass="ad-info-row-value" text="---" />
+                <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-header">
+                    <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-header-left-box">
+                        <Button fx:id="backButton" onAction="#handleBack" styleClass="ad-btn-back" text="⬅ Quay Lại" />
+                        <Label styleClass="ad-header-title" text="|  Chi tiết phiên đấu giá" />
+                    </HBox>
+                    <HBox HBox.hgrow="ALWAYS" />
+                    <Button fx:id="openLiveBiddingButton" onAction="#handleOpenLiveBidding" styleClass="ad-btn-live" text="📺 Vào Phòng Live" />
+                    <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="ad-btn-refresh" text="🔄 Làm Mới" />
                 </HBox>
 
-                <VBox spacing="4.0" styleClass="ad-price-block">
-                    <HBox alignment="CENTER_LEFT" spacing="5.0">
-                        <Label styleClass="ad-info-row-label" text="Giá hiện tại: " />
-                        <Label fx:id="currentPriceLabel" styleClass="ad-price-current" text="0 VNĐ" />
-                    </HBox>
-                    <HBox alignment="CENTER_LEFT" spacing="5.0">
-                        <Label styleClass="ad-info-row-label" text="Bước giá: " />
-                        <Label fx:id="stepPriceLabel" styleClass="ad-price-current" text="0 VNĐ" />
-                    </HBox>
-                </VBox>
+                <HBox spacing="25.0" VBox.vgrow="ALWAYS">
+                    <children>
+                        <VBox minWidth="520.0" spacing="12.0" styleClass="ad-pane-left" HBox.hgrow="ALWAYS">
+                            <children>
+                                <VBox alignment="CENTER" styleClass="ad-image-container">
+                                    <children>
+                                        <ImageView fx:id="itemImageView" fitHeight="275.0" fitWidth="275.0" pickOnBounds="true" preserveRatio="true" styleClass="ad-item-image">
+                                            <image>
+                                                <Image url="@/image/Logo_DHCN.png" />
+                                            </image>
+                                        </ImageView>
+                                    </children>
+                                </VBox>
 
-                <VBox spacing="4.0" styleClass="ad-time-block">
-                    <Label fx:id="endTimeLabel" styleClass="ad-info-end-time" text="Kết thúc: --:--" />
-                </VBox>
+                                <VBox spacing="10.0" styleClass="ad-info-card">
+                                    <children>
+                                        <Label fx:id="itemNameLabel" styleClass="ad-info-name" text="Tên vật phẩm đấu giá" wrapText="true" />
 
-                <HBox alignment="CENTER_LEFT" spacing="6.0" styleClass="ad-status-row">
-                    <Label styleClass="ad-status-title" text="Trạng thái phiên:" />
-                    <Label fx:id="statusLabel" text="---" />
+                                        <HBox alignment="CENTER_LEFT" spacing="5.0">
+                                            <children>
+                                                <Label styleClass="ad-info-seller-label" text="Người bán: " />
+                                                <Label fx:id="sellerLabel" styleClass="ad-info-row-value" text="---" />
+                                            </children>
+                                        </HBox>
+
+                                        <VBox spacing="4.0" styleClass="ad-price-block">
+                                            <children>
+                                                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                                                    <children>
+                                                        <Label styleClass="ad-info-row-label" text="Giá hiện tại: " />
+                                                        <Label fx:id="currentPriceLabel" styleClass="ad-price-current" text="0 VNĐ" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                                                    <children>
+                                                        <Label styleClass="ad-info-row-label" text="Bước giá: " />
+                                                        <Label fx:id="stepPriceLabel" styleClass="ad-price-current" text="0 VNĐ" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="4.0" styleClass="ad-time-block">
+                                            <children>
+                                                <Label fx:id="endTimeLabel" styleClass="ad-info-end-time" text="Kết thúc: --:--" />
+                                            </children>
+                                        </VBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="6.0" styleClass="ad-status-row">
+                                            <children>
+                                                <Label styleClass="ad-status-title" text="Trạng thái phiên:" />
+                                                <Label fx:id="statusLabel" text="---" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="4.0" styleClass="ad-desc-box">
+                                    <children>
+                                        <Label styleClass="ad-section-sub-title" text="Mô tả sản phẩm:" />
+                                        <TextArea fx:id="descriptionTextArea" editable="false" styleClass="ad-description-text" wrapText="true" />
+                                    </children>
+                                </VBox>
+
+                                <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-bid-form-box">
+                                    <children>
+                                        <VBox spacing="4.0" styleClass="ad-input-group" HBox.hgrow="ALWAYS">
+                                            <children>
+                                                <Label styleClass="ad-field-label" text="NHẬP SỐ TIỀN MUỐN ĐẶT (VNĐ):" />
+                                                <TextField fx:id="bidAmountField" promptText="Ví dụ: 1,500,000" styleClass="ad-bid-input" />
+                                            </children>
+                                        </VBox>
+                                        <Button fx:id="placeBidButton" onAction="#handlePlaceBid" styleClass="ad-btn-place-bid" text="🔨 ĐẶT GIÁ NGAY" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+
+                        <VBox minWidth="480.0" spacing="0.0" styleClass="ad-pane-right" HBox.hgrow="ALWAYS">
+                            <children>
+                                <HBox styleClass="ad-table-header-banner">
+                                    <children>
+                                        <Label styleClass="ad-section-title" text="📜 LỊCH SỬ ĐẶT GIÁ PHIÊN" />
+                                    </children>
+                                </HBox>
+
+                                <TableView fx:id="bidHistoryTable" styleClass="ad-sim-table" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="bidderNameColumn" prefWidth="130.0" styleClass="ad-col-text" text="Người đặt" />
+                                        <TableColumn fx:id="bidAmountColumn" prefWidth="120.0" styleClass="ad-col-text" text="Số tiền (VNĐ)" />
+                                        <TableColumn fx:id="bidTimeColumn" prefWidth="120.0" styleClass="ad-col-text" text="Thời gian" />
+                                        <TableColumn fx:id="bidStatusColumn" prefWidth="110.0" styleClass="ad-col-text" text="Trạng thái" />
+                                    </columns>
+                                    <columnResizePolicy>
+                                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                    </columnResizePolicy>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </children>
                 </HBox>
-            </VBox>
 
-            <VBox spacing="4.0" styleClass="ad-desc-box">
-                <Label styleClass="ad-section-sub-title" text="Mô tả sản phẩm:" />
-                <TextArea fx:id="descriptionTextArea" editable="false" styleClass="ad-description-text" wrapText="true" />
-            </VBox>
+                <HBox alignment="CENTER_LEFT" styleClass="ad-status-bar">
+                    <children>
+                        <Label fx:id="messageLabel" styleClass="ad-status-text" text="Hệ thống sẵn sàng." />
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
 
-            <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="ad-bid-form-box">
-                <VBox spacing="4.0" styleClass="ad-input-group" HBox.hgrow="ALWAYS">
-                    <Label styleClass="ad-field-label" text="NHẬP SỐ TIỀN MUỐN ĐẶT (VNĐ):" />
-                    <TextField fx:id="bidAmountField" promptText="Ví dụ: 1,500,000" styleClass="ad-bid-input" />
+        <VBox fx:id="loadingOverlay" alignment="CENTER" styleClass="lb_loading-overlay">
+            <children>
+                <VBox alignment="CENTER" spacing="20.0" styleClass="lb_loading-content-box">
+                    <children>
+                        <ProgressIndicator styleClass="lb_loading-spinner" />
+                        <Label styleClass="lb_loading-text" text="Đang đồng bộ và nạp chi tiết phiên đấu giá..." />
+                    </children>
                 </VBox>
-                <Button fx:id="placeBidButton" onAction="#handlePlaceBid" styleClass="ad-btn-place-bid" text="🔨 ĐẶT GIÁ NGAY" />
-            </HBox>
+            </children>
         </VBox>
 
-        <VBox minWidth="480.0" spacing="0.0" styleClass="ad-pane-right" HBox.hgrow="ALWAYS">
-            <HBox styleClass="ad-table-header-banner">
-                <Label styleClass="ad-section-title" text="📜 LỊCH SỬ ĐẶT GIÁ PHIÊN" />
-            </HBox>
-
-            <TableView fx:id="bidHistoryTable" styleClass="ad-sim-table" VBox.vgrow="ALWAYS">
-                <columns>
-                    <TableColumn fx:id="bidderNameColumn" prefWidth="130.0" styleClass="ad-col-text" text="Người đặt" />
-                    <TableColumn fx:id="bidAmountColumn" prefWidth="120.0" styleClass="ad-col-text" text="Số tiền (VNĐ)" />
-                    <TableColumn fx:id="bidTimeColumn" prefWidth="120.0" styleClass="ad-col-text" text="Thời gian" />
-                    <TableColumn fx:id="bidStatusColumn" prefWidth="110.0" styleClass="ad-col-text" text="Trạng thái" />
-                </columns>
-                <columnResizePolicy>
-                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-                </columnResizePolicy>
-            </TableView>
-        </VBox>
-    </HBox>
-
-    <HBox alignment="CENTER_LEFT" styleClass="ad-status-bar">
-        <Label fx:id="messageLabel" styleClass="ad-status-text" text="Hệ thống sẵn sàng." />
-    </HBox>
-</VBox>
+    </children>
+</StackPane>
