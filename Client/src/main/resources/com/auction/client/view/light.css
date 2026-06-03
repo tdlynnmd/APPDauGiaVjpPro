@@ -1012,3 +1012,120 @@
 .btn-history:hover {
     -fx-background-color: #E4E6EB;
 }
+/* ==========================================================================
+   AUCTION DETAIL - LIGHT THEME (BẢM BÁM SÁT MẪU 100%)
+   ========================================================================== */
+
+.ad-root { -fx-background-color: #F8F9FA; }
+.ad-pane-left {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12px;
+    -fx-padding: 20px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+}
+.ad-pane-right {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12px;
+    -fx-padding: 0px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+}
+
+/* Header & Nút bấm */
+.ad-header { -fx-padding: 10px 0px; }
+.ad-header-title { -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #212529; }
+.ad-btn-back {
+    -fx-background-color: #E9ECEF; -fx-text-fill: #495057; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.ad-btn-back:hover { -fx-background-color: #DEE2E6; }
+.ad-btn-live {
+    -fx-background-color: #0D6EFD; -fx-text-fill: #FFFFFF; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.ad-btn-live:hover { -fx-background-color: #0B5ED7; }
+.ad-btn-refresh {
+    -fx-background-color: #FFFFFF; -fx-text-fill: #212529; -fx-border-color: #CED4DA;
+    -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-cursor: hand;
+}
+.ad-btn-refresh:hover { -fx-background-color: #F8F9FA; }
+
+.ad-image-container {
+    -fx-background-color: #FFFFFF; -fx-background-radius: 8px;
+    -fx-border-color: #DEE2E6; -fx-border-width: 1px;
+}
+
+/* Thẻ thông tin phiên */
+.ad-info-card {
+    -fx-background-color: #F0F4F8; -fx-background-radius: 8px;
+    -fx-padding: 15px; -fx-border-color: #D0E1FD; -fx-border-width: 1px;
+}
+.ad-info-name { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #0D6EFD; }
+.ad-info-row-label, .ad-info-seller-label, .ad-status-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #000000; }
+.ad-info-row-value { -fx-font-size: 14px; -fx-text-fill: #212529; }
+.ad-price-current { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #198754; }
+.ad-info-end-time { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #212529; }
+
+/* Trạng thái phiên đấu giá động */
+.ad-info-status { -fx-font-size: 14px; -fx-font-weight: bold; }
+.ad-status-open { -fx-text-fill: #0D6EFD; }
+.ad-status-running { -fx-text-fill: #198754; }
+.ad-status-finished { -fx-text-fill: #DC3545; }
+
+/* Mô tả sản phẩm */
+.ad-section-sub-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #212529; }
+.ad-description-text {
+    -fx-control-inner-background: #FFFFFF; -fx-text-fill: #495057;
+    -fx-background-color: transparent; -fx-text-box-border: #CED4DA; -fx-background-radius: 6px;
+}
+
+/* Form đặt giá (Bid Box) */
+.ad-bid-form-box {
+    -fx-background-color: #E8F0FE; -fx-background-radius: 8px;
+    -fx-padding: 15px; -fx-border-color: #BCD1F9; -fx-border-width: 1px;
+}
+.ad-field-label { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #0D6EFD; }
+.ad-bid-input {
+    -fx-background-color: #FFFFFF; -fx-border-color: #BCD1F9; -fx-border-radius: 6px;
+    -fx-background-radius: 6px; -fx-padding: 10px; -fx-font-size: 14px; -fx-text-fill: #212529;
+}
+.ad-btn-place-bid {
+    -fx-background-color: #0D6EFD; -fx-text-fill: #FFFFFF; -fx-font-size: 14px;
+    -fx-font-weight: bold; -fx-padding: 10px 20px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.ad-btn-place-bid:hover { -fx-background-color: #0B5ED7; }
+
+/* Bảng lịch sử */
+.ad-table-header-banner { -fx-background-color: #1976D2; -fx-padding: 12px; -fx-background-radius: 8px 8px 0px 0px; }
+.ad-section-title { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF; }
+.ad-sim-table { -fx-background-color: transparent; -fx-border-color: #DEE2E6; }
+.ad-sim-table .column-header-background { -fx-background-color: #E9ECEF; }
+.ad-sim-table .column-header { -fx-background-color: transparent; -fx-size: 40px; -fx-border-color: #CED4DA; }
+.ad-sim-table .column-header .label { -fx-text-fill: #212529; -fx-font-weight: bold; }
+.ad-sim-table .table-row-cell { -fx-background-color: #FFFFFF; -fx-border-color: #E9ECEF; }
+.ad-sim-table .table-row-cell:odd { -fx-background-color: #F8F9FA; }
+
+/* Ép kiểu chữ mặc định của bảng lịch sử */
+.ad-sim-table .table-cell {
+    -fx-text-fill: #212529;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* ĐẶC BIỆT: Phục hồi màu sắc trạng thái cột động */
+.ad-sim-table .table-cell.status-accepted {
+    -fx-text-fill: #198754 !important;
+}
+.ad-sim-table .table-cell.status-refunded {
+    -fx-text-fill: #DC3545 !important;
+}
+.ad-sim-table .table-empty-icon {
+    -fx-text-fill: #0D6EFD;
+    -fx-font-size: 28px;
+}
+.ad-sim-table .table-empty-placeholder {
+    -fx-text-fill: #0D6EFD;
+    -fx-font-weight: bold;
+    -fx-font-style: italic;
+    -fx-font-size: 14px;
+}

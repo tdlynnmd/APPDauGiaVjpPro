@@ -23,8 +23,11 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TableCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.control.TableCell;
+import javafx.application.Platform;
 
 import com.auction.service.ClientSocketService;
 import com.auction.service.RealtimeUpdateListener;
@@ -241,6 +244,19 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                 new SimpleObjectProperty<>(cellData.getValue().getAmount())
         );
 
+        // ĐÃ CẬP NHẬT: Định dạng tiền tệ đẹp (ví dụ: 5,200,000) hiển thị trong cell thay vì số thập phân thô
+        bidAmountColumn.setCellFactory(col -> new TableCell<BidTransactionDTO, Number>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(formatMoney(item.doubleValue()));
+                }
+            }
+        });
+
         bidTimeColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(formatDateTime(cellData.getValue().getTime()))
         );
@@ -249,6 +265,53 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                 new SimpleStringProperty(safeText(cellData.getValue().getStatus()))
         );
 
+        // ĐÃ CẬP NHẬT: Logic gán Class CSS động cho cột Trạng thái dựa vào giá trị thực tế của bản ghi dữ liệu
+        bidStatusColumn.setCellFactory(col -> new TableCell<BidTransactionDTO, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    getStyleClass().removeAll("status-accepted", "status-refunded");
+                } else {
+                    setText(item);
+                    getStyleClass().removeAll("status-accepted", "status-refunded");
+
+                    // SỬA LỖI: Đồng bộ màu sắc động không bị đơn điệu khi cuộn bảng lịch sử
+                    if (item.equalsIgnoreCase("ACCEPTED")) {
+                        getStyleClass().add("status-accepted");
+                    } else if (item.equalsIgnoreCase("REFUNDED")) {
+                        getStyleClass().add("status-refunded");
+                    }
+                }
+            }
+        });
+
+        javafx.scene.layout.VBox emptyPlaceholderBox = new javafx.scene.layout.VBox(8); // 8 là khoảng cách (spacing) giữa icon và chữ
+        emptyPlaceholderBox.setAlignment(javafx.geometry.Pos.CENTER);
+
+        // 1. Tạo Label làm Icon (Sử dụng biểu tượng emoji Unicode để không lo bị lỗi crash load file ảnh)
+        Label iconLabel = new Label();
+        iconLabel.getStyleClass().add("table-empty-icon");
+
+        // 2. Tạo Label làm nội dung văn bản
+        Label textLabel = new Label();
+        textLabel.getStyleClass().add("table-empty-placeholder");
+
+        // Cấu hình nội dung chữ và icon tương ứng theo Light / Dark Mode
+        if (com.auction.util.SceneNavigator.isAppDarkMode) {
+            iconLabel.setText("🏴‍☠️🔨"); // Icon biểu đồ giao dịch cho chế độ tối
+            textLabel.setText("Hiện tại chưa kiếm được mối giao dịch!");
+        } else {
+            iconLabel.setText("📋✨"); // Icon búa đấu giá cho chế độ sáng
+            textLabel.setText("Hiện tại chưa có người dùng nào đấu giá!");
+        }
+
+        // Thêm cả hai thành phần vào VBox (Icon xếp trên, Text xếp dưới)
+        emptyPlaceholderBox.getChildren().addAll(iconLabel, textLabel);
+
+        // Gán VBox làm Placeholder cho TableView
+        bidHistoryTable.setPlaceholder(emptyPlaceholderBox);
         bidHistoryTable.setItems(bidHistoryItems);
     }
 
@@ -316,17 +379,41 @@ public class AuctionDetailController implements RealtimeUpdateListener {
      * Đưa dữ liệu từ AuctionDetailDTO lên các control trong FXML.
      */
     private void displayAuctionDetail(AuctionDetailDTO detail) {
+        // Cập nhật tên vật phẩm đấu giá
         setLabelText(itemNameLabel, detail.getItemName());
-        setLabelText(sellerLabel, "Người bán: " + safeText(detail.getSellerUsername()));
-        setLabelText(currentPriceLabel, "Giá hiện tại: " + formatMoney(detail.getCurrentPrice()) + " VNĐ");
-        setLabelText(stepPriceLabel, "Bước giá: " + formatMoney(detail.getStepPrice()) + " VNĐ");
-        setLabelText(statusLabel, "Trạng thái: " + safeText(detail.getStatus()));
+
+        // Vấn đề 3: Vì FXML đã có chữ "Người bán: ", ở đây ta chỉ đổ chuỗi tên thuần túy
+        setLabelText(sellerLabel, safeText(detail.getSellerUsername()));
+
+        // Vấn đề 3: Vì FXML đã có chữ "Giá hiện tại: " và "Bước giá: ", ta chỉ đổ số tiền định dạng vào
+        setLabelText(currentPriceLabel, formatMoney(detail.getCurrentPrice()) + " VNĐ");
+        setLabelText(stepPriceLabel, formatMoney(detail.getStepPrice()) + " VNĐ");
+
+        // Vấn đề 3 & 4: "Kết thúc: ..." chỉ đổ chuỗi thời gian, chữ cứng nằm tại FXML
         setLabelText(endTimeLabel, "Kết thúc: " + formatDateTime(detail.getEndTime()));
+
+        // Vấn đề 3: Chỉ hiển thị chuỗi trạng thái thuần túy (Ví dụ: "FINISHED"), bỏ chữ thừa "Trạng thái:"
+        String status = detail.getStatus() != null ? detail.getStatus().toUpperCase() : "";
+        setLabelText(statusLabel, status);
+
+        // SỬA LỖI: Cập nhật màu sắc trạng thái phiên động chuẩn xác (OPEN -> Xanh dương, RUNNING -> Xanh lá, FINISHED -> Đỏ)
+        if (statusLabel != null) {
+            statusLabel.getStyleClass().removeAll("ad-info-status", "ad-status-open", "ad-status-running", "ad-status-finished");
+            statusLabel.getStyleClass().add("ad-info-status");
+            if ("OPEN".equals(status)) {
+                statusLabel.getStyleClass().add("ad-status-open");
+            } else if ("RUNNING".equals(status)) {
+                statusLabel.getStyleClass().add("ad-status-running");
+            } else if ("FINISHED".equals(status)) {
+                statusLabel.getStyleClass().add("ad-status-finished");
+            }
+        }
 
         if (descriptionTextArea != null) {
             descriptionTextArea.setText(safeText(detail.getItemDescription()));
         }
 
+        // Gọi hàm xử lý ảnh an toàn chống mất ảnh khi dữ liệu trống
         loadItemImage(detail.getImageUrl());
         loadBidHistory(detail.getBidHistory());
     }
@@ -339,17 +426,32 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
+        // Nếu chuỗi imageUrl trả về từ server bị trống hoặc null
         if (isBlank(imageUrl)) {
-            itemImageView.setImage(null);
+            try {
+                // Nạp lại ảnh Logo_DHCN mặc định an toàn từ thư mục resources của hệ thống
+                Image defaultImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/image/Logo_DHCN.png")));
+                itemImageView.setImage(defaultImg);
+            } catch (Exception e) {
+                // Giữ nguyên hoặc không làm mất ảnh nếu không tìm thấy resource
+                System.err.println("Không thể nạp ảnh mặc định từ classpath: " + e.getMessage());
+            }
             return;
         }
 
+        // Nếu có đường dẫn ảnh từ server truyền xuống
         try {
-            Image image = new Image(imageUrl, true);
+            Image image = new Image(imageUrl, true); // true để load bất đồng bộ không gây lag UI
             itemImageView.setImage(image);
         } catch (Exception e) {
-            itemImageView.setImage(null);
-            showMessage("Không thể tải ảnh vật phẩm.");
+            try {
+                // Nếu đường dẫn ảnh bị lỗi, lập tức phòng thủ bằng ảnh logo mặc định
+                Image defaultImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/image/Logo_DHCN.png")));
+                itemImageView.setImage(defaultImg);
+            } catch (Exception ex) {
+                System.err.println("Lỗi nạp ảnh phòng thủ: " + ex.getMessage());
+            }
+            showMessage("Không thể tải ảnh sản phẩm. Đang hiển thị ảnh mặc định.");
         }
     }
 
@@ -731,7 +833,22 @@ public class AuctionDetailController implements RealtimeUpdateListener {
 
         Platform.runLater(() -> {
             if (!isBlank(status)) {
-                setLabelText(statusLabel, "Trạng thái: " + status);
+                String upperStatus = status.toUpperCase();
+                // ĐÃ SỬA: Đồng bộ lược bỏ chữ thừa khi cập nhật qua socket realtime
+                setLabelText(statusLabel, upperStatus);
+
+                // SỬA LỖI: Đồng bộ màu sắc động khi cập nhật trạng thái phiên qua Realtime socket
+                if (statusLabel != null) {
+                    statusLabel.getStyleClass().removeAll("ad-info-status", "ad-status-open", "ad-status-running", "ad-status-finished");
+                    statusLabel.getStyleClass().add("ad-info-status");
+                    if ("OPEN".equals(upperStatus)) {
+                        statusLabel.getStyleClass().add("ad-status-open");
+                    } else if ("RUNNING".equals(upperStatus)) {
+                        statusLabel.getStyleClass().add("ad-status-running");
+                    } else if ("FINISHED".equals(upperStatus)) {
+                        statusLabel.getStyleClass().add("ad-status-finished");
+                    }
+                }
             }
 
             if (finalPrice != null) {
@@ -744,7 +861,7 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                     || "AUCTION_CANCELED".equals(getActionName(event))) {
                 if (bidAmountField != null) bidAmountField.setDisable(true);
                 if (placeBidButton != null) placeBidButton.setDisable(true);
-                
+
                 liveRoomJoined = false;
                 unregisterRealtimeListener();
             }
