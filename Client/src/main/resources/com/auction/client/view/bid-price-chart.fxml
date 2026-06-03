@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.layout.VBox?>
+
+<?import javafx.scene.chart.AreaChart?>
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.auction.controller.BidPriceChartController"
+      alignment="CENTER"
+      styleClass="bpc-chart-container"> <AreaChart fx:id="bidPriceChart"
+                                                   title="DIỄN BIẾN GIÁ ĐẤU TRỰC TIẾP"
+                                                   legendVisible="false"
+                                                   alternativeRowFillVisible="false"
+                                                   horizontalGridLinesVisible="true"
+                                                   verticalGridLinesVisible="true"
+                                                   styleClass="bpc-custom-line-chart">
+
+    <xAxis>
+        <CategoryAxis fx:id="bidTimeAxis" side="BOTTOM" styleClass="bpc-chart-x-axis" />
+    </xAxis>
+    <yAxis>
+        <NumberAxis fx:id="bidAmountAxis" side="LEFT" forceZeroInRange="false" styleClass="bpc-chart-y-axis" />
+    </yAxis>
+
+</AreaChart>
+
+</VBox>

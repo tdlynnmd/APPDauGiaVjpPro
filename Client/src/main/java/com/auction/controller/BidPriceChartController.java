@@ -12,7 +12,7 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
+import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 
@@ -68,7 +68,7 @@ public class BidPriceChartController implements RealtimeUpdateListener {
     private boolean listenerRegistered;
 
     @FXML
-    private LineChart<String, Number> bidPriceChart;
+    private AreaChart<String, Number> bidPriceChart;
 
     @FXML
     private CategoryAxis bidTimeAxis;

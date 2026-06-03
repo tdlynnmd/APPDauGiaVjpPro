@@ -3,145 +3,159 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
-<BorderPane fx:id="rootContainer" prefHeight="650.0" prefWidth="950.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.LiveBiddingController">
+<StackPane prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.LiveBiddingController">
+    <children>
 
-    <top>
-        <HBox alignment="CENTER_LEFT" spacing="15.0">
-            <padding>
-                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-            </padding>
-            <children>
-                <Button fx:id="backButton" onAction="#handleBack" style="-fx-font-weight: bold; -fx-cursor: hand;" text="← Quay lại" />
-                <VBox HBox.hgrow="ALWAYS">
+        <BorderPane fx:id="rootContainer" styleClass="lb-root">
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="lb-header">
+                    <padding>
+                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                    </padding>
                     <children>
-                        <Label fx:id="itemNameLabel" style="-fx-font-weight: bold;" text="Tên vật phẩm đấu giá">
-                            <font>
-                                <Font size="18.0" />
-                            </font>
-                        </Label>
-                        <Label fx:id="sellerLabel" text="Người bán: --" />
-                    </children>
-                </VBox>
-                <Button fx:id="refreshButton" onAction="#handleRefresh" style="-fx-font-weight: bold; -fx-cursor: hand;" text="Làm mới ↻" />
-            </children>
-        </HBox>
-    </top>
-
-    <center>
-        <HBox spacing="20.0" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-            </padding>
-            <children>
-
-                <VBox spacing="15.0" HBox.hgrow="ALWAYS">
-                    <children>
-                        <HBox spacing="15.0">
-                            <padding>
-                                <Insets bottom="12.0" left="12.0" right="12.0" top="12.0" />
-                            </padding>
+                        <Button fx:id="backButton" onAction="#handleBack" styleClass="lb-btn-back" text="← Quay lại" />
+                        <VBox HBox.hgrow="ALWAYS" styleClass="lb-header-title-box">
                             <children>
-                                <Label fx:id="statusLabel" maxWidth="1.7976931348623157E308" style="-fx-font-weight: bold;" text="Trạng thái: --" HBox.hgrow="ALWAYS" />
-                                <Label fx:id="timeRemainingLabel" alignment="CENTER_RIGHT" maxWidth="1.7976931348623157E308" style="-fx-font-weight: bold;" text="Còn lại: --" HBox.hgrow="ALWAYS" />
-                            </children>
-                        </HBox>
-
-                        <Label style="-fx-font-weight: bold;" text="Lịch sử đặt giá trực tuyến (Realtime):">
-                            <font>
-                                <Font size="14.0" />
-                            </font>
-                        </Label>
-
-                        <TableView fx:id="bidHistoryTable" VBox.vgrow="ALWAYS">
-                            <columns>
-                                <TableColumn fx:id="bidderNameColumn" prefWidth="180.0" text="Người đặt giá" />
-                                <TableColumn fx:id="bidAmountColumn" prefWidth="150.0" text="Số tiền (VNĐ)" />
-                                <TableColumn fx:id="bidTimeColumn" prefWidth="140.0" text="Thời gian" />
-                                <TableColumn fx:id="bidStatusColumn" prefWidth="110.0" text="Trạng thái" />
-                            </columns>
-                            <columnResizePolicy>
-                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-                            </columnResizePolicy>
-                        </TableView>
-                    </children>
-                </VBox>
-
-                <VBox prefWidth="320.0" spacing="20.0">
-                    <children>
-
-                        <VBox spacing="10.0">
-                            <padding>
-                                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-                            </padding>
-                            <children>
-                                <Label fx:id="currentPriceLabel" style="-fx-font-weight: bold;" text="Giá hiện tại: -- VNĐ">
-                                    <font>
-                                        <Font size="16.0" />
-                                    </font>
-                                </Label>
-                                <Label fx:id="highestBidderLabel" style="-fx-font-weight: bold;" text="Đang dẫn đầu: --" />
-                                <Label fx:id="stepPriceLabel" text="Bước giá: -- VNĐ" />
-                                <Label fx:id="endTimeLabel" text="Kết thúc: --" />
-                                <Label fx:id="viewerCountLabel" style="-fx-font-weight: bold;" text="Người xem: 0" />
+                                <Label fx:id="itemNameLabel" styleClass="lb-header-title" text="Tên vật phẩm đấu giá" />
+                                <Label fx:id="sellerLabel" styleClass="lb-header-subtitle" text="Người bán: --" />
                             </children>
                         </VBox>
+                        <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="lb-btn-refresh" text="Làm mới ↻" />
+                    </children>
+                </HBox>
+            </top>
 
-                        <VBox spacing="8.0">
-                            <padding>
-                                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-                            </padding>
+            <center>
+                <HBox spacing="20.0" BorderPane.alignment="CENTER">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                    </padding>
+                    <children>
+
+                        <VBox spacing="15.0" HBox.hgrow="ALWAYS" styleClass="lb-left-pane">
                             <children>
-                                <Label style="-fx-font-weight: bold;" text="Đặt giá thủ công" />
-                                <TextField fx:id="bidAmountField" promptText="Nhập số tiền muốn đặt..." />
-                                <Button fx:id="placeBidButton" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" style="-fx-font-weight: bold;" text="ĐẶT GIÁ NGAY" />
-                            </children>
-                        </VBox>
-
-                        <VBox spacing="8.0" VBox.vgrow="ALWAYS">
-                            <padding>
-                                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-                            </padding>
-                            <children>
-                                <Label style="-fx-font-weight: bold;" text="Cấu hình Tự động đặt giá (Auto-bid)" />
-
-                                <Label text="Giá tối đa có thể trả:" style="-fx-font-size: 11px;" />
-                                <TextField fx:id="maxAutoBidField" promptText="Ví dụ: 5,000,000" />
-
-                                <Label text="Mỗi lần tự tăng thêm:" style="-fx-font-size: 11px;" />
-                                <TextField fx:id="autoBidIncrementField" promptText="Ví dụ: 100,000" />
-
-                                <HBox spacing="10.0">
+                                <HBox spacing="15.0" styleClass="lb-status-bar-top">
+                                    <padding>
+                                        <Insets bottom="12.0" left="12.0" right="12.0" top="12.0" />
+                                    </padding>
                                     <children>
-                                        <Button fx:id="setupAutoBidButton" maxWidth="1.7976931348623157E308" onAction="#handleSetupAutoBid" style="-fx-font-weight: bold; -fx-cursor: hand;" text="Kích hoạt" HBox.hgrow="ALWAYS" />
-                                        <Button fx:id="cancelAutoBidButton" maxWidth="1.7976931348623157E308" onAction="#handleCancelAutoBid" style="-fx-font-weight: bold; -fx-cursor: hand;" text="Hủy bỏ" HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="statusLabel" maxWidth="1.7976931348623157E308" styleClass="lb-live-status" text="Trạng thái: --" HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="timeRemainingLabel" alignment="CENTER_RIGHT" maxWidth="1.7976931348623157E308" styleClass="lb-live-timer" text="Còn lại: --" HBox.hgrow="ALWAYS" />
                                     </children>
                                 </HBox>
+
+                                <VBox spacing="5.0" VBox.vgrow="ALWAYS">
+                                    <children>
+                                        <Label styleClass="lb-section-title" text="Lịch sử đặt giá trực tuyến (Realtime):" />
+                                        <TableView fx:id="bidHistoryTable" styleClass="lb-sim-table" VBox.vgrow="ALWAYS">
+                                            <columns>
+                                                <TableColumn fx:id="bidderNameColumn" prefWidth="180.0" styleClass="lb-col-text" text="Người đặt giá" />
+                                                <TableColumn fx:id="bidAmountColumn" prefWidth="150.0" styleClass="lb-col-text" text="Số tiền (VNĐ)" />
+                                                <TableColumn fx:id="bidTimeColumn" prefWidth="140.0" styleClass="lb-col-text" text="Thời gian" />
+                                                <TableColumn fx:id="bidStatusColumn" prefWidth="110.0" styleClass="lb-col-text" text="Trạng thái" />
+                                            </columns>
+                                            <columnResizePolicy>
+                                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                            </columnResizePolicy>
+                                        </TableView>
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="5.0" VBox.vgrow="ALWAYS">
+                                    <children>
+                                        <fx:include fx:id="bidPriceChart" source="bid-price-chart.fxml" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <VBox prefWidth="320.0" spacing="20.0" styleClass="lb-right-pane">
+                            <children>
+
+                                <VBox spacing="10.0" styleClass="lb-info-card">
+                                    <padding>
+                                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                                    </padding>
+                                    <children>
+                                        <Label fx:id="currentPriceLabel" styleClass="lb-price-current" text="Giá hiện tại: -- VNĐ" />
+                                        <Label fx:id="highestBidderLabel" styleClass="lb-info-leader" text="Đang dẫn đầu: --" />
+                                        <Label fx:id="stepPriceLabel" styleClass="lb-info-row" text="Bước giá: -- VNĐ" />
+                                        <Label fx:id="endTimeLabel" styleClass="lb-info-row" text="Kết thúc: --" />
+                                        <Label fx:id="viewerCountLabel" styleClass="lb-info-viewers" text="Người xem: 0" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="8.0" styleClass="lb-bid-box-manual">
+                                    <padding>
+                                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                                    </padding>
+                                    <children>
+                                        <Label styleClass="lb-box-title" text="Đặt giá thủ công" />
+                                        <TextField fx:id="bidAmountField" promptText="Nhập số tiền muốn đặt..." styleClass="lb-input-field" />
+                                        <Button fx:id="placeBidButton" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" styleClass="lb-btn-primary" text="ĐẶT GIÁ NGAY" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="8.0" styleClass="lb-bid-box-auto" VBox.vgrow="ALWAYS">
+                                    <padding>
+                                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                                    </padding>
+                                    <children>
+                                        <Label styleClass="lb-box-title" text="Cấu hình Tự động đặt giá (Auto-bid)" />
+
+                                        <Label text="Giá tối đa có thể trả:" styleClass="lb-field-sub-label" />
+                                        <TextField fx:id="maxAutoBidField" promptText="Ví dụ: 5,000,000" styleClass="lb-input-field" />
+
+                                        <Label text="Mỗi lần tự tăng thêm:" styleClass="lb-field-sub-label" />
+                                        <TextField fx:id="autoBidIncrementField" promptText="Ví dụ: 100,000" styleClass="lb-input-field" />
+
+                                        <HBox spacing="10.0" styleClass="lb-auto-actions">
+                                            <children>
+                                                <Button fx:id="setupAutoBidButton" maxWidth="1.7976931348623157E308" onAction="#handleSetupAutoBid" styleClass="lb-btn-activate" text="Kích hoạt" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="cancelAutoBidButton" maxWidth="1.7976931348623157E308" onAction="#handleCancelAutoBid" styleClass="lb-btn-cancel" text="Hủy bỏ" HBox.hgrow="ALWAYS" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
                             </children>
                         </VBox>
 
                     </children>
-                </VBox>
+                </HBox>
+            </center>
 
-            </children>
-        </HBox>
-    </center>
+            <bottom>
+                <HBox styleClass="lb-bottom-bar">
+                    <padding>
+                        <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
+                    </padding>
+                    <children>
+                        <Label fx:id="messageLabel" styleClass="lb-status-message" text="Hệ thống đã sẵn sàng." />
+                    </children>
+                </HBox>
+            </bottom>
+        </BorderPane>
 
-    <bottom>
-        <HBox>
-            <padding>
-                <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
-            </padding>
+        <VBox fx:id="loadingOverlay" alignment="CENTER" styleClass="lb_loading-overlay">
             <children>
-                <Label fx:id="messageLabel" style="-fx-font-style: italic;" text="Hệ thống đã sẵn sàng." />
+                <VBox alignment="CENTER" spacing="20.0" styleClass="lb_loading-content-box">
+                    <children>
+                        <ProgressIndicator styleClass="lb_loading-spinner" />
+                        <Label styleClass="lb_loading-text" text="Đang đồng bộ dữ liệu và kết nối phòng trực tiếp..." />
+                    </children>
+                </VBox>
             </children>
-        </HBox>
-    </bottom>
-</BorderPane>
+        </VBox>
+
+    </children>
+</StackPane>

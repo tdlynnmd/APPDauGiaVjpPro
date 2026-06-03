@@ -1129,3 +1129,248 @@
     -fx-font-style: italic;
     -fx-font-size: 14px;
 }
+
+/* ==========================================================================
+   LIVE BIDDING ROOM - LIGHT THEME (TONG XANH DUONG CHU LAO)
+   ========================================================================== */
+
+.lb-root { -fx-background-color: #F8F9FA; }
+
+/* Header khu vực */
+.lb-header {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E9ECEF; -fx-border-width: 0 0 1px 0;
+}
+.lb-btn-back {
+    -fx-background-color: #E9ECEF; -fx-text-fill: #495057; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.lb-btn-back:hover { -fx-background-color: #DEE2E6; }
+.lb-btn-refresh {
+    -fx-background-color: #FFFFFF; -fx-text-fill: #212529; -fx-border-color: #CED4DA;
+    -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-cursor: hand;
+}
+.lb-btn-refresh:hover { -fx-background-color: #F8F9FA; }
+.lb-header-title { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0D6EFD; }
+.lb-header-subtitle { -fx-font-size: 13px; -fx-text-fill: #6C757D; }
+
+/* Thanh trạng thái Realtime phía trên bảng */
+.lb-status-bar-top {
+    -fx-background-color: #E8F0FE; -fx-background-radius: 8px;
+    -fx-border-color: #BCD1F9; -fx-border-width: 1px;
+}
+.lb-live-status { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #0D6EFD; }
+.lb-live-timer { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #DC3545; }
+.lb-section-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #212529; }
+
+/* Thiết lập TableView Realtime */
+.lb-sim-table { -fx-background-color: transparent; -fx-border-color: #DEE2E6; }
+.lb-sim-table .column-header-background { -fx-background-color: #E9ECEF; }
+.lb-sim-table .column-header { -fx-background-color: transparent; -fx-size: 38px; -fx-border-color: #CED4DA; }
+.lb-sim-table .column-header .label { -fx-text-fill: #212529; -fx-font-weight: bold; }
+.lb-sim-table .table-row-cell { -fx-background-color: #FFFFFF; -fx-border-color: #E9ECEF; }
+.lb-sim-table .table-row-cell:odd { -fx-background-color: #F8F9FA; }
+.lb-sim-table .table-cell { -fx-text-fill: #212529; -fx-font-weight: bold; -fx-font-size: 13px; }
+
+/* Đổ màu trạng thái cột trong bảng */
+.lb-sim-table .table-cell.status-accepted { -fx-text-fill: #198754 !important; }
+.lb-sim-table .table-cell.status-refunded { -fx-text-fill: #DC3545 !important; }
+
+/* Khen thưởng Placeholder bảng rỗng */
+.lb-sim-table .table-empty-icon { -fx-text-fill: #0D6EFD; -fx-font-size: 26px; }
+.lb-sim-table .table-empty-placeholder { -fx-text-fill: #0D6EFD; -fx-font-weight: bold; -fx-font-style: italic; }
+
+/* Thẻ thông tin bên phải */
+.lb-info-card {
+    -fx-background-color: #FFFFFF; -fx-background-radius: 8px;
+    -fx-border-color: #DEE2E6; -fx-border-width: 1px;
+}
+.lb-price-current { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #198754; }
+.lb-info-leader {
+    -fx-text-fill: #1E88E5; /* Màu xanh dương hiện đại, độ tương phản tiêu chuẩn cao trên nền sáng */
+    -fx-font-weight: bold;  /* Làm đậm chữ để làm nổi bật thông tin */
+}
+.lb-info-row { -fx-font-size: 13px; -fx-text-fill: #212529; }
+.lb-info-viewers { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #6C757D; }
+
+/* Hộp chức năng Đặt giá thủ công & Tự động */
+.lb-bid-box-manual, .lb-bid-box-auto {
+    -fx-background-color: #FFFFFF; -fx-background-radius: 8px;
+    -fx-border-color: #DEE2E6; -fx-border-width: 1px;
+}
+.lb-box-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #212529; }
+.lb-field-sub-label { -fx-font-size: 11px; -fx-text-fill: #6C757D; }
+.lb-input-field {
+    -fx-background-color: #FFFFFF; -fx-border-color: #CED4DA; -fx-border-radius: 6px;
+    -fx-background-radius: 6px; -fx-padding: 8px; -fx-text-fill: #212529;
+}
+
+/* Các nút hành động */
+.lb-btn-primary {
+    -fx-background-color: #0D6EFD; -fx-text-fill: #FFFFFF; -fx-font-weight: bold;
+    -fx-padding: 10px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.lb-btn-primary:hover { -fx-background-color: #0B5ED7; }
+
+.lb-btn-activate {
+    -fx-background-color: #198754; -fx-text-fill: #FFFFFF; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.lb-btn-activate:hover { -fx-background-color: #157347; }
+
+.lb-btn-cancel {
+    -fx-background-color: #DC3545; -fx-text-fill: #FFFFFF; -fx-font-weight: bold;
+    -fx-padding: 8px 16px; -fx-background-radius: 6px; -fx-cursor: hand;
+}
+.lb-btn-cancel:hover { -fx-background-color: #BB2D3B; }
+
+/* Thanh footer */
+.lb-bottom-bar { -fx-background-color: #F1F3F5; -fx-border-color: #E9ECEF; -fx-border-width: 1px 0 0 0; }
+.lb-status-message { -fx-font-size: 12px; -fx-font-style: italic; -fx-text-fill: #6C757D; }
+
+/* --- PHẦN ĐỔI MÀU TRẠNG THÁI TOP BAR (LIGHT MODE) --- */
+.lb-status-bar-top .status-open { -fx-text-fill: #0D6EFD !important; }
+.lb-status-bar-top .status-running { -fx-text-fill: #198754 !important; }
+.lb-status-bar-top .status-finished { -fx-text-fill: #6C757D !important; }
+
+/* --- KIỂU DÁNG TIÊU ĐỀ BẢNG MÀU XANH THƯƠNG HIỆU --- */
+.lb-sim-table .column-header-background {
+    -fx-background-color: #0D6EFD; /* Màu nền xanh dương chủ đạo */
+}
+.lb-sim-table .column-header {
+    -fx-background-color: #0D6EFD;
+    -fx-border-color: #0B5ED7;
+}
+.lb-sim-table .column-header .label {
+    -fx-text-fill: #FFFFFF !important; /* Chữ tiêu đề màu trắng cho nổi bật */
+    -fx-font-weight: bold;
+}
+
+/* --- MÀU TRẠNG THÁI ĐỘNG TRONG DÒNG LỊCH SỬ BẢNG --- */
+.lb-sim-table .table-cell.status-accepted {
+    -fx-text-fill: #198754 !important;
+}
+.lb-sim-table .table-cell.status-refunded {
+    -fx-text-fill: #DC3545 !important;
+}
+/* ==========================================================================
+   BID PRICE CHART SYSTEM (LIGHT MODE) - Tiền tố bpc-
+   ========================================================================== */
+
+/* Container bọc ngoài biểu đồ */
+.bpc-chart-container {
+    -fx-background-color: #FFFFFF; /* Màu nền trắng tinh khôi */
+    -fx-background-radius: 8px;    /* Bo góc nhẹ cho khung bao ngoài */
+    -fx-border-color: #E4E7ED;     /* Viền xám rất mảnh tạo ranh giới */
+    -fx-border-radius: 8px;        /* Bo góc cho đường viền trùng với nền */
+    -fx-border-width: 1px;
+    -fx-padding: 15px;             /* Khoảng cách an toàn từ viền vào biểu đồ */
+}
+
+/* Định dạng tiêu đề biểu đồ */
+.bpc-custom-line-chart .chart-title {
+    -fx-text-fill: #1E88E5; /* Màu xanh dương chủ đạo */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* Nền vùng vẽ đồ thị */
+.bpc-custom-line-chart .chart-plot-background {
+    -fx-background-color: #F5F7FA; /* Nền xám trắng nhẹ */
+}
+
+/* Các đường lưới dọc và ngang */
+.bpc-custom-line-chart .chart-vertical-grid-lines,
+.bpc-custom-line-chart .chart-horizontal-grid-lines {
+    -fx-stroke: #E4E7ED; /* Đường lưới mảnh, sáng màu */
+    -fx-stroke-dash-array: 3px, 3px; /* Đường nét đứt */
+}
+
+/* Định dạng các trục tọa độ X và Y */
+.bpc-chart-x-axis,
+.bpc-chart-y-axis {
+    -fx-axis-label-font-size: 11px;
+    -fx-axis-label-font-weight: bold;
+    -fx-axis-label-fill: #606266;
+}
+
+/* Chữ số và nhãn trên các trục */
+.bpc-custom-line-chart .axis .axis-tick-mark,
+.bpc-custom-line-chart .axis .axis-minor-tick-mark {
+    -fx-stroke: #DCDFE6;
+}
+.bpc-custom-line-chart .axis:bottom .axis-label,
+.bpc-custom-line-chart .axis:left .axis-label {
+    -fx-text-fill: #606266;
+}
+
+/* ĐƯỜNG BIỂU DIỄN ĐỒ THỊ (Màu xanh dương tương phản) */
+.bpc-custom-line-chart .chart-series-line {
+    -fx-stroke: #1E88E5; /* Đường kẻ màu xanh dương */
+    -fx-stroke-width: 3px;
+}
+
+/* CÁC NÚT ĐIỂM BIỂU DIỄN (Symbols trên đồ thị) */
+.bpc-custom-line-chart .chart-line-symbol {
+    -fx-background-color: #1E88E5, #FFFFFF;
+    -fx-background-insets: 0, 2px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px; /* Độ lớn của chấm tròn */
+}
+/* ==========================================================================
+   AREA CHART SYSTEM (LIGHT MODE) - Đã sửa lỗi chấm tròn & Thêm Phát Sáng
+   ========================================================================== */
+
+/* 1. Đường nét nối giữa các ô tròn + Hiệu ứng phát sáng xanh nhẹ */
+.bpc-custom-line-chart .chart-series-area-line {
+    -fx-stroke: #1E88E5;
+    -fx-stroke-width: 2.5px;
+    /* Tạo độ nhòe phát sáng nhẹ màu xanh xung quanh đường kẻ */
+    -fx-effect: dropshadow(three-pass-box, rgba(30, 136, 229, 0.4), 8, 0.0, 0, 0);
+}
+
+/* 2. Vùng phủ mờ đổ dốc phía dưới */
+.bpc-custom-line-chart .chart-series-area-fill {
+    -fx-fill: linear-gradient(to bottom, rgba(30, 136, 229, 0.15) 0%, rgba(30, 136, 229, 0.0) 100%);
+}
+
+/* 3. ĐÃ SỬA: Đổi thành .chart-area-symbol để ép chấm tròn ăn màu Xanh Dương + Phát sáng */
+.bpc-custom-line-chart .chart-area-symbol {
+    -fx-background-color: #1E88E5, #FFFFFF; /* Viền xanh dương, lõi trắng */
+    -fx-background-insets: 0, 2px;
+    -fx-background-radius: 6px;
+    -fx-padding: 5px; /* Tăng kích thước chấm tròn cho dễ nhìn */
+
+    /* Hiệu ứng đổ bóng phát sáng nhẹ cho từng chấm tròn */
+    -fx-effect: dropshadow(three-pass-box, rgba(30, 136, 229, 0.5), 6, 0.0, 0, 0);
+}
+/* Lớp phủ mờ sương trắng */
+.lb_loading-overlay {
+    -fx-background-color: rgba(240, 242, 245, 0.82) !important;
+}
+
+/* Hộp nội dung đổ bóng */
+.lb_loading-content-box {
+    -fx-background-color: #FFFFFF !important;
+    -fx-padding: 30px 45px;
+    -fx-background-radius: 12px;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 12px;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 20, 0.0, 0, 6);
+}
+
+/* Chữ thông báo màu xanh Royal đậm */
+.lb_loading-text {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0066CC !important;
+}
+
+/* Vòng xoay màu xanh */
+.lb_loading-spinner {
+    -fx-progress-color: #0066CC !important;
+    -fx-pref-width: 50px;
+    -fx-pref-height: 50px;
+}
