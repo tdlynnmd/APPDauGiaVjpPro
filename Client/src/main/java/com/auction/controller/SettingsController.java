@@ -5,10 +5,14 @@ import com.auction.dto.UserDTO;
 import com.auction.network.ClientUserApi;
 import com.auction.util.ClientSession;
 import com.auction.util.SceneNavigator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -30,6 +34,13 @@ public class SettingsController {
     @FXML private Button updatePasswordButton;
     @FXML private Button themeToggleButton;
     @FXML private Button backButton;
+
+    // --- CÁC THÀNH PHẦN THÊM MỚI ĐỂ PHỤC VỤ CHỨC NĂNG TỰ CUỘN BẢNG ---
+    @FXML private ScrollPane settingsScrollPane;    // ScrollPane chứa nội dung bên phải
+    @FXML private VBox mainContentContainer;         // Container tổng chứa cả 3 thẻ card bên trong ScrollPane
+    @FXML private VBox cardThongTinHoSo;             // Khối card Thông Tin Hồ Sơ
+    @FXML private VBox cardDoiMatKhau;               // Khối card Đổi Mật Khẩu
+    @FXML private VBox cardGiaoDien;                 // Khối card Giao Diện Ứng Dụng
 
     // Vai trò: khởi tạo màn settings.
     @FXML
@@ -120,6 +131,47 @@ public class SettingsController {
     @FXML
     private void handleBack() {
         SceneNavigator.showDashboard();
+    }
+
+    // CHỨC NĂNG BỔ SUNG: Điều hướng cuộn mượt mà (Smooth Scroll) tới các phân khu card nội dung
+    private void scrollToNode(javafx.scene.Node targetNode) {
+        if (settingsScrollPane == null || targetNode == null || mainContentContainer == null) return;
+
+        // Tính toán tổng chiều cao có thể cuộn thực tế của nội dung
+        double totalScrollableHeight = mainContentContainer.getBoundsInLocal().getHeight() - settingsScrollPane.getViewportBounds().getHeight();
+        if (totalScrollableHeight <= 0) return;
+
+        // Lấy tọa độ Y của card đích so với container chứa nó
+        double targetY = targetNode.getBoundsInParent().getMinY();
+
+        // Tính toán tỷ lệ vvalue tương ứng (trong khoảng từ 0.0 đến 1.0)
+        double targetVvalue = targetY / totalScrollableHeight;
+        targetVvalue = Math.max(0.0, Math.min(1.0, targetVvalue));
+
+        // Thực hiện hiệu ứng dịch chuyển vvalue mượt mà trong 300ms
+        Timeline timeline = new Timeline();
+        KeyValue keyValue = new KeyValue(settingsScrollPane.vvalueProperty(), targetVvalue);
+        KeyFrame keyFrame = new KeyFrame(Duration.millis(300), keyValue);
+        timeline.getKeyFrames().add(keyFrame);
+        timeline.play();
+    }
+
+    // Chức năng: Xử lý sự kiện click menu "Thông Tin Hồ Sơ"
+    @FXML
+    private void handleMenuThongTinHoSo() {
+        scrollToNode(cardThongTinHoSo);
+    }
+
+    // Chức năng: Xử lý sự kiện click menu "Đổi Mật Khẩu"
+    @FXML
+    private void handleMenuDoiMatKhau() {
+        scrollToNode(cardDoiMatKhau);
+    }
+
+    // Chức năng: Xử lý sự kiện click menu "Giao Diện Ứng Dụng"
+    @FXML
+    private void handleMenuGiaoDien() {
+        scrollToNode(cardGiaoDien);
     }
 
     // Vai trò: xử lý response tải profile.

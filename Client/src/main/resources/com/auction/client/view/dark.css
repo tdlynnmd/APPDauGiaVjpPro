@@ -1261,6 +1261,62 @@
 .lb-sim-table .table-cell.status-refunded {
     -fx-text-fill: #E74C3C !important;
 }
+
+
+/* ==========================================================================
+   BỔ SUNG CẤP NHẬT: XỬ LÝ THANH CUỘN PHẲNG (SCROLLBAR FLAT MODERN UI - DARK)
+   ========================================================================== */
+
+/* Áp dụng chung cho tất cả ScrollPane và cả vùng cuộn của TableView trong phòng */
+.scroll-pane, .scroll-pane *.viewport, .scroll-pane *.content,
+.table-view, .table-view *.virtual-flow {
+    -fx-background-color: transparent;
+}
+
+/* Tùy chỉnh thanh cuộn chính */
+.scroll-bar:vertical, .scroll-bar:horizontal {
+    -fx-background-color: transparent; /* Ẩn nền xám mặc định */
+    -fx-padding: 0;
+}
+
+/* Định dạng thanh dọc (Vertical) mỏng lại */
+.scroll-bar:vertical {
+    -fx-pref-width: 6px;
+}
+/* Định dạng thanh ngang (Horizontal) mỏng lại */
+.scroll-bar:horizontal {
+    -fx-pref-height: 6px;
+}
+
+/* Thanh kéo con (Cục chạy chuột) màu tối phù hợp chế độ Dark Mode */
+.scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb {
+    -fx-background-color: #4E4F50; /* Màu xám trung tính tiệp màu giao diện tối */
+    -fx-background-insets: 0;
+    -fx-background-radius: 8px; /* Bo tròn mềm mại */
+}
+
+/* Hiệu ứng khi di chuột qua hoặc đè vào thanh cuộn con */
+.scroll-bar:vertical .thumb:hover, .scroll-bar:horizontal .thumb:hover {
+    -fx-background-color: #747576; /* Sáng hơn một chút khi hover */
+}
+.scroll-bar:vertical .thumb:pressed, .scroll-bar:horizontal .thumb:pressed {
+    -fx-background-color: #F5B041; /* Hóa cam vàng rực rỡ khi đang kéo giữ chuột */
+}
+
+/* Ẩn hoàn toàn 2 nút mũi tên tăng giảm ở 2 đầu thanh cuộn */
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-shape: " "; /* Xóa hình dáng mũi tên */
+    -fx-padding: 0;
+}
+
+/* Khử ô vuông xám giao nhau ở góc dưới bên phải khi xuất hiện cả 2 thanh cuộn */
+.scroll-bar:corner {
+    -fx-background-color: transparent;
+}
 /* ==========================================================================
    BID PRICE CHART SYSTEM (DARK MODE) - Tiền tố bpc-
    ========================================================================== */
@@ -1381,4 +1437,181 @@
     -fx-progress-color: #FF9800 !important;
     -fx-pref-width: 50px;
     -fx-pref-height: 50px;
+}
+/* =========================================================================
+   SETTINGS SCREEN - DARK THEME (FULL CONFIGURATION)
+   ========================================================================= */
+
+/* Container gốc toàn màn hình */
+.settings-root {
+    -fx-background-color: #121212;
+}
+
+/* Thanh tiêu đề Header */
+.settings-header {
+    -fx-background-color: #1a1a1a;
+    -fx-padding: 12px 20px;
+    -fx-background-radius: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.25), 6, 0, 0, 3);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+/* Tiêu đề Settings chính giữa */
+.settings-header-title-center {
+    -fx-text-fill: #ff9f43;
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* Nút Quay Lại (Phong cách Light: Nền cam nhạt, Chữ cam đậm rõ, KHÔNG VIỀN) */
+.settings-btn-back {
+    -fx-background-color: rgba(255, 159, 67, 0.12);
+    -fx-text-fill: #ff9f43;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15px;
+    -fx-padding: 8px 18px;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+/* Hover: Lấp đầy khối cam đặc hoàn toàn, chữ đảo sang đen sâu tương phản */
+.settings-btn-back:hover {
+    -fx-background-color: #ff9f43;
+    -fx-text-fill: #121212;
+}
+
+/* --- SIDEBAR MENU (BÊN TRÁI) --- */
+.settings-sidebar {
+    -fx-background-color: #1a1a1a;
+    -fx-background-radius: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 6, 0, 0, 2);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+/* Chữ Mục Cài Đặt nhỏ gọn được làm nổi bật tinh tế trên nền tối */
+.settings-sidebar-title {
+    -fx-text-fill: #999999;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 5px 10px 10px 10px;
+}
+
+/* Các thanh nút bấm trong Menu trái */
+.settings-sidebar-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #aaaaaa;
+    -fx-font-size: 14px;
+    -fx-padding: 12px 15px;
+    -fx-background-radius: 12px;
+    -fx-cursor: hand;
+    -fx-alignment: center-left;
+}
+.settings-sidebar-btn:hover {
+    -fx-background-color: #252525;
+    -fx-text-fill: #ff9f43;
+}
+.settings-sidebar-btn:focused {
+    -fx-background-color: rgba(255, 159, 67, 0.08);
+    -fx-text-fill: #ff9f43;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent transparent transparent #ff9f43;
+    -fx-border-width: 0 0 0 3px;
+}
+
+/* --- KHU VỰC BẢNG CUỘN & THANH CUỘN (HOÀN TOÀN KHÔNG VIỀN) --- */
+.settings-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-box-border: transparent;
+}
+.settings-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* Tùy biến thanh cuộn mỏng phẳng, ẩn nền xám thô mặc định */
+.settings-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-padding: 0 0 0 4px;
+    -fx-width: 8px;
+}
+.settings-scroll-pane .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+.settings-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #333333;
+    -fx-background-radius: 10px;
+}
+.settings-scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #ff9f43;
+}
+.settings-scroll-pane .scroll-bar .increment-button,
+.settings-scroll-pane .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* --- THÈ CARD NỘI DUNG (BÊN PHẢI) --- */
+.settings-section-card {
+    -fx-background-color: #1a1a1a;
+    -fx-background-radius: 18px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 8, 0, 0, 2);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.settings-section-title {
+    -fx-text-fill: #ff9f43;
+    -fx-font-size: 15px;
+    -fx-border-color: #ff9f43;
+    -fx-border-width: 0 0 0 4px;
+    -fx-padding: 0 0 0 10px;
+}
+
+/* Ô nhập liệu */
+.settings-field-label {
+    -fx-text-fill: #777777;
+    -fx-font-size: 13px;
+}
+
+.settings-input {
+    -fx-background-color: #121212;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 8px 14px;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.settings-input:focused {
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 159, 67, 0.25), 5, 0, 0, 0);
+}
+
+/* Hệ thống nút bấm chuẩn Dashboard (Nền cam đặc hoàn toàn - Chữ đen sâu) */
+.settings-btn-primary, .settings-btn-danger, .settings-btn-theme {
+    -fx-background-color: #ff9f43;
+    -fx-text-fill: #121212;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15px;
+    -fx-padding: 9px 24px;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.settings-btn-primary:hover, .settings-btn-danger:hover, .settings-btn-theme:hover {
+    -fx-background-color: #e68a2e;
+    -fx-text-fill: #121212;
+}
+
+/* Thanh trạng thái đáy màn hình */
+.settings-status-bar {
+    -fx-background-color: #1a1a1a;
+    -fx-background-radius: 12px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.settings-status-text {
+    -fx-text-fill: #ff9f43;
 }
