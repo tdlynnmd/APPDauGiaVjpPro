@@ -16,6 +16,8 @@ public interface BidTransactionDAO {
 
     List<BidTransaction> findByBidderIdPaged(String bidderId, int limit, int offset);
 
+    List<String> findDistinctBidderIdsByAuctionId(String auctionId);
+
     long getTotalBidCountByAuction(String auctionId);
 
     long getTotalBidCountByBidder(String bidderId);

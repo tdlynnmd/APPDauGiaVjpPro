@@ -29,6 +29,31 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
         }
     }
 
+    @Override
+    public List<String> findDistinctBidderIdsByAuctionId(String auctionId) {
+        List<String> bidderIds = new ArrayList<>();
+        if (auctionId == null || auctionId.trim().isEmpty()) {
+            return bidderIds;
+        }
+
+        String sql = "SELECT DISTINCT BIN_TO_UUID(bidder_id, 1) AS bidder_id " +
+                "FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1)";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, auctionId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    bidderIds.add(rs.getString("bidder_id"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Loi lay danh sach bidder theo phien: " + e.getMessage());
+        }
+        return bidderIds;
+    }
+
     /**
      * 1. Lấy N lượt đặt giá mới nhất của một phiên (Dùng cho Live Room)
      * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn

@@ -17,6 +17,7 @@ import com.auction.manage.AuctionManage;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.LiveRoomManage;
 import com.auction.manage.ProductManage;
+import com.auction.manage.UserManage;
 import com.auction.models.Auction.Auction;
 import com.auction.models.User.Seller;
 import com.auction.models.User.User;
@@ -216,7 +217,7 @@ public class AuctionService {
 
             // Gửi cập nhật ví qua socket
             try {
-                connectionManage.sendBalanceUpdate(bidder.getId(), bidder.getAvailableBalance(), bidder.getFrozenBalance());
+                syncAndSendBalanceUpdate(bidder.getId());
             } catch (Exception ex) {
                 System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder mới: " + ex.getMessage());
             }
@@ -224,7 +225,7 @@ public class AuctionService {
                 User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
                 if (oldRamUser instanceof Bidder oldBidderLive) {
                     try {
-                        connectionManage.sendBalanceUpdate(oldHighestBidderId, oldBidderLive.getAvailableBalance(), oldBidderLive.getFrozenBalance());
+                        syncAndSendBalanceUpdate(oldHighestBidderId);
                     } catch (Exception ex) {
                         System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder cũ: " + ex.getMessage());
                     }
@@ -421,7 +422,7 @@ public class AuctionService {
                     User winRam = com.auction.manage.UserManage.getInstance().getUser(winnerId);
                     if (winRam instanceof Bidder winnerLive) {
                         synchronized (winnerId.intern()) {
-                            winnerLive.setFrozenBalance(winnerLive.getFrozenBalance() - finalPrice);
+                            winnerLive.deductFrozen(finalPrice);
                             System.out.println("[RAM Sync] 🎯 Đã khấu trừ số dư đóng băng của Winner trên RAM live.");
                         }
                     }
@@ -430,7 +431,7 @@ public class AuctionService {
                     User selRam = com.auction.manage.UserManage.getInstance().getUser(sellerId);
                     if (selRam instanceof Seller sellerLive) {
                         synchronized (sellerId.intern()) {
-                            sellerLive.setAvailableBalance(sellerLive.getAvailableBalance() + finalPrice);
+                            sellerLive.addAvailableBalance(finalPrice);
                             System.out.println("[RAM Sync] 🎯 Đã cộng số dư khả dụng của Seller trên RAM live.");
                         }
                     }
@@ -438,18 +439,29 @@ public class AuctionService {
                     // Gửi cập nhật ví qua socket cho Winner và Seller
                     if (winRam instanceof Bidder winnerLive) {
                         try {
-                            connectionManage.sendBalanceUpdate(winnerId, winnerLive.getAvailableBalance(), winnerLive.getFrozenBalance());
+                            syncAndSendBalanceUpdate(winnerId);
                         } catch (Exception ex) {
                             System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho winner: " + ex.getMessage());
                         }
                     }
                     if (selRam instanceof Seller sellerLive) {
                         try {
-                            connectionManage.sendBalanceUpdate(sellerId, sellerLive.getAvailableBalance(), sellerLive.getFrozenBalance());
+                            syncAndSendBalanceUpdate(sellerId);
                         } catch (Exception ex) {
                             System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho seller: " + ex.getMessage());
                         }
                     }
+                }
+
+                if (winnerId != null) {
+                    Set<String> balanceUpdateUserIds = new LinkedHashSet<>();
+                    balanceUpdateUserIds.add(winnerId);
+                    List<String> auctionBidderIds = bidTransactionDAO.findDistinctBidderIdsByAuctionId(auctionId);
+                    if (auctionBidderIds != null) {
+                        balanceUpdateUserIds.addAll(auctionBidderIds);
+                    }
+                    balanceUpdateUserIds.add(sellerId);
+                    syncAndSendBalanceUpdates(balanceUpdateUserIds);
                 }
 
             } catch (Exception e) {
@@ -872,13 +884,77 @@ public class AuctionService {
         if (bidderId == null || bidderId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Operator identity token cannot be null.");
         }
-        User user = userDAO.findById(bidderId)
+        String cleanBidderId = bidderId.trim();
+
+        User liveUser = UserManage.getInstance().getUser(cleanBidderId);
+        if (liveUser != null) {
+            if (!(liveUser instanceof Bidder)) {
+                throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "The requested operation restriction rule requires a BIDDER profile scope.");
+            }
+            return (Bidder) liveUser;
+        }
+
+        User user = userDAO.findById(cleanBidderId)
                 .orElseThrow(() -> new AuthenticationException(AuthErrorCode.USER_NOT_FOUND, "User authentication failed: user not found."));
 
         if (!(user instanceof Bidder)) {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "The requested operation restriction rule requires a BIDDER profile scope.");
         }
         return (Bidder) user;
+    }
+
+    private void syncAndSendBalanceUpdate(String userId) {
+        User user = syncLiveUserBalanceFromDatabase(userId);
+        if (user == null) {
+            return;
+        }
+
+        try {
+            connectionManage.sendBalanceUpdate(userId, user.getAvailableBalance(), user.getFrozenBalance());
+        } catch (Exception ex) {
+            System.err.println("[AuctionService] Loi gui WALLET_UPDATE cho user " + userId + ": " + ex.getMessage());
+        }
+    }
+
+    private void syncAndSendBalanceUpdates(Collection<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+
+        for (String userId : new LinkedHashSet<>(userIds)) {
+            if (userId != null && !userId.trim().isEmpty()) {
+                syncAndSendBalanceUpdate(userId.trim());
+            }
+        }
+    }
+
+    private User syncLiveUserBalanceFromDatabase(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return null;
+        }
+
+        String cleanUserId = userId.trim();
+        Optional<User> freshUserOpt = userDAO.findById(cleanUserId);
+        if (freshUserOpt == null || freshUserOpt.isEmpty()) {
+            return UserManage.getInstance().getUser(cleanUserId);
+        }
+
+        User freshUser = freshUserOpt.get();
+        User liveUser = UserManage.getInstance().getUser(cleanUserId);
+        if (liveUser == null) {
+            return freshUser;
+        }
+
+        synchronized (cleanUserId.intern()) {
+            liveUser.setAvailableBalance(freshUser.getAvailableBalance());
+            liveUser.setFrozenBalance(freshUser.getFrozenBalance());
+            liveUser.setStatus(freshUser.getStatus());
+
+            if (liveUser instanceof Bidder liveBidder && freshUser instanceof Bidder freshBidder) {
+                liveBidder.setJoinedAuctionIds(freshBidder.getJoinedAuctionIds());
+            }
+        }
+        return liveUser;
     }
 
     private final AutoBidDAO autoBidDAO = new AutoBidDAOImpl();

@@ -20,10 +20,12 @@ import com.auction.exception.ValidationException;
 import com.auction.manage.AuctionManage;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.ProductManage;
+import com.auction.manage.UserManage;
 import com.auction.models.Auction.Auction;
 import com.auction.models.Item.Electronics;
 import com.auction.models.Item.Item;
 import com.auction.models.User.Bidder;
+import com.auction.models.User.Seller;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +118,15 @@ class AuctionServiceTest {
         timeField.setAccessible(true);
         java.util.Map<?, ?> timeMap = (java.util.Map<?, ?>) timeField.get(productManage);
         timeMap.clear();
+
+        UserManage userManage = UserManage.getInstance();
+        for (Field field : UserManage.class.getDeclaredFields()) {
+            if (java.util.Map.class.isAssignableFrom(field.getType())) {
+                field.setAccessible(true);
+                java.util.Map<?, ?> map = (java.util.Map<?, ?>) field.get(userManage);
+                if (map != null) map.clear();
+            }
+        }
 
         // Tự động quét sạch bộ đệm mạng kết nối để cô lập dữ liệu giữa các ca test độc lập
         for (Field field : ConnectionManage.class.getDeclaredFields()) {
@@ -358,6 +369,58 @@ class AuctionServiceTest {
         verify(auctionDAO).updateStatus(any(Connection.class), eq("auction-final"), eq(AuctionStatus.FINISHED.name()));
 
         assertNull(auctionManage.getAuctionById("auction-final"));
+    }
+
+    @Test
+    void finalizeAuctionShouldSyncWalletCacheForAllBiddersInAuction() throws Exception {
+        Item item = sampleItem("item-final-sync");
+        LocalDateTime now = LocalDateTime.now();
+        Auction auction = new Auction(
+                "auction-final-sync",
+                item.getId(),
+                "seller-1",
+                "winner-1",
+                "bid-winning",
+                150.0,
+                10.0,
+                now.minusMinutes(10),
+                now.minusMinutes(1),
+                now.minusMinutes(10),
+                now,
+                AuctionStatus.RUNNING
+        );
+        auction.setItem(item);
+        auctionManage.addAuction(auction);
+
+        Bidder winnerLive = new Bidder("winner-1", "winner", "winner@gmail.com", "P@ss123", UserRole.BIDDER, 850.0, 150.0, UserStatus.ACTIVE, now, now);
+        Bidder loserLive = new Bidder("loser-1", "loser", "loser@gmail.com", "P@ss123", UserRole.BIDDER, 900.0, 100.0, UserStatus.ACTIVE, now, now);
+        Seller sellerLive = new Seller("seller-1", "seller", "seller@gmail.com", "P@ss123", UserRole.SELLER, 0.0, 0.0, UserStatus.ACTIVE, now, now, 0.0);
+        UserManage.getInstance().addUser(winnerLive);
+        UserManage.getInstance().addUser(loserLive);
+        UserManage.getInstance().addUser(sellerLive);
+
+        when(auctionDAO.findById("auction-final-sync")).thenReturn(Optional.of(auction));
+        when(userDAO.deductFrozenMoney(any(Connection.class), eq("winner-1"), eq(150.0))).thenReturn(true);
+        when(userDAO.addAvailableBalance(any(Connection.class), eq("seller-1"), eq(150.0))).thenReturn(true);
+        when(itemDAO.updateStatus(any(Connection.class), eq("item-final-sync"), eq(ItemStatus.SOLD.name()))).thenReturn(true);
+        when(bidTransactionDAO.findDistinctBidderIdsByAuctionId("auction-final-sync")).thenReturn(List.of("winner-1", "loser-1"));
+        when(userDAO.findById("winner-1")).thenReturn(Optional.of(
+                new Bidder("winner-1", "winner", "winner@gmail.com", "P@ss123", UserRole.BIDDER, 850.0, 0.0, UserStatus.ACTIVE, now, now)
+        ));
+        when(userDAO.findById("loser-1")).thenReturn(Optional.of(
+                new Bidder("loser-1", "loser", "loser@gmail.com", "P@ss123", UserRole.BIDDER, 1000.0, 0.0, UserStatus.ACTIVE, now, now)
+        ));
+        when(userDAO.findById("seller-1")).thenReturn(Optional.of(
+                new Seller("seller-1", "seller", "seller@gmail.com", "P@ss123", UserRole.SELLER, 150.0, 0.0, UserStatus.ACTIVE, now, now, 0.0)
+        ));
+
+        auctionService.finalizeAuction("auction-final-sync");
+
+        assertEquals(0.0, winnerLive.getFrozenBalance(), 0.001);
+        assertEquals(0.0, loserLive.getFrozenBalance(), 0.001);
+        assertEquals(1000.0, loserLive.getAvailableBalance(), 0.001);
+        assertEquals(150.0, sellerLive.getAvailableBalance(), 0.001);
+        verify(bidTransactionDAO).findDistinctBidderIdsByAuctionId("auction-final-sync");
     }
 
     @Test

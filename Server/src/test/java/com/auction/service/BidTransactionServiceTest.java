@@ -114,6 +114,11 @@ class BidTransactionServiceTest {
             return bidderBidsToReturn;
         }
 
+        @Override
+        public List<String> findDistinctBidderIdsByAuctionId(String auctionId) {
+            return List.of();
+        }
+
         // Giả lập đếm tổng số bid của một auction
         @Override
         public long getTotalBidCountByAuction(String auctionId) {
