@@ -22,4 +22,7 @@ public interface BidTransactionDAO {
 
     // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
     void updateStatusToRefunded(Connection conn, String auctionId, String bidderId) throws SQLException;
+
+    void updateStatusByBidId(Connection conn, String bidId, String status) throws SQLException;
 }
+

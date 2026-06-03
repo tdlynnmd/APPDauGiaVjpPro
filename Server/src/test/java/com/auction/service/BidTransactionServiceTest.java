@@ -134,6 +134,10 @@ class BidTransactionServiceTest {
         @Override
         public void updateStatusToRefunded(Connection conn, String auctionId, String bidderId) throws SQLException {
         }
+
+        @Override
+        public void updateStatusByBidId(Connection conn, String bidId, String status) throws SQLException {
+        }
     }
 
     // Fake UserDAO để trả username theo bidderId

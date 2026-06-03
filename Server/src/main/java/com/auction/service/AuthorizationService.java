@@ -67,8 +67,8 @@ public class AuthorizationService {
             Map.entry(ActionType.DEPOSIT_MONEY.name(), Set.of(UserRole.BIDDER)),
             Map.entry(ActionType.WITHDRAW_MONEY.name(), Set.of(UserRole.BIDDER)),
             Map.entry(ActionType.PLACE_BID.name(), Set.of(UserRole.BIDDER)),
-            Map.entry(ActionType.LIVE_ENTERED.name(), Set.of(UserRole.BIDDER)),
-            Map.entry(ActionType.LIVE_EXITED.name(), Set.of(UserRole.BIDDER)),
+            Map.entry(ActionType.LIVE_ENTERED.name(), Set.of(UserRole.BIDDER, UserRole.SELLER, UserRole.ADMIN)),
+            Map.entry(ActionType.LIVE_EXITED.name(), Set.of(UserRole.BIDDER, UserRole.SELLER, UserRole.ADMIN)),
             Map.entry(ActionType.AUCTION_SUBSCRIBED.name(), Set.of(UserRole.BIDDER)),
             Map.entry(ActionType.AUCTION_UNSUBSCRIBED.name(), Set.of(UserRole.BIDDER)),
             Map.entry(ActionType.GET_MY_BID_HISTORY.name(), Set.of(UserRole.BIDDER)),   // Xem lịch sử đi chợ của cá nhân

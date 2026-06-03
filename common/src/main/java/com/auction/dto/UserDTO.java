@@ -41,4 +41,6 @@ public class UserDTO implements Serializable {
     public void setEmail(String email) { this.email = email; }
     public void setRole(UserRole role) { this.role = role; }
     public void setStatus(UserStatus status) { this.status = status; }
+    public void setAvailableBalance(double availableBalance) { this.availableBalance = availableBalance; }
+    public void setFrozenBalance(double frozenBalance) { this.frozenBalance = frozenBalance; }
 }

@@ -102,7 +102,11 @@ public class ServerBootstrap {
 
     private void initializeDatabasePool() throws SQLException {
         log.info("[Bootstrap] 2. Khởi tạo kết nối Database Pool...");
-        DatabaseConnection.getConnection();
+        DatabaseConnection.initialize();
+        // Kiểm tra kết nối test và tự động đóng bằng try-with-resources để tránh rò rỉ connection
+        try (java.sql.Connection testConn = DatabaseConnection.getConnection()) {
+            log.info("[Bootstrap]    -> Pool khởi tạo thành công, kết nối test đã đóng an toàn.");
+        }
     }
 
     private void wireInternalEventSystem() {

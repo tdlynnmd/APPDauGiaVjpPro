@@ -268,7 +268,9 @@ public class RequestDispatcher {
         }
         authController.logout(userId);
         sendSuccess(session, socketRequest, "Đăng xuất thành công.", null);
-        session.close();
+        // KHÔNG gọi session.close() ở đây.
+        // Client sẽ nhận phản hồi thành công, sau đó tự gọi ClientNetworkManager.resetConnection()
+        // để đóng socket phía nó. Server sẽ phát hiện kết nối đóng qua ClientHandler.finally
     }
 
     //ItemController
@@ -303,7 +305,7 @@ public class RequestDispatcher {
 
     //AuctionController
     private void handleGetActiveAuctions(SocketRequest socketRequest, ClientSession session) {
-        List<AuctionSummaryDTO> result = auctionController.getActiveAuctions();
+        List<AuctionSummaryDTO> result = auctionController.getActiveAuctions(session.getUserId());
         sendSuccess(session, socketRequest, "Lấy danh sách thành công.", result);
     }
 

@@ -348,6 +348,20 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                     SocketResponse enterResponse = auctionApi.enterLiveRoom(auctionId);
                     if (enterResponse != null && enterResponse.isSuccess()) {
                         liveRoomJoined = true;
+
+                        // Khôi phục cấu hình AutoBid nếu server trả về dữ liệu
+                        AuctionDetailDTO enterDetail = auctionApi.parseAuctionDetail(enterResponse);
+                        if (enterDetail != null && enterDetail.getActiveAutoBidMaxBid() > 0) {
+                            Platform.runLater(() -> {
+                                if (maxAutoBidField != null) {
+                                    maxAutoBidField.setText(String.valueOf(enterDetail.getActiveAutoBidMaxBid()));
+                                }
+                                if (autoBidIncrementField != null) {
+                                    autoBidIncrementField.setText(String.valueOf(enterDetail.getActiveAutoBidIncrement()));
+                                }
+                                showMessage("✅ Đã khôi phục cấu hình AutoBid của bạn.");
+                            });
+                        }
                     }
                 }
                 return null;
@@ -707,16 +721,51 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             setLabelText(currentPriceLabel, "Gia hien tai: " + formatMoney(currentPrice) + " VNĐ");
             setLabelText(highestBidderLabel, "Dang dan dau: " + safeText(highestBidderName));
             showMessage(safeText(event.getMessage()));
+            if (currentAuctionDetail != null) {
+                currentAuctionDetail.setCurrentPrice(currentPrice);
+            }
         });
 
-        /*
-         * Body realtime chi co thay doi moi nhat.
-         * Muon cap nhat bang lich su bid day du thi can reload chi tiet.
-         *
-         * ĐÃ SỬA: loadAuctionDetail() đã được thiết lập chạy ngầm hoàn toàn nên có thể
-         * tách ra khỏi Platform.runLater, loại bỏ rủi ro đứng hình UI khi nhận event dồn dập.
-         */
-        loadAuctionDetail();
+        // ĐÃ CẢI TIẾN: Nhận thông tin bid mới từ event và cập nhật trực tiếp vào UI TableView.
+        // Điều này giúp tránh việc gửi thêm HTTP/Socket request kéo chi tiết phiên (loadAuctionDetail),
+        // ngăn chặn hoàn toàn "bão query" làm nghẽn/overload server khi có autobid dồn dập.
+        if (body.has("bidTransaction") && !body.get("bidTransaction").isJsonNull()) {
+            try {
+                BidTransactionDTO newBid = com.auction.utils.GsonProvider.getGson().fromJson(body.get("bidTransaction"), BidTransactionDTO.class);
+                if (newBid != null) {
+                    Platform.runLater(() -> {
+                        // Cập nhật lại thời gian kết thúc nếu có thay đổi (chống bắn tỉa - anti-sniping)
+                        if (newBid.getNewEndTime() != null) {
+                            setLabelText(endTimeLabel, "Ket thuc: " + formatDateTime(newBid.getNewEndTime()));
+                            if (currentAuctionDetail != null) {
+                                currentAuctionDetail.setEndTime(newBid.getNewEndTime());
+                            }
+                        }
+                        // Cập nhật lại bước giá live nếu có thay đổi
+                        if (newBid.getLiveStepPrice() > 0) {
+                            setLabelText(stepPriceLabel, "Buoc gia: " + formatMoney(newBid.getLiveStepPrice()) + " VNĐ");
+                            if (currentAuctionDetail != null) {
+                                currentAuctionDetail.setLiveStepPrice(newBid.getLiveStepPrice());
+                            }
+                        }
+
+                        // Tránh thêm trùng lặp
+                        boolean exists = bidHistoryItems.stream()
+                                .anyMatch(b -> b.getBidId() != null && b.getBidId().equals(newBid.getBidId()));
+                        if (!exists) {
+                            // Thêm vào đầu bảng vì danh sách hiển thị DESC
+                            bidHistoryItems.add(0, newBid);
+                            // Capped tối đa 15 dòng lịch sử như server
+                            if (bidHistoryItems.size() > 15) {
+                                bidHistoryItems.remove(15);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("[handleBidUpdatedEvent] ❌ Không thể phân tích bidTransaction: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -814,6 +863,10 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                  */
                 liveRoomJoined = false;
                 unregisterRealtimeListener();
+            }
+
+            if ("FINISHED".equalsIgnoreCase(status)) {
+                showInfo(!isBlank(message) ? message : safeText(event.getMessage()));
             }
         });
     }
@@ -1018,7 +1071,7 @@ public class LiveBiddingController implements RealtimeUpdateListener {
      * Kiem tra event co thuoc dung phien dang hien thi khong.
      */
     private boolean isCurrentAuction(String eventAuctionId) {
-        return !isBlank(eventAuctionId) && eventAuctionId.equals(auctionId);
+        return !isBlank(eventAuctionId) && eventAuctionId.equalsIgnoreCase(auctionId);
     }
 
     /**
@@ -1165,6 +1218,16 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Loi");
+            alert.setHeaderText(null);
+            alert.setContentText(safeText(message));
+            alert.showAndWait();
+        });
+    }
+
+    private void showInfo(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Thông báo");
             alert.setHeaderText(null);
             alert.setContentText(safeText(message));
             alert.showAndWait();

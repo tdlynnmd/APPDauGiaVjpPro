@@ -1,6 +1,7 @@
 package com.auction.controller;
 
 import com.auction.util.ClientSession;
+import javafx.application.Platform;
 import com.auction.util.SceneNavigator;
 import javafx.event.ActionEvent; // Import thêm ActionEvent để xử lý nút bấm đổi theme
 import javafx.fxml.FXML;
@@ -131,6 +132,9 @@ public class DashboardController {
 
         // --- CẬP NHẬT HIỂN THỊ SỐ DƯ MẪU CHO CARD VÍ (Sau này kết nối API nạp dữ liệu thật) ---
         updateMiniBalance();
+        ClientSession.setBalanceListener((available, frozen) -> {
+            Platform.runLater(this::updateMiniBalance);
+        });
 
 
         hideAllRoleButtons();

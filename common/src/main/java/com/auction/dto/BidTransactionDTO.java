@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 public class BidTransactionDTO implements Serializable {
+    private String bidId;
+    private String auctionId;
     private String bidderName; // Chứa Tên hoặc Username thay vì ID ẩn danh
     private double amount;
     private LocalDateTime time;
@@ -25,6 +27,22 @@ public class BidTransactionDTO implements Serializable {
         this.status = status;
         this.newEndTime = newEndTime;
         this.liveStepPrice = liveStepPrice;
+    }
+
+    public String getBidId() {
+        return bidId;
+    }
+
+    public void setBidId(String bidId) {
+        this.bidId = bidId;
+    }
+
+    public String getAuctionId() {
+        return auctionId;
+    }
+
+    public void setAuctionId(String auctionId) {
+        this.auctionId = auctionId;
     }
 
     public double getAmount() {
@@ -50,4 +68,4 @@ public class BidTransactionDTO implements Serializable {
     public double getLiveStepPrice() {
         return liveStepPrice;
     }
-}
+}

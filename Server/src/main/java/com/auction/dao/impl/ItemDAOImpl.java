@@ -237,4 +237,13 @@ public class ItemDAOImpl implements ItemDAO {
                 throw new SQLException("Lỗi: Loại vật phẩm không xác định trong DB: " + typeStr);
         }
     }
+
+    @Override
+    public boolean softDelete(Connection conn, String itemId) throws SQLException {
+        String sql = "UPDATE items SET deleted_at = CURRENT_TIMESTAMP WHERE id = UUID_TO_BIN(?, 1)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, itemId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
 }

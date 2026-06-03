@@ -323,6 +323,9 @@
 .auction-table .table-cell.status-finished {
     -fx-text-fill: #f87171; /* Màu đỏ cam cảnh báo dịu mắt */
 }
+.auction-table .table-cell.status-paid {
+    -fx-text-fill: #34d399; /* Màu xanh lục sáng Neon */
+}
 
 /* Hệ thống nút bấm phụ trợ */
 .btn-primary { -fx-background-color: #fca311; -fx-text-fill: black; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand; }

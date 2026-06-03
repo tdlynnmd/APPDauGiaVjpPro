@@ -133,6 +133,9 @@ public class SceneNavigator {
             throw new IllegalStateException("Main stage has not been set.");
         }
 
+        // Gỡ bỏ balance listener cũ của màn hình trước khi chuyển cảnh
+        ClientSession.setBalanceListener(null);
+
         try {
             URL resource = SceneNavigator.class.getResource(fxmlPath);
 

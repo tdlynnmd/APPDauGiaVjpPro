@@ -240,7 +240,17 @@ public class UserService {
                 throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
             } finally {
                 if (conn != null) {
-                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { log.error("[DB Transaction] Đóng kết nối thất bại: {}", ex.getMessage(), ex); }
+                    try {
+                        conn.setAutoCommit(true);
+                    } catch (SQLException ex) {
+                        log.error("[DB Transaction] setAutoCommit thất bại: {}", ex.getMessage(), ex);
+                    } finally {
+                        try {
+                            conn.close();
+                        } catch (SQLException ex) {
+                            log.error("[DB Transaction] Đóng kết nối thất bại: {}", ex.getMessage(), ex);
+                        }
+                    }
                 }
             }
 

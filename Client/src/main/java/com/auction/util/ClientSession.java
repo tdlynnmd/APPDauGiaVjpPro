@@ -39,4 +39,24 @@ public class ClientSession {
         token = null;
         currentUser = null;
     }
+
+    public interface BalanceListener {
+        void onBalanceUpdated(double availableBalance, double frozenBalance);
+    }
+
+    private static BalanceListener balanceListener;
+
+    public static synchronized void setBalanceListener(BalanceListener listener) {
+        balanceListener = listener;
+    }
+
+    public static synchronized void triggerBalanceUpdate(double available, double frozen) {
+        if (currentUser != null) {
+            currentUser.setAvailableBalance(available);
+            currentUser.setFrozenBalance(frozen);
+        }
+        if (balanceListener != null) {
+            balanceListener.onBalanceUpdated(available, frozen);
+        }
+    }
 }

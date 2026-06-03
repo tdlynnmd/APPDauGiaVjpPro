@@ -15,4 +15,6 @@ public interface ItemDAO {
     boolean updateStatus(Connection conn, String itemId, String newStatus) throws SQLException;
 
     boolean updateItem(Connection conn, Item item) throws SQLException;
+
+    boolean softDelete(Connection conn, String itemId) throws SQLException;
 }

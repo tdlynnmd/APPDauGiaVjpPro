@@ -191,4 +191,22 @@ public class ConnectionManage {
 
         return totalDevices;
     }
+
+    /**
+     * Gửi cập nhật ví thời gian thực tới tất cả thiết bị của user
+     */
+    public void sendBalanceUpdate(String userId, double available, double frozen) {
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("availableBalance", available);
+        payload.put("frozenBalance", frozen);
+        
+        com.auction.dto.SocketResponse event = com.auction.dto.SocketResponse.event(
+                com.auction.enums.ActionType.WALLET_UPDATE,
+                "Số dư tài khoản của bạn đã thay đổi.",
+                payload
+        );
+        
+        String jsonMessage = com.auction.utils.GsonProvider.getGson().toJson(event);
+        sendMessageToUser(userId, jsonMessage);
+    }
 }

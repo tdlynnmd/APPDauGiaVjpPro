@@ -132,10 +132,15 @@ public class WalletController {
         applyWalletModeByRole();
         showMessage("Dang tai thong tin vi...");
 
-        /*
-         * Khi mo man hinh, luon lay lai profile tu Server.
-         * Khong chi tin vao ClientSession vi so du co the da thay doi sau khi dau gia.
-         */
+        ClientSession.setBalanceListener((available, frozen) -> {
+            Platform.runLater(() -> {
+                UserDTO currentUser = ClientSession.getCurrentUser();
+                if (currentUser != null) {
+                    renderBalances(currentUser);
+                }
+            });
+        });
+
         loadWalletProfile();
     }
 

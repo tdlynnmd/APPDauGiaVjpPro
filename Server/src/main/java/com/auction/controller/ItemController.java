@@ -62,7 +62,7 @@ public class ItemController {
         ItemDetailDTO currentItem = itemService.getDetailedItem(request.getItemId());
         requireItemOwnerOrAdmin(currentItem, session);
 
-        itemService.updateItemStatus(request.getItemId(), ItemStatus.INACTIVE);
+        itemService.deleteItem(request.getItemId());
     }
 
     public List<ItemSummaryDTO> getSellerItems(ClientSession session) {

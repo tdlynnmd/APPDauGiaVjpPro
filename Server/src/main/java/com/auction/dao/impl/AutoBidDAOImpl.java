@@ -32,7 +32,9 @@ public class AutoBidDAOImpl implements AutoBidDAO {
 
     @Override
     public Optional<AutoBid> findActiveByUserAndAuction(Connection conn, String userId, String auctionId) throws SQLException {
-        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(user_id, 1) AS user_id, BIN_TO_UUID(auction_id, 1) AS auction_id, max_bid, increment_amount, is_active, created_at FROM auto_bids WHERE user_id = UUID_TO_BIN(?, 1) AND auction_id = UUID_TO_BIN(?, 1) AND is_active = 1";
+        // Tìm BẤT KỲ bản ghi AutoBid nào (kể cả inactive) để tái sử dụng ID cũ khi kích hoạt lại
+        // Tránh lỗi duplicate entry trên ràng buộc unique_user_auction
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(user_id, 1) AS user_id, BIN_TO_UUID(auction_id, 1) AS auction_id, max_bid, increment_amount, is_active, created_at FROM auto_bids WHERE user_id = UUID_TO_BIN(?, 1) AND auction_id = UUID_TO_BIN(?, 1) ORDER BY created_at DESC LIMIT 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.setString(2, auctionId);

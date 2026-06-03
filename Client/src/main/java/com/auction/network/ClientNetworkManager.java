@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class ClientNetworkManager {
@@ -13,9 +14,11 @@ public class ClientNetworkManager {
     private BufferedReader reader;
 
     private ClientNetworkManager() {
-        // === GIỮ NGUYÊN CODE CŨ KHỞI TẠO BAN ĐẦU ===
+        // Sử dụng IP cứng 127.0.0.1 để tránh trễ DNS IPv6 của Windows
+        // Kết nối với timeout tối đa 3 giây thay vì block vô hạn
         try {
-            this.socket = new Socket("localhost", 5555);
+            this.socket = new Socket();
+            this.socket.connect(new InetSocketAddress("127.0.0.1", 5555), 3000);
             this.writer = new PrintWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8), true);
             this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
         } catch (IOException e) { e.printStackTrace(); }

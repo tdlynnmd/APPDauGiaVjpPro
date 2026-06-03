@@ -1,6 +1,7 @@
 package com.auction.controller;
 
 import com.auction.dto.AdminDTO;
+import javafx.application.Platform;
 import com.auction.dto.BidderDTO;
 import com.auction.dto.SellerDTO;
 import com.auction.dto.SocketResponse;
@@ -115,6 +116,16 @@ public class AccountController {
         }
 
         hideRoleSpecificSections();
+
+        ClientSession.setBalanceListener((available, frozen) -> {
+            Platform.runLater(() -> {
+                UserDTO currentUser = ClientSession.getCurrentUser();
+                if (currentUser != null) {
+                    renderWallet(currentUser);
+                }
+            });
+        });
+
         loadProfile();
     }
 

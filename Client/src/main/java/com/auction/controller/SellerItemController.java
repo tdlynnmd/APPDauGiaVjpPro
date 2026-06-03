@@ -688,26 +688,21 @@ public class SellerItemController {
             return;
         }
 
-        this.currentEditingItem = selectedItem;
-
-        rightSplitPaneContainer.setVisible(true);
-        rightSplitPaneContainer.setManaged(true);
-        formEditContainer.setVisible(true);
-        formEditContainer.setManaged(true);
-        formCreateContainer.setVisible(false);
-        formCreateContainer.setManaged(false);
-        if (auctionConfigContainer != null) {
-            auctionConfigContainer.setVisible(false);
-            auctionConfigContainer.setManaged(false);
+        // Kiểm tra trạng thái: Chỉ cho phép chỉnh sửa vật phẩm ACTIVE
+        String status = selectedItem.getStatus();
+        if (!"ACTIVE".equalsIgnoreCase(status)) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Không thể chỉnh sửa");
+            alert.setHeaderText(null);
+            alert.setContentText("Chỉ có thể chỉnh sửa sản phẩm đang hoạt động (ACTIVE).\nVật phẩm này đang ở trạng thái: " + status);
+            alert.showAndWait();
+            return;
         }
 
-        this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
-                + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
-                + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
-                + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
-                + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
+        this.currentEditingItem = selectedItem;
 
-        showMessage("Đang mở Form chỉnh sửa vật phẩm: " + selectedItem.getItemName());
+        // Gọi workflow chuẩn: nạp đúng dữ liệu của item được chọn vào form trước khi hiển thị
+        activateEditFormWorkflow(selectedItem);
     }
 
     /**
@@ -1120,8 +1115,8 @@ public class SellerItemController {
         }
 
         String currentStatus = selectedItemLocal.getStatus() == null ? "" : selectedItemLocal.getStatus().toUpperCase();
-        if (!"ACTIVE".equals(currentStatus)) {
-            showError("Chỉ có thể xóa sản phẩm đang hoạt động (ACTIVE). Sản phẩm mang trạng thái " + currentStatus + " không thể xóa!");
+        if (!"ACTIVE".equals(currentStatus) && !"SOLD".equals(currentStatus)) {
+            showError("Chỉ có thể xóa sản phẩm đang hoạt động (ACTIVE) hoặc đã bán (SOLD). Sản phẩm mang trạng thái " + currentStatus + " không thể xóa!");
             return;
         }
 
@@ -1161,7 +1156,7 @@ public class SellerItemController {
             }
 
             showInfo(response.getMessage());
-            showMessage("Sản phẩm đã được chuyển sang trạng thái ngừng hoạt động (INACTIVE).");
+            showMessage("Sản phẩm đã được xóa thành công.");
 
             applyStatusFilterAndSort();
 

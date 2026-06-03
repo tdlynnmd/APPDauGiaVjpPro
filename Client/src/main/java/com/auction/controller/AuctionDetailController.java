@@ -26,6 +26,11 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
+import com.auction.service.ClientSocketService;
+import com.auction.service.RealtimeUpdateListener;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -34,24 +39,8 @@ import java.util.Objects;
 
 /**
  * AuctionDetailController là Controller phía Client cho màn hình chi tiết phiên đấu giá.
- *
- * Nhiệm vụ:
- * - Nhận auctionId từ màn hình danh sách đấu giá.
- * - Gọi ClientAuctionApi để gửi request GET_AUCTION_DETAIL sang Server.
- * - Nhận SocketResponse từ Server.
- * - Parse SocketResponse.body thành AuctionDetailDTO.
- * - Hiển thị thông tin chi tiết phiên đấu giá lên giao diện.
- * - Hiển thị lịch sử đặt giá của phiên đấu giá.
- * - Cho phép Bidder nhập số tiền và gửi request PLACE_BID.
- * - Refresh lại dữ liệu sau khi đặt giá thành công.
- *
- * Lưu ý:
- * - Controller này chỉ xử lý giao diện và gọi API phía Client.
- * - Controller này không tự xử lý nghiệp vụ đấu giá.
- * - Server mới là nơi kiểm tra quyền, kiểm tra số tiền bid và cập nhật dữ liệu thật.
- * - Nút "Vào phòng live" chỉ hiển thị cho Bidder; màn live dùng LIVE_ENTERED / LIVE_EXITED.
  */
-public class AuctionDetailController {
+public class AuctionDetailController implements RealtimeUpdateListener {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
 
     /*
@@ -66,6 +55,8 @@ public class AuctionDetailController {
      * Khi đặt giá, controller có thể dùng currentAuctionDetail để kiểm tra nhanh dữ liệu đang hiển thị.
      */
     private AuctionDetailDTO currentAuctionDetail;
+    private boolean liveRoomJoined;
+    private boolean listenerRegistered;
 
     /*
      * ObservableList là danh sách mà TableView theo dõi.
@@ -222,8 +213,12 @@ public class AuctionDetailController {
      * Sau khi có auctionId, controller mới gọi Server để lấy chi tiết.
      */
     public void setAuctionId(String auctionId) {
-        this.auctionId = auctionId;
+        if (!isBlank(this.auctionId) && !this.auctionId.equals(auctionId)) {
+            cleanupLiveRoom();
+        }
+        this.auctionId = auctionId != null ? auctionId.trim() : null;
         applyLiveBiddingAccess();
+        registerRealtimeListener();
         loadAuctionDetail();
     }
 
@@ -303,6 +298,7 @@ public class AuctionDetailController {
             displayAuctionDetail(detail);
             applyLiveBiddingAccess(); // Cập nhật lại quyền hiển thị nút live room theo dữ liệu phiên mới nhất
             showMessage("Đã tải chi tiết phiên đấu giá.");
+            enterLiveRoomIfNeeded();
         });
 
         task.setOnFailed(event -> {
@@ -536,11 +532,7 @@ public class AuctionDetailController {
      */
     @FXML
     private void handleBack() {
-        /*
-         * Quay lại màn danh sách đấu giá.
-         * Không quay về Dashboard nữa vì luồng đúng là:
-         * Auction List -> Auction Detail -> Auction List.
-         */
+        cleanupLiveRoom();
         SceneNavigator.showAuctionList();
     }
 
@@ -632,5 +624,273 @@ public class AuctionDetailController {
             alert.setContentText(safeText(message));
             alert.showAndWait();
         });
+    }
+
+    @Override
+    public void onRealtimeUpdate(SocketResponse event) {
+        if (event == null || isBlank(auctionId)) {
+            return;
+        }
+
+        String action = getActionName(event);
+
+        if ("BID_UPDATE".equals(action) || "BID_UPDATED".equals(action)) {
+            handleBidUpdatedEvent(event);
+            return;
+        }
+
+        if ("TIME_UPDATE".equals(action)) {
+            handleTimeUpdateEvent(event);
+            return;
+        }
+
+        if ("STATUS_UPDATED".equals(action) || "AUCTION_ENDED".equals(action) || "AUCTION_CANCELED".equals(action)) {
+            handleAuctionStatusEvent(event);
+        }
+    }
+
+    private void handleBidUpdatedEvent(SocketResponse event) {
+        JsonObject body = getBodyAsObject(event);
+        if (body == null || !isEventForCurrentAuction(body)) {
+            return;
+        }
+
+        Double currentPrice = readDouble(body, "currentPrice", "amount", "highestPrice");
+        if (currentPrice == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            setLabelText(currentPriceLabel, "Giá hiện tại: " + formatMoney(currentPrice) + " VNĐ");
+            showMessage(safeText(event.getMessage()));
+            if (currentAuctionDetail != null) {
+                currentAuctionDetail.setCurrentPrice(currentPrice);
+            }
+        });
+
+        if (body.has("bidTransaction") && !body.get("bidTransaction").isJsonNull()) {
+            try {
+                BidTransactionDTO newBid = com.auction.utils.GsonProvider.getGson().fromJson(body.get("bidTransaction"), BidTransactionDTO.class);
+                if (newBid != null) {
+                    Platform.runLater(() -> {
+                        if (newBid.getNewEndTime() != null) {
+                            setLabelText(endTimeLabel, "Kết thúc: " + formatDateTime(newBid.getNewEndTime()));
+                            if (currentAuctionDetail != null) {
+                                currentAuctionDetail.setEndTime(newBid.getNewEndTime());
+                            }
+                        }
+                        if (newBid.getLiveStepPrice() > 0) {
+                            setLabelText(stepPriceLabel, "Bước giá: " + formatMoney(newBid.getLiveStepPrice()) + " VNĐ");
+                            if (currentAuctionDetail != null) {
+                                currentAuctionDetail.setLiveStepPrice(newBid.getLiveStepPrice());
+                            }
+                        }
+
+                        boolean exists = bidHistoryItems.stream()
+                                .anyMatch(b -> b.getBidId() != null && b.getBidId().equals(newBid.getBidId()));
+                        if (!exists) {
+                            bidHistoryItems.add(0, newBid);
+                            if (bidHistoryItems.size() > 15) {
+                                bidHistoryItems.remove(15);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("[handleBidUpdatedEvent] ❌ Không thể phân tích bidTransaction: " + e.getMessage());
+            }
+        }
+    }
+
+    private void handleTimeUpdateEvent(SocketResponse event) {
+        JsonObject body = getBodyAsObject(event);
+        if (body == null || !isEventForCurrentAuction(body)) {
+            return;
+        }
+
+        Long secondsRemaining = readLong(body, "secondsRemaining", "remainingSeconds", "timeRemaining");
+        if (secondsRemaining == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            String timeText = "Còn lại: " + formatSeconds(secondsRemaining);
+            setLabelText(endTimeLabel, timeText);
+        });
+    }
+
+    private void handleAuctionStatusEvent(SocketResponse event) {
+        JsonObject body = getBodyAsObject(event);
+        if (body == null || !isEventForCurrentAuction(body)) {
+            return;
+        }
+
+        String status = readString(body, "status", "newStatus");
+        String message = readString(body, "message");
+        Double finalPrice = readDouble(body, "finalPrice", "highestPrice", "currentPrice");
+
+        Platform.runLater(() -> {
+            if (!isBlank(status)) {
+                setLabelText(statusLabel, "Trạng thái: " + status);
+            }
+
+            if (finalPrice != null) {
+                setLabelText(currentPriceLabel, "Giá hiện tại: " + formatMoney(finalPrice) + " VNĐ");
+            }
+
+            showMessage(!isBlank(message) ? message : safeText(event.getMessage()));
+
+            if (isTerminalStatus(status) || "AUCTION_ENDED".equals(getActionName(event))
+                    || "AUCTION_CANCELED".equals(getActionName(event))) {
+                if (bidAmountField != null) bidAmountField.setDisable(true);
+                if (placeBidButton != null) placeBidButton.setDisable(true);
+                
+                liveRoomJoined = false;
+                unregisterRealtimeListener();
+            }
+
+            if ("FINISHED".equalsIgnoreCase(status)) {
+                showInfo(!isBlank(message) ? message : safeText(event.getMessage()));
+            }
+        });
+    }
+
+    private void enterLiveRoomIfNeeded() {
+        if (!liveRoomJoined && !isBlank(auctionId)) {
+            Task<SocketResponse> enterTask = new Task<>() {
+                @Override
+                protected SocketResponse call() {
+                    return auctionApi.enterLiveRoom(auctionId);
+                }
+            };
+            enterTask.setOnSucceeded(e -> {
+                SocketResponse resp = enterTask.getValue();
+                if (resp != null && resp.isSuccess()) {
+                    liveRoomJoined = true;
+                    System.out.println("[AuctionDetail] Đã tham gia phòng live của phiên: " + auctionId);
+                }
+            });
+            Thread t = new Thread(enterTask, "detail-enter-live-room");
+            t.setDaemon(true);
+            t.start();
+        }
+    }
+
+    private void registerRealtimeListener() {
+        if (listenerRegistered) {
+            return;
+        }
+        ClientSocketService.getInstance().addRealtimeListener(this);
+        listenerRegistered = true;
+    }
+
+    private void unregisterRealtimeListener() {
+        if (!listenerRegistered) {
+            return;
+        }
+        ClientSocketService.getInstance().removeRealtimeListener(this);
+        listenerRegistered = false;
+    }
+
+    private void cleanupLiveRoom() {
+        if (liveRoomJoined && !isBlank(auctionId)) {
+            String targetId = this.auctionId;
+            liveRoomJoined = false;
+            Thread exitWorker = new Thread(() -> {
+                try {
+                    auctionApi.exitLiveRoom(targetId);
+                } catch (Exception e) {
+                    System.err.println("[AuctionDetailController] Không thể exit live room: " + targetId);
+                }
+            }, "detail-exit-worker");
+            exitWorker.setDaemon(true);
+            exitWorker.start();
+        }
+        unregisterRealtimeListener();
+    }
+
+    private String getActionName(SocketResponse event) {
+        if (event == null) {
+            return "";
+        }
+        try {
+            return safeText(event.getAction());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private JsonObject getBodyAsObject(SocketResponse event) {
+        if (event == null || event.getBody() == null || event.getBody().isJsonNull()) {
+            return null;
+        }
+        JsonElement body = event.getBody();
+        if (!body.isJsonObject()) {
+            return null;
+        }
+        return body.getAsJsonObject();
+    }
+
+    private boolean isEventForCurrentAuction(JsonObject body) {
+        String eventAuctionId = readString(body, "auctionId", "roomId");
+        return isBlank(eventAuctionId) || eventAuctionId.equalsIgnoreCase(auctionId);
+    }
+
+    private String readString(JsonObject body, String... fieldNames) {
+        if (body == null || fieldNames == null) {
+            return "";
+        }
+        for (String fieldName : fieldNames) {
+            if (body.has(fieldName) && !body.get(fieldName).isJsonNull()) {
+                return body.get(fieldName).getAsString();
+            }
+        }
+        return "";
+    }
+
+    private Double readDouble(JsonObject body, String... fieldNames) {
+        if (body == null || fieldNames == null) {
+            return null;
+        }
+        for (String fieldName : fieldNames) {
+            if (body.has(fieldName) && !body.get(fieldName).isJsonNull()) {
+                try {
+                    return body.get(fieldName).getAsDouble();
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+
+    private Long readLong(JsonObject body, String... fieldNames) {
+        if (body == null || fieldNames == null) {
+            return null;
+        }
+        for (String fieldName : fieldNames) {
+            if (body.has(fieldName) && !body.get(fieldName).isJsonNull()) {
+                try {
+                    return body.get(fieldName).getAsLong();
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+
+    private boolean isTerminalStatus(String status) {
+        String safeStatus = safeText(status);
+        return "FINISHED".equalsIgnoreCase(safeStatus)
+                || "CANCELED".equalsIgnoreCase(safeStatus)
+                || "PAID".equalsIgnoreCase(safeStatus);
+    }
+
+    private String formatSeconds(long totalSeconds) {
+        long safeSeconds = Math.max(totalSeconds, 0);
+        long hours = safeSeconds / 3600;
+        long minutes = (safeSeconds % 3600) / 60;
+        long seconds = safeSeconds % 60;
+        if (hours > 0) {
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format("%02d:%02d", minutes, seconds);
     }
 }

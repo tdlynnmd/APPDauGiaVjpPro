@@ -13,6 +13,10 @@ import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -35,6 +39,7 @@ import java.util.Objects;
  */
 public class AuctionListController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
+    private Timeline autoRefreshTimeline;
 
     /*
      * ObservableList là danh sách dữ liệu mà TableView theo dõi.
@@ -109,6 +114,17 @@ public class AuctionListController {
 
         loadActiveAuctions();
         updateTablePlaceholder(SceneNavigator.isAppDarkMode);
+
+        // Khởi động Timeline refresh tự động sau mỗi 4 giây
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(4), event -> {
+            if (auctionTable.getScene() == null || auctionTable.getScene().getWindow() == null) {
+                autoRefreshTimeline.stop();
+            } else {
+                loadActiveAuctionsSilently();
+            }
+        }));
+        autoRefreshTimeline.setCycleCount(Animation.INDEFINITE);
+        autoRefreshTimeline.play();
     }
 
     /**
@@ -230,6 +246,15 @@ public class AuctionListController {
         }
     }
 
+    private void loadActiveAuctionsSilently() {
+        SocketResponse response = auctionApi.getActiveAuctions();
+        if (response != null && response.isSuccess()) {
+            List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
+            allServerAuctions.setAll(auctions);
+            applySearchFilterAndPagination();
+        }
+    }
+
     private void updateTablePlaceholder(boolean isDarkMode) {
         VBox emptyBox = new VBox(12);
         emptyBox.setStyle("-fx-alignment: center; -fx-padding: 30;");
@@ -290,10 +315,11 @@ public class AuctionListController {
                 else {
                     setText(status);
                     setStyle("-fx-alignment: center; -fx-font-weight: bold;");
-                    getStyleClass().removeAll("status-running", "status-open", "status-finished");
+                    getStyleClass().removeAll("status-running", "status-open", "status-finished", "status-paid");
                     if ("RUNNING".equalsIgnoreCase(status)) getStyleClass().add("status-running");
                     else if ("OPEN".equalsIgnoreCase(status)) getStyleClass().add("status-open");
                     else if ("FINISHED".equalsIgnoreCase(status)) getStyleClass().add("status-finished");
+                    else if ("PAID".equalsIgnoreCase(status)) getStyleClass().add("status-paid");
                 }
             }
         });

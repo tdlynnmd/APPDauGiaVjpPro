@@ -133,7 +133,7 @@ class AuctionControllerTest {
         String lastCancelAutoAuctionId;
 
         @Override
-        public List<AuctionSummaryDTO> getAllActiveAuctions() {
+        public List<AuctionSummaryDTO> getAllActiveAuctions(String currentUserId) {
             return activeAuctionsToReturn;
         }
 
@@ -246,7 +246,7 @@ class AuctionControllerTest {
 
         auctionService.activeAuctionsToReturn = auctions;
 
-        List<AuctionSummaryDTO> result = auctionController.getActiveAuctions();
+        List<AuctionSummaryDTO> result = auctionController.getActiveAuctions("user-1");
 
         assertSame(auctions, result);
     }

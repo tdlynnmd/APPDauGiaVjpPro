@@ -78,4 +78,5 @@ public enum ActionType {
     PING,                         // keep-alive: Client gửi định kỳ để giữ kết nối Socket sống
     SETUP_AUTO_BID,               // thiết lập tự động đấu giá (bidder)
     CANCEL_AUTO_BID,              // hủy tự động đấu giá (bidder)
+    WALLET_UPDATE,                // Cập nhật ví thời gian thực
 }

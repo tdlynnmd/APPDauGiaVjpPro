@@ -102,70 +102,132 @@ public class AuctionManage {
     //Quản lý vòng đời của auction tự động bằng realtime
     public void startLifecycleMonitor() {
         scheduler.scheduleAtFixedRate(() -> {
-            LocalDateTime now = LocalDateTime.now();
+            try {
+                LocalDateTime now = LocalDateTime.now();
 
-            // Luồng dọn dẹp sản phẩm rác ké luồng đếm giờ hệ thống
-            ProductManage.getInstance().cleanupIdleProducts();
+                // Luồng dọn dẹp sản phẩm rác ké luồng đếm giờ hệ thống
+                ProductManage.getInstance().cleanupIdleProducts();
 
-            for (Auction auction : activeAuctions.values()) {
-                //  Lưu lại trạng thái cũ
-                AuctionStatus oldStatus = auction.getStatus();
+                for (Auction auction : activeAuctions.values()) {
+                    //  Lưu lại trạng thái cũ
+                    AuctionStatus oldStatus = auction.getStatus();
 
-                //  Refresh trạng thái theo thời gian thực
-                auction.refreshStatus(now);
-                AuctionStatus newStatus = auction.getStatus();
-                String auctionId = auction.getId();
+                    //  Refresh trạng thái theo thời gian thực
+                    auction.refreshStatus(now);
+                    AuctionStatus newStatus = auction.getStatus();
+                    String auctionId = auction.getId();
 
-                // 1. Tự động phát sự kiện TIMER_TICK mỗi giây cho phòng đang chạy
-                if (newStatus == RUNNING) {
-                    long secondsLeft = Duration.between(now, auction.getEndTime()).toSeconds();
-                    if (secondsLeft < 0) secondsLeft = 0;
+                    // 1. Tự động phát sự kiện TIMER_TICK mỗi giây cho phòng đang chạy
+                    if (newStatus == RUNNING) {
+                        long secondsLeft = Duration.between(now, auction.getEndTime()).toSeconds();
+                        if (secondsLeft < 0) secondsLeft = 0;
 
-                    AuctionEvent timerEvent = new AuctionEvent(
-                            auctionId,
-                            AuctionEventType.TIMER_TICK,
-                            secondsLeft
-                    );
-                    AuctionEventBus.getInstance().publish(timerEvent);
-                    // Vì phòng đang RUNNING và bắn tick liên tục, ta luôn cập nhật để giữ nó trên RAM
-                    lastAccessedTime.put(auctionId, now);
-                }
+                        AuctionEvent timerEvent = new AuctionEvent(
+                                auctionId,
+                                AuctionEventType.TIMER_TICK,
+                                secondsLeft
+                        );
+                        AuctionEventBus.getInstance().publish(timerEvent);
+                        // Vì phòng đang RUNNING và bắn tick liên tục, ta luôn cập nhật để giữ nó trên RAM
+                        lastAccessedTime.put(auctionId, now);
+                    }
 
-                // 2. Thông báo khi VỪA MỚI chuyển trạng thái từ OPEN sang RUNNING
-                if (oldStatus == OPEN && newStatus == RUNNING) {
-                    // 🔥 THAY ĐỔI TẠI ĐÂY: Đồng bộ các Khóa dữ liệu khi phiên chính thức khai hỏa
-                    AuctionEvent startEvent = getAuctionEvent(auctionId);
-                    AuctionEventBus.getInstance().publish(startEvent);
-                }
+                    // 2. Thông báo khi VỪA MỚI chuyển trạng thái từ OPEN sang RUNNING
+                    if (oldStatus == OPEN && newStatus == RUNNING) {
+                        // 🔥 THAY ĐỔI TẠI ĐÂY: Đồng bộ các Khóa dữ liệu khi phiên chính thức khai hỏa
+                        AuctionEvent startEvent = getAuctionEvent(auctionId);
+                        AuctionEventBus.getInstance().publish(startEvent);
 
-                // 3. Nếu VỪA MỚI kết thúc thì gọi hàm xử lý
-                if (oldStatus == RUNNING && newStatus == FINISHED) {
-                    finishAuction(auction.getId());
-                    continue;
-                }
+                        // Kích hoạt AutoBid ngay khi phiên chuyển sang RUNNING
+                        // đảm bảo các lệnh autobid đặt trước không bị bỏ qua giây đầu tiên
+                        try {
+                            synchronized (auction) {
+                                getAuctionService().triggerAutoBids(auction);
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("[AuctionManage] ⚠️ Lỗi trigger AutoBid khi phiên khai hỏa: " + ex.getMessage());
+                        }
+                    }
 
-                // 🔥 LUỒNG 4 (THÊM MỚI): KIỂM TRA ĐỂ TRỤC XUẤT CÁC PHIÊN KHÔNG HOẠT ĐỘNG (CACHE EVICTION)
-                // Điều kiện trục xuất: Phiên KHÔNG PHẢI đang chạy (có thể là OPEN hoặc đã đóng)
-                // VÀ không có ai tương tác (đặt giá, xem chi tiết) quá MAX_IDLE_MINUTES
-                if (newStatus != RUNNING) {
-                    // Tính toán xem còn bao nhiêu phút nữa thì phiên này bắt đầu chạy (startTime)
-                    long minutesUntilStart = Duration.between(now, auction.getStartTime()).toMinutes();
+                    // 3. Nếu VỪA MỚI kết thúc thì gọi hàm xử lý
+                    if (oldStatus == RUNNING && newStatus == FINISHED) {
+                        finishAuction(auction.getId());
+                        continue;
+                    }
 
-                    // LUẬT BẢO VỆ: Nếu còn dưới 15 phút nữa là mở cửa, KHÔNG ĐƯỢC trục xuất khỏi RAM
-                    if (minutesUntilStart > 15) {
-                        LocalDateTime lastAccess = lastAccessedTime.get(auctionId);
-                        if (lastAccess != null) {
-                            long idleMinutes = Duration.between(lastAccess, now).toMinutes();
-                            if (idleMinutes >= MAX_IDLE_MINUTES) {
-                                // Đủ điều kiện nằm im và còn lâu mới chạy -> Tiến hành dọn dẹp giải phóng RAM
-                                activeAuctions.remove(auctionId);
-                                lastAccessedTime.remove(auctionId);
+                    // 🔥 LUỒNG 4 (THÊM MỚI): KIỂM TRA ĐỂ TRỤC XUẤT CÁC PHIÊN KHÔNG HOẠT ĐỘNG (CACHE EVICTION)
+                    // Điều kiện trục xuất: Phiên KHÔNG PHẢI đang chạy (có thể là OPEN hoặc đã đóng)
+                    // VÀ không có ai tương tác (đặt giá, xem chi tiết) quá MAX_IDLE_MINUTES
+                    if (newStatus != RUNNING) {
+                        // Tính toán xem còn bao nhiêu phút nữa thì phiên này bắt đầu chạy (startTime)
+                        long minutesUntilStart = Duration.between(now, auction.getStartTime()).toMinutes();
+
+                        // LUẬT BẢO VỆ: Nếu còn dưới 15 phút nữa là mở cửa, KHÔNG ĐƯỢC trục xuất khỏi RAM
+                        if (minutesUntilStart > 15) {
+                            LocalDateTime lastAccess = lastAccessedTime.get(auctionId);
+                            if (lastAccess != null) {
+                                long idleMinutes = Duration.between(lastAccess, now).toMinutes();
+                                if (idleMinutes >= MAX_IDLE_MINUTES) {
+                                    // Đủ điều kiện nằm im và còn lâu mới chạy -> Tiến hành dọn dẹp giải phóng RAM
+                                    activeAuctions.remove(auctionId);
+                                    lastAccessedTime.remove(auctionId);
+                                }
                             }
                         }
                     }
                 }
+            } catch (Exception e) {
+                // Bọc toàn bộ thân Task trong try-catch để đảm bảo luồng đếm giờ không bao giờ chết
+                // dù có lỗi phát sinh từ bất kỳ phiên đấu giá nào
+                System.err.println("[AuctionManage] ❌ Lỗi trong vòng quét lifecycle, bỏ qua: " + e.getMessage());
+                e.printStackTrace();
             }
         }, 0, 1, TimeUnit.SECONDS); // Quét mỗi giây 1 lần
+
+        // Task dọn dẹp chạy mỗi 10 phút
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                performDatabaseCleanup();
+            } catch (Exception e) {
+                System.err.println("[AuctionManage] ❌ Lỗi chạy task dọn dẹp DB: " + e.getMessage());
+            }
+        }, 0, 10, TimeUnit.MINUTES);
+    }
+
+    private void performDatabaseCleanup() {
+        System.out.println("[AuctionManage] 🧹 Đang chạy tiến trình dọn dẹp cơ sở dữ liệu định kỳ...");
+        LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+        
+        try (java.sql.Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // Query 1: Xóa cứng các phiên đấu giá đã kết thúc/hủy lâu hơn 24 giờ
+                String deleteAuctionsSql = "DELETE FROM auctions WHERE status IN ('FINISHED', 'CANCELED', 'PAID') AND end_time <= ?";
+                try (java.sql.PreparedStatement stmt1 = conn.prepareStatement(deleteAuctionsSql)) {
+                    stmt1.setTimestamp(1, java.sql.Timestamp.valueOf(threshold));
+                    int deletedAuctions = stmt1.executeUpdate();
+                    if (deletedAuctions > 0) {
+                        System.out.println("[AuctionManage] 🧹 Đã xóa " + deletedAuctions + " phiên đấu giá đã kết thúc/hủy > 24 giờ.");
+                    }
+                }
+
+                // Query 2: Xóa cứng các vật phẩm đã bị xóa mềm và không còn phiên đấu giá nào tham chiếu
+                String deleteItemsSql = "DELETE i FROM items i LEFT JOIN auctions a ON i.id = a.item_id WHERE i.deleted_at IS NOT NULL AND a.id IS NULL";
+                try (java.sql.PreparedStatement stmt2 = conn.prepareStatement(deleteItemsSql)) {
+                    int deletedItems = stmt2.executeUpdate();
+                    if (deletedItems > 0) {
+                        System.out.println("[AuctionManage] 🧹 Đã xóa " + deletedItems + " vật phẩm đã xóa mềm không còn phiên đấu giá tham chiếu.");
+                    }
+                }
+                
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (Exception e) {
+            System.err.println("[AuctionManage] ❌ Lỗi dọn dẹp cơ sở dữ liệu định kỳ: " + e.getMessage());
+        }
     }
 
     @NotNull

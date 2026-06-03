@@ -70,6 +70,16 @@ public class DatabaseConnection {
             // 3. Khai hỏa thiết lập DataSource duy nhất
             dataSource = new HikariDataSource(config);
 
+            // 4. Tự động xóa ràng buộc UNIQUE uq_item_id trên bảng auctions nếu tồn tại
+            // Ràng buộc này gây lỗi duplicate entry khi tạo nhiều phiên cho cùng 1 item
+            try (java.sql.Connection conn = dataSource.getConnection();
+                 java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute("ALTER TABLE auctions DROP INDEX uq_item_id");
+                System.out.println("[DatabaseConnection] ✅ Đã xóa ràng buộc unique uq_item_id khỏi bảng auctions.");
+            } catch (java.sql.SQLException ignored) {
+                // Index không tồn tại - bỏ qua lỗi
+            }
+
         } catch (Exception e) {
             // Không nuốt lỗi câm lặng, ném Exception rõ ràng để hàm main dừng khởi động Server
             throw new RuntimeException("Trọng pháo khởi tạo Database Connection Pool bị gãy!", e);

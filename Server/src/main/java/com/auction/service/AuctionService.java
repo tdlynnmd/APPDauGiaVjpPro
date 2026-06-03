@@ -133,7 +133,7 @@ public class AuctionService {
                 throw new AuctionException(AuctionErrorCode.AUCTION_NOT_RUNNING);
             }
 
-            if (amount < auction.getCurrentPrice() + auction.getStepPrice()) {
+            if (amount < auction.getCurrentPrice() + auction.getLiveStepPrice()) {
                 throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW);
             }
 
@@ -147,6 +147,7 @@ public class AuctionService {
 
     private void executeBidInternal(Bidder bidder, Auction auction, double amount) {
         String oldHighestBidderId = auction.getHighestBidderId();
+        String oldWinningBidId = auction.getCurrentWinningBidId();
         double oldPrice = auction.getCurrentPrice();
         LocalDateTime oldEndTime = auction.getEndTime();
 
@@ -176,9 +177,11 @@ public class AuctionService {
                 throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Failed to persist bid transaction.");
             }
 
-            if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+            if (oldHighestBidderId != null) {
                 userDAO.unfreezeMoney(conn, oldHighestBidderId, oldPrice);
-                bidTransactionDAO.updateStatusToRefunded(conn, auction.getId(), oldHighestBidderId);
+                if (oldWinningBidId != null) {
+                    bidTransactionDAO.updateStatusByBidId(conn, oldWinningBidId, com.auction.enums.BidStatus.REFUNDED.name());
+                }
             }
 
             if (!bidder.getJoinedAuctionIds().contains(auction.getId())) {
@@ -190,6 +193,9 @@ public class AuctionService {
 
             // 1. Đồng bộ RAM cho Người đặt giá hiện tại
             synchronized (bidder.getId().intern()) {
+                if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
+                    bidder.unfreeze(oldPrice);
+                }
                 bidder.freeze(amount);
                 if (!bidder.getJoinedAuctionIds().contains(auction.getId())) {
                     bidder.addJoinedAuction(auction.getId());
@@ -208,11 +214,30 @@ public class AuctionService {
                 }
             }
 
+            // Gửi cập nhật ví qua socket
+            try {
+                connectionManage.sendBalanceUpdate(bidder.getId(), bidder.getAvailableBalance(), bidder.getFrozenBalance());
+            } catch (Exception ex) {
+                System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder mới: " + ex.getMessage());
+            }
+            if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+                User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
+                if (oldRamUser instanceof Bidder oldBidderLive) {
+                    try {
+                        connectionManage.sendBalanceUpdate(oldHighestBidderId, oldBidderLive.getAvailableBalance(), oldBidderLive.getFrozenBalance());
+                    } catch (Exception ex) {
+                        System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder cũ: " + ex.getMessage());
+                    }
+                }
+            }
+
             // 3. Đóng gói payload chứa thông tin Anti-sniping
             BidTransactionDTO bidData = new BidTransactionDTO(
-                    bidder.getUsername(), amount, LocalDateTime.now(), com.auction.enums.BidStatus.ACCEPTED.name(),
+                    bidder.getUsername(), amount, resultBid.getTime(), com.auction.enums.BidStatus.ACCEPTED.name(),
                     auction.getEndTime(), auction.getLiveStepPrice()
             );
+            bidData.setBidId(resultBid.getId());
+            bidData.setAuctionId(auction.getId());
 
             AuctionEvent bidEvent = new AuctionEvent(auction.getId(), AuctionEventType.NEW_BID, bidData);
             AuctionEventBus.getInstance().publish(bidEvent);
@@ -228,15 +253,26 @@ public class AuctionService {
             throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Fatal crash during executeBidInternal: " + e.getMessage());
         } finally {
             if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                } finally {
+                    try {
+                        conn.close();
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    }
+                }
             }
         }
     }
 
-    private void triggerAutoBids(Auction auction) {
+
+    public void triggerAutoBids(Auction auction) {
         int loops = 0;
-        // Giới hạn tối đa 20 lượt đấu giá tự động liên tiếp để tránh loop vô tận ngoài ý muốn
-        while (loops < 20) {
+        // Giới hạn tối đa 100 lượt đấu giá tự động liên tiếp để tránh quá tải server
+        while (loops < 100) {
             double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
             List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
             AutoBid challenger = selectAutoBidChallenger(activeAutoBids, auction.getHighestBidderId(), minBidRequired);
@@ -337,8 +373,11 @@ public class AuctionService {
                 auction.setItem(itemFromDb);
             }
 
-            if (auction.getStatus() == AuctionStatus.FINISHED || auction.getStatus() == AuctionStatus.CANCELED) {
-                System.out.println("[Finalize Guard] ℹ️ Phiên " + auctionId + " đã được xử lý kết thúc từ trước. Bỏ qua.");
+            // Kiểm tra trạng thái thực tế dưới DB thay vì trên RAM
+            // (vì AuctionManage.refreshStatus() có thể đã chuyển RAM sang FINISHED trước khi gọi hàm này)
+            Auction dbAuction = auctionDAO.findById(auctionId).orElse(null);
+            if (dbAuction != null && (dbAuction.getStatus() == AuctionStatus.FINISHED || dbAuction.getStatus() == AuctionStatus.CANCELED)) {
+                System.out.println("[Finalize Guard] ℹ️ Phiên " + auctionId + " đã được xử lý kết thúc từ trước (DB). Bỏ qua.");
                 return;
             }
 
@@ -347,7 +386,9 @@ public class AuctionService {
             String sellerId = auction.getSellerId();
             String statusMessage;
 
-            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+            Connection conn = null;
+            try {
+                conn = com.auction.config.DatabaseConnection.getConnection();
                 conn.setAutoCommit(false);
 
                 if (winnerId != null) {
@@ -393,10 +434,45 @@ public class AuctionService {
                             System.out.println("[RAM Sync] 🎯 Đã cộng số dư khả dụng của Seller trên RAM live.");
                         }
                     }
+
+                    // Gửi cập nhật ví qua socket cho Winner và Seller
+                    if (winRam instanceof Bidder winnerLive) {
+                        try {
+                            connectionManage.sendBalanceUpdate(winnerId, winnerLive.getAvailableBalance(), winnerLive.getFrozenBalance());
+                        } catch (Exception ex) {
+                            System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho winner: " + ex.getMessage());
+                        }
+                    }
+                    if (selRam instanceof Seller sellerLive) {
+                        try {
+                            connectionManage.sendBalanceUpdate(sellerId, sellerLive.getAvailableBalance(), sellerLive.getFrozenBalance());
+                        } catch (Exception ex) {
+                            System.err.println("[AuctionService] Lỗi gửi WALLET_UPDATE cho seller: " + ex.getMessage());
+                        }
+                    }
                 }
 
-            } catch (SQLException e) {
+            } catch (Exception e) {
+                if (conn != null) {
+                    try { conn.rollback(); } catch (SQLException ex) { log.error("[Finalize] Rollback thất bại: {}", ex.getMessage()); }
+                }
+                log.error("[Finalize] ❌ Lỗi khi kết thúc phiên {}: {}", auctionId, e.getMessage(), e);
+                if (e instanceof com.auction.exception.BaseException) throw (com.auction.exception.BaseException) e;
                 throw new AuctionException(AuctionErrorCode.AUCTION_UPDATE_FAILED, "Finalization transaction failed: " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.setAutoCommit(true);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        try {
+                            conn.close();
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
             }
 
             Map<String, Object> statusPayload = new HashMap<>();
@@ -422,23 +498,29 @@ public class AuctionService {
                 auction = auctionDAO.findById(id).orElse(null);
             }
             if (auction != null) {
-                summaries.add(convertToSummaryDTO(auction));
+                summaries.add(convertToSummaryDTO(auction, bidderId));
             }
         }
         return summaries;
     }
 
-    private AuctionSummaryDTO convertToSummaryDTO(Auction auction) {
+    private AuctionSummaryDTO convertToSummaryDTO(Auction auction, String currentUserId) {
         String itemName = (auction.getItem() != null) ? auction.getItem().getName() : "Vật phẩm #" + auction.getItemId();
+        String statusText = auction.getStatus().name();
+        if (auction.getStatus() == AuctionStatus.FINISHED) {
+            if (currentUserId != null && currentUserId.equals(auction.getHighestBidderId())) {
+                statusText = "PAID";
+            }
+        }
         return new AuctionSummaryDTO(
-                auction.getId(), itemName, auction.getCurrentPrice(), auction.getStatus().name(), auction.getEndTime()
+                auction.getId(), itemName, auction.getCurrentPrice(), statusText, auction.getEndTime()
         );
     }
 
-    public List<AuctionSummaryDTO> getAllActiveAuctions() {
+    public List<AuctionSummaryDTO> getAllActiveAuctions(String currentUserId) {
         List<AuctionSummaryDTO> resultList = new ArrayList<>();
         try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
-            List<Auction> dbAuctions = auctionDAO.findByStatuses(conn, List.of(AuctionStatus.OPEN, AuctionStatus.RUNNING));
+            List<Auction> dbAuctions = auctionDAO.findActiveAndRecentlyFinished(conn, LocalDateTime.now().minusMinutes(5));
             if (dbAuctions == null || dbAuctions.isEmpty()) {
                 return resultList;
             }
@@ -446,13 +528,13 @@ public class AuctionService {
             for (Auction dbAuction : dbAuctions) {
                 Auction ramAuction = auctionManage.getAuctionById(dbAuction.getId());
                 Auction finalAuction = (ramAuction != null) ? ramAuction : dbAuction;
-                resultList.add(convertToSummaryDTO(finalAuction));
+                resultList.add(convertToSummaryDTO(finalAuction, currentUserId));
             }
             resultList.sort((a, b) -> b.getStatus().compareTo(a.getStatus()));
         } catch (SQLException e) {
             log.error("[Central Guard] ❌ Lỗi kết nối Database khi tải danh sách: {}", e.getMessage(), e);
             for (Auction ramAuction : auctionManage.getAllActive()) {
-                resultList.add(convertToSummaryDTO(ramAuction));
+                resultList.add(convertToSummaryDTO(ramAuction, currentUserId));
             }
         }
         return resultList;
@@ -508,7 +590,17 @@ public class AuctionService {
                     auction = auctionDAO.findById(auctionId).orElse(null);
                     if (auction != null) {
                         itemDAO.findById(auction.getItemId()).ifPresent(auction::setItem);
+
+                        // Khôi phục danh sách AutoBid hoạt động từ DB lên RAM queue
                         if (auction.getStatus() == AuctionStatus.OPEN || auction.getStatus() == AuctionStatus.RUNNING) {
+                            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+                                List<AutoBid> activeAutoBids = autoBidDAO.findActiveByAuctionId(conn, auction.getId());
+                                for (AutoBid autoBid : activeAutoBids) {
+                                    auction.addOrUpdateAutoBidInRam(autoBid);
+                                }
+                            } catch (SQLException e) {
+                                log.warn("[AutoBid] Không thể khôi phục AutoBid từ DB cho phiên {}: {}", auctionId, e.getMessage());
+                            }
                             auctionManage.addAuction(auction);
                         }
                     }
@@ -527,19 +619,25 @@ public class AuctionService {
         String itemImg = (item != null) ? item.getImageUrl() : "";
         List<BidTransactionDTO> historyDTOs = convertToBidHistoryDTO(rawHistory);
 
-        return new AuctionDetailDTO(
+        AuctionDetailDTO dto = new AuctionDetailDTO(
                 auction.getId(), auction.getCurrentPrice(), auction.getStepPrice(),
                 auction.getEndTime(), auction.getStatus().name(), itemName, itemDesc, itemImg, sellerName, historyDTOs
         );
+        dto.setLiveStepPrice(auction.getLiveStepPrice());
+        return dto;
     }
 
     private List<BidTransactionDTO> convertToBidHistoryDTO(List<BidTransaction> rawHistory) {
         if (rawHistory == null || rawHistory.isEmpty()) return new ArrayList<>();
         return rawHistory.stream().map(bid -> {
             String bidderName = userDAO.findById(bid.getBidderId()).map(User::getUsername).orElse("Người dùng ẩn danh");
-            return new BidTransactionDTO(bidderName, bid.getAmount(), bid.getTime(), bid.getStatus().name());
+            BidTransactionDTO dto = new BidTransactionDTO(bidderName, bid.getAmount(), bid.getTime(), bid.getStatus().name());
+            dto.setBidId(bid.getId());
+            dto.setAuctionId(bid.getAuctionId());
+            return dto;
         }).collect(Collectors.toList());
     }
+
 
     /**
      * 🔥 CẬP NHẬT: HỦY PHÒNG ĐẤU GIÁ ĐA DIỆN (Hỗ trợ phân quyền Admin và Seller chung mạch bộ cục)
@@ -613,7 +711,17 @@ public class AuctionService {
                 throw new AuctionException(AuctionErrorCode.AUCTION_CANCEL_FAILED, "Cancellation transaction failed: " + e.getMessage());
             } finally {
                 if (conn != null) {
-                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+                    try {
+                        conn.setAutoCommit(true);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        try {
+                            conn.close();
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                 }
             }
 
@@ -672,19 +780,24 @@ public class AuctionService {
     /**
      * VÀO XEM PHÒNG LIVE REALTIME (Đã sửa nhận String bidderId)
      */
-    public void joinLiveRoom(String bidderId, String auctionId, ClientSession clientSession) {
+    public void joinLiveRoom(String userId, String auctionId, ClientSession clientSession) {
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID cannot be empty.");
         }
-        joinAuction(bidderId, auctionId);
-        Bidder bidder = getBidderContext(bidderId);
+
+        com.auction.models.User.User user = userDAO.findById(userId).orElse(null);
+        String username = (user != null) ? user.getUsername() : (clientSession.getUsername() != null ? clientSession.getUsername() : "User");
+
+        if (user instanceof Bidder) {
+            joinAuction(userId, auctionId);
+        }
 
         LiveRoomManage.getInstance().joinRoom(auctionId, clientSession);
 
         int viewerCount = LiveRoomManage.getInstance().getRoomSize(auctionId);
         Map<String, Object> liveEnteredPayload = new HashMap<>();
         liveEnteredPayload.put("username", clientSession.getUsername());
-        liveEnteredPayload.put("message", bidder.getUsername() + " vừa mở tab livestream.");
+        liveEnteredPayload.put("message", username + " vừa tham gia phòng.");
         liveEnteredPayload.put("viewerCount", viewerCount);
 
         AuctionEventBus.getInstance().publish(new AuctionEvent(auctionId, AuctionEventType.LIVE_ENTERED, liveEnteredPayload));
@@ -693,17 +806,20 @@ public class AuctionService {
     /**
      * RỜI PHÒNG LIVE REALTIME (Đã sửa nhận String bidderId)
      */
-    public void leaveLiveRoom(String bidderId, String auctionId, ClientSession clientSession) {
-        Bidder bidder = getBidderContext(bidderId);
+    public void leaveLiveRoom(String userId, String auctionId, ClientSession clientSession) {
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID cannot be empty.");
         }
+        
+        com.auction.models.User.User user = userDAO.findById(userId).orElse(null);
+        String username = (user != null) ? user.getUsername() : (clientSession.getUsername() != null ? clientSession.getUsername() : "User");
+
         LiveRoomManage.getInstance().leaveRoom(auctionId, clientSession);
 
         int viewerCount = LiveRoomManage.getInstance().getRoomSize(auctionId);
         Map<String, Object> liveExitedPayload = new HashMap<>();
         liveExitedPayload.put("username", clientSession.getUsername());
-        liveExitedPayload.put("message", bidder.getUsername() + " đã đóng tab livestream.");
+        liveExitedPayload.put("message", username + " đã rời phòng.");
         liveExitedPayload.put("viewerCount", viewerCount);
 
         AuctionEventBus.getInstance().publish(new AuctionEvent(auctionId, AuctionEventType.LIVE_EXITED, liveExitedPayload));
@@ -966,7 +1082,17 @@ public class AuctionService {
                 throw new AuctionException(AuctionErrorCode.AUCTION_UPDATE_FAILED, "Update auction transaction failed: " + e.getMessage());
             } finally {
                 if (conn != null) {
-                    try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+                    try {
+                        conn.setAutoCommit(true);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        try {
+                            conn.close();
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                 }
             }
 

@@ -9,6 +9,7 @@ public class AuctionDetailDTO {
     private String auctionId;
     private double currentPrice;
     private double stepPrice;
+    private double liveStepPrice;
     private LocalDateTime endTime;
     private String status;
 
@@ -22,6 +23,10 @@ public class AuctionDetailDTO {
 
     // Lịch sử đặt giá (Quan trọng để hiển thị bảng lịch sử)
     private List<BidTransactionDTO> bidHistory;
+
+    // Cấu hình AutoBid đang hoạt động của người dùng hiện tại (nếu có)
+    private double activeAutoBidMaxBid;
+    private double activeAutoBidIncrement;
 
     public AuctionDetailDTO(String auctionId, double currentPrice, double stepPrice,
                             LocalDateTime endTime, String status, String itemName,
@@ -38,12 +43,26 @@ public class AuctionDetailDTO {
         this.sellerUsername = sellerUsername;
         this.bidHistory = bidHistory;
     }
+
+    public double getLiveStepPrice() {
+        return liveStepPrice;
+    }
+
+    public void setLiveStepPrice(double liveStepPrice) {
+        this.liveStepPrice = liveStepPrice;
+    }
+
     public String getAuctionId() {
         return auctionId;
     }
 
+
     public double getCurrentPrice() {
         return currentPrice;
+    }
+
+    public void setCurrentPrice(double currentPrice) {
+        this.currentPrice = currentPrice;
     }
 
     public double getStepPrice() {
@@ -52,6 +71,10 @@ public class AuctionDetailDTO {
 
     public LocalDateTime getEndTime() {
         return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
     }
 
     public String getStatus() {
@@ -76,5 +99,21 @@ public class AuctionDetailDTO {
 
     public List<BidTransactionDTO> getBidHistory() {
         return bidHistory;
+    }
+
+    public double getActiveAutoBidMaxBid() {
+        return activeAutoBidMaxBid;
+    }
+
+    public void setActiveAutoBidMaxBid(double activeAutoBidMaxBid) {
+        this.activeAutoBidMaxBid = activeAutoBidMaxBid;
+    }
+
+    public double getActiveAutoBidIncrement() {
+        return activeAutoBidIncrement;
+    }
+
+    public void setActiveAutoBidIncrement(double activeAutoBidIncrement) {
+        this.activeAutoBidIncrement = activeAutoBidIncrement;
     }
 }

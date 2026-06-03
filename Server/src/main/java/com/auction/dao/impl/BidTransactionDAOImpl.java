@@ -36,7 +36,7 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
     @Override
     public List<BidTransaction> findTopByAuctionId(String auctionId, int limit) {
         List<BidTransaction> bids = new ArrayList<>();
-        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(bidder_id, 1) AS bidder_id, BIN_TO_UUID(auction_id, 1) AS auction_id, amount, status, created_at FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1) AND status = 'ACCEPTED' " +
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(bidder_id, 1) AS bidder_id, BIN_TO_UUID(auction_id, 1) AS auction_id, amount, status, created_at FROM bid_transactions WHERE auction_id = UUID_TO_BIN(?, 1) AND status IN ('ACCEPTED', 'REFUNDED') " +
                 "ORDER BY created_at DESC LIMIT ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -161,6 +161,17 @@ public class BidTransactionDAOImpl implements BidTransactionDAO {
             stmt.executeUpdate();
         }
     }
+
+    @Override
+    public void updateStatusByBidId(Connection conn, String bidId, String status) throws SQLException {
+        String sql = "UPDATE bid_transactions SET status = ? WHERE id = UUID_TO_BIN(?, 1)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            stmt.setString(2, bidId);
+            stmt.executeUpdate();
+        }
+    }
+
 
     /**
      * Helper Method: Ánh xạ dữ liệu từ SQL sang Object Java

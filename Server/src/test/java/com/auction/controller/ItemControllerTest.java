@@ -138,6 +138,12 @@ class ItemControllerTest {
             lastUpdateStatusItemId = itemId;
             lastUpdateStatus = status;
         }
+
+        @Override
+        public void deleteItem(String itemId) {
+            lastUpdateStatusItemId = itemId;
+            lastUpdateStatus = ItemStatus.INACTIVE;
+        }
     }
 
     // =========================================================

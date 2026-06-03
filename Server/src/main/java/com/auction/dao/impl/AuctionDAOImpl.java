@@ -206,6 +206,28 @@ public class AuctionDAOImpl implements AuctionDAO {
         return auctions;
     }
 
+    @Override
+    public List<Auction> findActiveAndRecentlyFinished(Connection conn, LocalDateTime finishedSince) throws SQLException {
+        List<Auction> auctions = new ArrayList<>();
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE status IN ('OPEN', 'RUNNING') OR (status = 'FINISHED' AND end_time >= ?)";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setTimestamp(1, java.sql.Timestamp.valueOf(finishedSince));
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Auction auction = mapResultSetToAuction(rs);
+
+                    ItemDAO itemDAO = new ItemDAOImpl();
+                    itemDAO.findById(auction.getItemId()).ifPresent(auction::setItem);
+
+                    auctions.add(auction);
+                }
+            }
+        }
+        return auctions;
+    }
+
     // 🔥 SỬA: Hàm ép đồng bộ định kỳ lúc tắt Server, ném thẳng lỗi SQLException lên luồng chính xử lý
     @Override
     public boolean updateAuctionStatusAndBidding(Auction auction) throws SQLException {

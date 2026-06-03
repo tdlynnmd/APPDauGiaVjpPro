@@ -84,12 +84,15 @@ public class ItemService {
                 throw new AuctionException(AuctionErrorCode.ITEM_NOT_FOUND);
             }
 
-            if (liveItem.getItemType() != type) {
-                throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Mâu thuẫn loại vật phẩm. Không thể thay đổi loại của vật phẩm đang tồn tại.");
+            // Kiểm tra trạng thái TRƯỚC: Chỉ vật phẩm ACTIVE mới được chỉnh sửa
+            // Đặt trước kiểm tra type để thông báo lỗi rõ ràng hơn với người dùng
+            if (liveItem.getStatus() != ItemStatus.ACTIVE) {
+                throw new AuctionException(AuctionErrorCode.ITEM_IS_LOCKED,
+                        "Vật phẩm này hiện không hoạt động (INACTIVE) hoặc đã bán, không thể chỉnh sửa.");
             }
 
-            if (liveItem.getStatus() != ItemStatus.ACTIVE) {
-                throw new AuctionException(AuctionErrorCode.ITEM_IS_LOCKED);
+            if (liveItem.getItemType() != type) {
+                throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Mâu thuẫn loại vật phẩm. Không thể thay đổi loại của vật phẩm đang tồn tại.");
             }
 
             validateMergedItemData(liveItem, type, incomingData);
@@ -217,6 +220,38 @@ public class ItemService {
             } catch (NumberFormatException e) {
                 throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Year created must be a valid integer.");
             }
+        }
+    }
+
+    public void deleteItem(String itemId) {
+        if (itemId == null || itemId.trim().isEmpty()) {
+            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Item criteria target is empty.");
+        }
+
+        synchronized (itemId.trim().intern()) {
+            Item item = getItemById(itemId);
+            if (item == null) {
+                throw new AuctionException(AuctionErrorCode.ITEM_NOT_FOUND);
+            }
+
+            // Chỉ cho phép xóa khi vật phẩm ở trạng thái ACTIVE hoặc SOLD.
+            // Nếu vật phẩm ở trạng thái INACTIVE (đang nằm trong phiên đấu giá hoạt động), tuyệt đối không được xóa!
+            if (item.getStatus() == ItemStatus.INACTIVE) {
+                throw new AuctionException(AuctionErrorCode.ITEM_IS_LOCKED, "Vật phẩm đang trong phiên đấu giá hoạt động, không thể xóa.");
+            }
+
+            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+                boolean success = itemDAO.softDelete(conn, itemId);
+                if (!success) {
+                    throw new AuctionException(AuctionErrorCode.ITEM_DELETE_FAILED, "Failed to delete item.");
+                }
+            } catch (SQLException e) {
+                throw new AuctionException(AuctionErrorCode.ITEM_DELETE_FAILED, "Database error during deleting item: " + e.getMessage());
+            }
+
+            // Xóa khỏi RAM Cache
+            productManage.deleteProduct(itemId);
+            log.info("[ItemService] 🧹 Đã gỡ/xóa vật phẩm khỏi hệ thống và RAM: {}", itemId);
         }
     }
 

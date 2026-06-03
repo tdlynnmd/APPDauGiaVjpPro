@@ -490,7 +490,7 @@ class AuctionServiceTest {
 
         when(auctionDAO.findByStatuses(any(Connection.class), any())).thenReturn(List.of(auction));
 
-        List<AuctionSummaryDTO> result = auctionService.getAllActiveAuctions();
+        List<AuctionSummaryDTO> result = auctionService.getAllActiveAuctions("user-1");
         assertNotNull(result);
 
         for (AuctionSummaryDTO dto : result) {

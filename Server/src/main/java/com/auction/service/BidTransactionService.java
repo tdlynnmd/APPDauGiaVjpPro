@@ -28,7 +28,7 @@ public class BidTransactionService {
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID is required.");
         }
-        // 🔥 SỬA ĐỔI CHỮA LỖI: page index thông thường bắt đầu từ 1, check <= 0 là chuẩn xác
+        // 🔥 SỬA ĐỒNG BỘ: page index thông thường bắt đầu từ 1, check <= 0 là chuẩn xác
         if (page <= 0 || pageSize <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Page index and size must be greater than 0.");
         }
@@ -37,7 +37,6 @@ public class BidTransactionService {
 
         List<BidTransaction> rawBids = bidTransactionDAO.findByAuctionIdPaged(auctionId, pageSize, offset);
 
-        // Trả về trang trống ngay lập tức nếu DB không có dữ liệu (Tối ưu CPU, không chạy tiếp các câu lệnh Map phía sau)
         if (rawBids == null || rawBids.isEmpty()) {
             return new PageDTO<>(new ArrayList<>(), page, 0, 0);
         }
@@ -64,7 +63,6 @@ public class BidTransactionService {
 
         List<BidTransaction> rawBids = bidTransactionDAO.findByBidderIdPaged(bidderId, pageSize, offset);
 
-        // Khớp nối tối ưu: Trả về sớm nếu không có bản ghi nào
         if (rawBids == null || rawBids.isEmpty()) {
             return new PageDTO<>(new ArrayList<>(), page, 0, 0);
         }
@@ -75,6 +73,7 @@ public class BidTransactionService {
 
         return new PageDTO<>(dtoList, page, totalPages, totalElements);
     }
+
 
     /**
      * 🔥 TỐI ƯU HOÀN TOÀN: Hàm chuyển đổi dữ liệu DTO
@@ -93,11 +92,16 @@ public class BidTransactionService {
         // Điều này gộp 20 câu lệnh SELECT đơn lẻ thành duy nhất 1 câu lệnh quét, tối ưu hóa tốc độ phản hồi gấp hàng chục lần!
         Map<String, String> userMap = userDAO.findUsernamesByIds(bidderIds);
 
-        return rawBids.stream().map(bid -> new BidTransactionDTO(
-                userMap.getOrDefault(bid.getBidderId(), "Người dùng ẩn danh"),
-                bid.getAmount(),
-                bid.getTime(),
-                bid.getStatus().name()
-        )).collect(Collectors.toList());
+        return rawBids.stream().map(bid -> {
+            BidTransactionDTO dto = new BidTransactionDTO(
+                    userMap.getOrDefault(bid.getBidderId(), "Người dùng ẩn danh"),
+                    bid.getAmount(),
+                    bid.getTime(),
+                    bid.getStatus().name()
+            );
+            dto.setBidId(bid.getId());
+            dto.setAuctionId(bid.getAuctionId());
+            return dto;
+        }).collect(Collectors.toList());
     }
 }

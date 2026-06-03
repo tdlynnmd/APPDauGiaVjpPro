@@ -317,6 +317,9 @@ public class ClientSocketService {
                 handleForceLogout(response);
                 return;
             }
+            if ("WALLET_UPDATE".equals(response.getAction())) {
+                handleWalletUpdate(response);
+            }
 
             notifyRealtimeListeners(response);
             return;
@@ -365,6 +368,23 @@ public class ClientSocketService {
             ClientSocketService.reset();
             SceneNavigator.showLogin();
         });
+    }
+
+    private void handleWalletUpdate(SocketResponse event) {
+        if (event == null || event.getBody() == null || !event.getBody().isJsonObject()) {
+            return;
+        }
+        try {
+            JsonObject body = event.getBody().getAsJsonObject();
+            double available = body.get("availableBalance").getAsDouble();
+            double frozen = body.get("frozenBalance").getAsDouble();
+            
+            Platform.runLater(() -> {
+                ClientSession.triggerBalanceUpdate(available, frozen);
+            });
+        } catch (Exception e) {
+            System.err.println("[ClientSocketService] Loi khi xu ly WALLET_UPDATE: " + e.getMessage());
+        }
     }
 
     private boolean isForceLogoutEvent(SocketResponse response) {

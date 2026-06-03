@@ -4,12 +4,18 @@ import com.auction.dto.*;
 import com.auction.enums.UserRole;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
+import com.auction.dao.AutoBidDAO;
+import com.auction.dao.impl.AutoBidDAOImpl;
+import com.auction.models.Auction.AutoBid;
 import com.auction.network.ClientSession;
 import com.auction.service.AuctionService;
 import com.auction.service.BidTransactionService;
+import com.auction.config.DatabaseConnection;
 
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * =========================================================================
@@ -24,8 +30,8 @@ public class AuctionController {
      * Lấy danh sách các phiên đấu giá đang hoạt động
      * GET_ACTIVE_AUCTIONS
      */
-    public List<AuctionSummaryDTO> getActiveAuctions() {
-        return auctionService.getAllActiveAuctions();
+    public List<AuctionSummaryDTO> getActiveAuctions(String currentUserId) {
+        return auctionService.getAllActiveAuctions(currentUserId);
     }
 
     /**
@@ -77,7 +83,23 @@ public class AuctionController {
     public AuctionDetailDTO joinLiveRoom(String bidderId, AuctionSubscriptionRequest request, ClientSession session) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
         auctionService.joinLiveRoom(bidderId, request.getAuctionId(), session);
-        return auctionService.getAuctionDetail(request.getAuctionId());
+        AuctionDetailDTO detail = auctionService.getAuctionDetail(request.getAuctionId());
+
+        // Trả về cấu hình AutoBid đang hoạt động của bidder nếu có
+        // để Client có thể tự động điền lại form AutoBid khi quay lại phòng
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
+            Optional<AutoBid> autoBidOpt = autoBidDAO.findActiveByUserAndAuction(conn, bidderId, request.getAuctionId());
+            if (autoBidOpt.isPresent() && autoBidOpt.get().isActive()) {
+                AutoBid autoBid = autoBidOpt.get();
+                detail.setActiveAutoBidMaxBid(autoBid.getMaxBid());
+                detail.setActiveAutoBidIncrement(autoBid.getIncrement());
+            }
+        } catch (Exception e) {
+            // Không nên fail toàn bộ request chỉ vì không đọc được AutoBid
+        }
+
+        return detail;
     }
 
     public void leaveLiveRoom(String bidderId, AuctionSubscriptionRequest request, ClientSession session) {

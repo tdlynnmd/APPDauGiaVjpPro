@@ -33,6 +33,8 @@ public interface AuctionDAO {
 
     List<Auction> findByStatuses(Connection conn, List<AuctionStatus> statuses) throws SQLException;
 
+    List<Auction> findActiveAndRecentlyFinished(Connection conn, LocalDateTime finishedSince) throws SQLException;
+
     /**
      * Ép đồng bộ toàn bộ trạng thái động của phiên đấu giá từ RAM xuống DB.
      * Sử dụng chủ yếu cho tiến trình quét ngầm định kỳ hoặc Graceful Shutdown Hook.

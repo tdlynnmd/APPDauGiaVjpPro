@@ -85,7 +85,7 @@ CREATE TABLE `auctions` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_item_id` (`item_id`),
+  KEY `idx_item_id` (`item_id`),
   KEY `idx_seller_id` (`seller_id`),
   KEY `idx_highest_bidder_id` (`highest_bidder_id`),
   -- Composite Index quan trọng cho daemon monitor quét phiên hết hạn liên tục mỗi giây
