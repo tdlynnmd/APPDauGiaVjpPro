@@ -53,8 +53,6 @@ public class SellerItemController {
     private final ObservableList<ItemSummaryDTO> allServerItems = FXCollections.observableArrayList();
     // Danh sách chứa vật phẩm của TRANG HIỆN TẠI để hiển thị lên bảng TableView
     private final ObservableList<ItemSummaryDTO> sellerItems = FXCollections.observableArrayList();
-    private final ObservableList<AuctionSummaryDTO> sellerAuctions = FXCollections.observableArrayList();
-
     private ItemSummaryDTO selectedItem;
     private javafx.collections.transformation.FilteredList<ItemSummaryDTO> filteredItems;
     private boolean showAllStatusesMode = true; // false: Chỉ hiện ACTIVE | true: Hiện tất cả
@@ -301,14 +299,6 @@ public class SellerItemController {
         sellerItemsTable.setItems(sortedItems);
         updatePageUI();
     }
-    // Bang xem những auction của seller
-    @FXML private TableView<AuctionSummaryDTO> sellerAuctionsTable;
-    @FXML private TableColumn<AuctionSummaryDTO, String> auctionIdColumn;
-    @FXML private TableColumn<AuctionSummaryDTO, String> auctionItemNameColumn;
-    @FXML private TableColumn<AuctionSummaryDTO, String> auctionStatusColumn;
-    @FXML private TableColumn<AuctionSummaryDTO, String> auctionStartTimeColumn;
-    @FXML private TableColumn<AuctionSummaryDTO, String> auctionEndTimeColumn;
-    @FXML private TableColumn<AuctionSummaryDTO, Number> auctionStepPriceColumn;
 
     private AuctionSummaryDTO selectedAuction;
 
@@ -317,7 +307,6 @@ public class SellerItemController {
         // 1. Khởi tạo các thành phần điều khiển và cấu trúc bảng dữ liệu trước (ĐỂ TRÁNH RESET CÁC CONTROL)
         initializeItemTypeControl();
         initializeSellerItemsTable();
-        initializeSellerAuctionsTable();
         fillDefaultTimeIfEmpty();
 
         // 2. Áp dụng theme hệ thống và nạp giao diện placeholder động tương ứng cho bảng
@@ -943,109 +932,6 @@ public class SellerItemController {
         }
     }
 
-    /**
-     * Chuc nang: cau hinh bang phien dau gia cua seller.
-     */
-    private void initializeSellerAuctionsTable() {
-        if (sellerAuctionsTable == null) {
-            return;
-        }
-
-        sellerAuctionsTable.setItems(sellerAuctions);
-
-        if (auctionIdColumn != null) {
-            auctionIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getAuctionId())));
-        }
-        if (auctionItemNameColumn != null) {
-            auctionItemNameColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemName())));
-        }
-        if (auctionStatusColumn != null) {
-            auctionStatusColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getStatus())));
-        }
-        if (auctionStartTimeColumn != null) {
-            auctionStartTimeColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(data.getValue().getStartTime() == null ? "" : data.getValue().getStartTime().toString()));
-        }
-        if (auctionEndTimeColumn != null) {
-            auctionEndTimeColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(data.getValue().getEndTime() == null ? "" : data.getValue().getEndTime().toString()));
-        }
-        if (auctionStepPriceColumn != null) {
-            auctionStepPriceColumn.setCellValueFactory(data ->
-                    new SimpleDoubleProperty(data.getValue().getStepPrice()));
-        }
-
-        sellerAuctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            selectedAuction = newValue;
-            fillAuctionUpdateForm(newValue);
-        });
-    }
-
-    /**
-     * Chuc nang: load danh sach phien dau gia cua seller tu backend.
-     */
-    @FXML
-    private void handleLoadSellerAuctions() {
-        SocketResponse response = auctionApi.getSellerAuctions();
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Server khong tra ve phan hoi hop le." : response.getMessage());
-            return;
-        }
-
-        sellerAuctions.setAll(auctionApi.parseAuctionSummaryList(response));
-        showMessage("Da dong bo danh sach phien dau gia cua seller.");
-    }
-
-    /**
-     * Chuc nang: do thong tin auction dang chon vao form cap nhat.
-     */
-    private void fillAuctionUpdateForm(AuctionSummaryDTO auction) {
-        if (auction == null) {
-            return;
-        }
-
-        setText(stepPriceField, String.valueOf(auction.getStepPrice()));
-        setText(startTimeField, auction.getStartTime() == null ? "" : auction.getStartTime().toString());
-        setText(endTimeField, auction.getEndTime() == null ? "" : auction.getEndTime().toString());
-    }
-
-    /**
-     * Chuc nang: cap nhat phien dau gia chua chay cua seller.
-     */
-    @FXML
-    private void handleUpdateAuction() {
-        if (selectedAuction == null) {
-            showError("Vui long chon mot phien dau gia can cap nhat.");
-            return;
-        }
-
-        Double stepPrice = readStepPrice();
-        if (stepPrice == null) return;
-
-        LocalDateTime startTime = readDateTime(startTimeField, "thoi gian bat dau");
-        if (startTime == null) return;
-
-        LocalDateTime endTime = readDateTime(endTimeField, "thoi gian ket thuc");
-        if (endTime == null) return;
-
-        SocketResponse response = auctionApi.updateAuction(
-                selectedAuction.getAuctionId(),
-                stepPrice,
-                startTime,
-                endTime
-        );
-
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Cap nhat phien that bai." : response.getMessage());
-            return;
-        }
-
-        handleLoadSellerAuctions();
-        showInfo(response.getMessage());
-    }
     /**
      * FXML action: tạo item mới.
      */

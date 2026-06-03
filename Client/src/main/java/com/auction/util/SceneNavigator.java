@@ -42,7 +42,8 @@ public class SceneNavigator {
     private static final String WALLET_VIEW = "/com/auction/client/view/wallet.fxml";
     private static final String MY_BIDS_VIEW = "/com/auction/client/view/my-bids.fxml";
     private static final String ACCOUNT_VIEW = "/com/auction/client/view/account.fxml";
-
+    private static final String SELLER_AUCTION_MANAGEMENT_VIEW = "/com/auction/client/view/seller-auction-management.fxml";
+    private static final String SETTINGS_VIEW = "/com/auction/client/view/settings.fxml";
 
 
     private SceneNavigator() {
@@ -90,6 +91,10 @@ public class SceneNavigator {
     public static void showAccount() {
         loadScene(ACCOUNT_VIEW, "Account");
     }
+    // Vai trò: mở màn quản lý phiên đấu giá của seller.
+    public static void showSellerAuctionManagement() {
+        loadScene(SELLER_AUCTION_MANAGEMENT_VIEW, "Seller Auction Management");
+    }
 
     public static void showLiveBidding(String auctionId) {
         if (auctionId == null || auctionId.trim().isEmpty()) {
@@ -120,6 +125,10 @@ public class SceneNavigator {
          */
         AuctionDetailController controller = loader.getController();
         controller.setAuctionId(auctionId);
+    }
+    // Vai trò: mở màn cài đặt tài khoản và giao diện.
+    public static void showSettings() {
+        loadScene(SETTINGS_VIEW, "Settings");
     }
 
     private static void loadScene(String fxmlPath, String title) {
