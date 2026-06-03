@@ -1605,3 +1605,169 @@
 .settings-status-text {
     -fx-text-fill: #0d6efd;
 }
+/* =========================================================================
+   ACCOUNT COMPONENT - LIGHT THEME (SETTINGS MATCHED)
+   ========================================================================= */
+
+.account-root {
+    -fx-background-color: #f4f6f9; /* Màu nền xám trắng sạch sẽ */
+}
+
+/* Thanh tiêu đề phía trên */
+.account-header {
+    -fx-background-color: #ffffff; /* */
+    -fx-padding: 12px 20px;
+    -fx-background-radius: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(13, 110, 253, 0.05), 6, 0, 0, 2);
+}
+
+.account-header-title {
+    -fx-text-fill: #0d6efd; /* Màu xanh dương chủ đạo */
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Nút Quay Lại dạng Ghost Xanh nhạt */
+.account-btn-back {
+    -fx-background-color: #e7f1ff; /* */
+    -fx-text-fill: #0d6efd; /* */
+    -fx-font-weight: bold;
+    -fx-background-radius: 15px;
+    -fx-padding: 8px 18px;
+    -fx-cursor: hand;
+}
+.account-btn-back:hover {
+    -fx-background-color: #0d6efd; /* */
+    -fx-text-fill: #ffffff; /* */
+}
+
+/* Nút làm mới */
+.account-btn-refresh {
+    -fx-background-color: #f8fafc;
+    -fx-text-fill: #4a5568;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 15px;
+    -fx-background-radius: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 18px;
+    -fx-cursor: hand;
+}
+.account-btn-refresh:hover {
+    -fx-background-color: #e7f1ff;
+    -fx-text-fill: #0d6efd;
+}
+
+/* Bảng cuộn flat không viền */
+.account-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-box-border: transparent;
+}
+.account-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+.account-content-container {
+    -fx-background-color: transparent;
+}
+
+/* Thanh cuộn siêu mỏng light flat */
+.account-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-width: 8px;
+}
+.account-scroll-pane .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+.account-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #cbd5e1; /* */
+    -fx-background-radius: 10px;
+}
+.account-scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #0d6efd; /* Hoá xanh dương khi hover */
+}
+
+/* --- BA KHỐI CARD THẺ CHỨC NĂNG CHÍNH ĐỨNG DỌC --- */
+.account-section-card {
+    -fx-background-color: #ffffff; /* Màu nền card trắng tinh khôi */
+    -fx-background-radius: 18px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.02), 8, 0, 0, 2);
+}
+
+/* Tiêu đề thanh border-left đặc trưng của settings light */
+.account-section-title {
+    -fx-text-fill: #0d6efd; /* */
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-border-color: #0d6efd; /* Vạch đứng màu xanh dương */
+    -fx-border-width: 0 0 0 4px; /* */
+    -fx-padding: 0 0 0 10px; /* */
+}
+
+/* Định dạng các dòng thông tin */
+.account-info-row {
+    -fx-padding: 6px 0;
+    -fx-border-color: #f1f5f9;
+    -fx-border-width: 0 0 1px 0;
+}
+.account-info-row-total {
+    -fx-padding: 10px 0 2px 0;
+}
+
+.account-field-label {
+    -fx-text-fill: #4a5568; /* */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-pref-width: 280px;
+}
+.account-field-value {
+    -fx-text-fill: #1a202c; /* */
+    -fx-font-size: 13px;
+}
+
+/* Nhóm hiển thị tiền tệ tài chính */
+.account-balance-available {
+    -fx-text-fill: #198754; /* Màu xanh lá cây tài chính chuẩn light mode */
+    -fx-font-weight: bold;
+}
+.account-balance-frozen {
+    -fx-text-fill: #dc3545; /* Màu đỏ cảnh báo */
+    -fx-font-weight: bold;
+}
+.account-field-label-total {
+    -fx-text-fill: #1a202c;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-pref-width: 280px;
+}
+.account-balance-total {
+    -fx-text-fill: #0d6efd; /* Tổng tiền màu xanh dương mạnh mẽ */
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+/* Các số liệu động */
+.account-stat-value {
+    -fx-text-fill: #0d6efd; /* */
+    -fx-font-weight: bold;
+}
+.account-admin-text {
+    -fx-text-fill: #4a5568;
+    -fx-font-style: italic;
+    -fx-font-size: 13px;
+}
+
+.account-nested-row { -fx-padding: 4px 0; }
+.account-nested-row-admin { -fx-padding: 6px 0; }
+
+/* Thanh trạng thái đáy */
+.account-status-bar {
+    -fx-background-color: #ffffff; /* */
+    -fx-background-radius: 12px;
+}
+.account-status-text {
+    -fx-text-fill: #0d6efd; /* */
+    -fx-font-size: 12px;
+}

@@ -3,114 +3,138 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="rootContainer" spacing="20.0" styleClass="account-root" prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AccountController">
+<VBox fx:id="rootContainer" spacing="15.0" styleClass="account-root" prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.AccountController">
     <padding>
-        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+        <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
     </padding>
     <children>
 
         <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="account-header">
             <children>
-                <Button fx:id="backButton" onAction="#handleBack" text="⬅ Quay Lại" />
+                <Button fx:id="backButton" onAction="#handleBack" styleClass="account-btn-back" text="⬅ Quay Lại" />
                 <Label styleClass="account-header-title" text="|  Thông Tin Tài Khoản Hồ Sơ" HBox.hgrow="ALWAYS" />
-                <Button fx:id="refreshButton" onAction="#handleRefresh" text="🔄 Làm Mới" />
+                <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="account-btn-refresh" text="🔄 Làm Mới" />
             </children>
         </HBox>
 
-        <VBox spacing="10.0" styleClass="account-info-card">
-            <children>
-                <HBox spacing="10.0">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" styleClass="account-scroll-pane" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox spacing="18.0" styleClass="account-content-container">
+                    <padding>
+                        <Insets bottom="30.0" left="2.0" right="12.0" top="5.0" />
+                    </padding>
                     <children>
-                        <Label text="Mã tài khoản:" />
-                        <Label fx:id="userIdLabel" text="---" />
-                    </children>
-                </HBox>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="Tên đăng nhập:" />
-                        <Label fx:id="usernameLabel" text="---" />
-                    </children>
-                </HBox>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="Email liên hệ:" />
-                        <Label fx:id="emailLabel" text="---" />
-                    </children>
-                </HBox>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="Vai trò:" />
-                        <Label fx:id="roleLabel" text="---" />
-                    </children>
-                </HBox>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="Trạng thái:" />
-                        <Label fx:id="statusLabel" text="---" />
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
 
-        <VBox fx:id="walletSection" spacing="10.0" styleClass="account-wallet-card">
-            <children>
-                <Label text="💳 THÔNG TIN SỐ DƯ VÍ" styleClass="section-sub-title" />
-                <HBox spacing="15.0">
-                    <children>
-                        <Label text="Số dư khả dụng:" />
-                        <Label fx:id="availableBalanceLabel" text="0 VNĐ" />
-                    </children>
-                </HBox>
-                <HBox spacing="15.0">
-                    <children>
-                        <Label text="Đang đóng băng (Đặt cọc):" />
-                        <Label fx:id="frozenBalanceLabel" text="0 VNĐ" />
-                    </children>
-                </HBox>
-                <HBox spacing="15.0">
-                    <children>
-                        <Label text="Tổng số dư thực tế:" />
-                        <Label fx:id="totalBalanceLabel" text="0 VNĐ" style="-fx-font-weight: bold;" />
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                        <VBox spacing="14.0" styleClass="account-section-card">
+                            <children>
+                                <Label text="THÔNG TIN TÀI KHOẢN" styleClass="account-section-title" />
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Mã tài khoản:" />
+                                        <Label fx:id="userIdLabel" styleClass="account-field-value" text="---" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Tên đăng nhập:" />
+                                        <Label fx:id="usernameLabel" styleClass="account-field-value" text="---" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Email liên hệ:" />
+                                        <Label fx:id="emailLabel" styleClass="account-field-value" text="---" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Vai trò:" />
+                                        <Label fx:id="roleLabel" styleClass="account-field-value" text="---" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Trạng thái:" />
+                                        <Label fx:id="statusLabel" styleClass="account-field-value" text="---" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
 
-        <VBox fx:id="bidderSection" spacing="10.0" styleClass="account-role-card">
-            <children>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="🔨 Số phiên đấu giá đã và đang tham gia:" />
-                        <Label fx:id="joinedAuctionCountLabel" text="0" style="-fx-font-weight: bold;" />
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                        <VBox fx:id="walletSection" spacing="14.0" styleClass="account-section-card">
+                            <children>
+                                <Label text="THÔNG TIN SỐ DƯ VÍ" styleClass="account-section-title" />
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Số dư khả dụng:" />
+                                        <Label fx:id="availableBalanceLabel" styleClass="account-balance-available" text="0 VNĐ" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row">
+                                    <children>
+                                        <Label styleClass="account-field-label" text="Đang đóng băng (Đặt cọc):" />
+                                        <Label fx:id="frozenBalanceLabel" styleClass="account-balance-frozen" text="0 VNĐ" />
+                                    </children>
+                                </HBox>
+                                <HBox styleClass="account-info-row-total">
+                                    <children>
+                                        <Label styleClass="account-field-label-total" text="Tổng số dư thực tế:" />
+                                        <Label fx:id="totalBalanceLabel" styleClass="account-balance-total" text="0 VNĐ" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
 
-        <VBox fx:id="sellerSection" spacing="10.0" styleClass="account-role-card">
-            <children>
-                <HBox spacing="10.0">
-                    <children>
-                        <Label text="⭐️ Đánh giá độ uy tín từ người mua (Rating):" />
-                        <Label fx:id="ratingLabel" text="0.0" style="-fx-font-weight: bold;" />
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                        <VBox spacing="14.0" styleClass="account-section-card">
+                            <children>
+                                <Label text="SỐ LIỆU ĐÁNH GIÁ &amp; HỆ THỐNG" styleClass="account-section-title" />
 
-        <VBox fx:id="adminSection" spacing="10.0" styleClass="account-role-card">
-            <children>
-                <Label text="🛠 Quyền hạn hệ thống: Quản trị viên (Toàn quyền quản lý danh mục và tài khoản)." />
-            </children>
-        </VBox>
+                                <VBox fx:id="bidderSection" styleClass="account-nested-row">
+                                    <children>
+                                        <HBox styleClass="account-info-row">
+                                            <children>
+                                                <Label styleClass="account-field-label" text="Số phiên đấu giá đã và đang tham gia:" />
+                                                <Label fx:id="joinedAuctionCountLabel" styleClass="account-stat-value" text="0" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <VBox fx:id="sellerSection" styleClass="account-nested-row">
+                                    <children>
+                                        <HBox styleClass="account-info-row">
+                                            <children>
+                                                <Label styleClass="account-field-label" text="Đánh giá độ uy tín từ người mua (Rating):" />
+                                                <Label fx:id="ratingLabel" styleClass="account-stat-value" text="0.0" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <VBox fx:id="adminSection" styleClass="account-nested-row-admin">
+                                    <children>
+                                        <Label styleClass="account-admin-text" text="Quyền hạn hệ thống: Quản trị viên (Toàn quyền quản lý danh mục và tài khoản)." wrapText="true" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
 
         <HBox alignment="CENTER_LEFT" styleClass="account-status-bar">
             <children>
-                <Label fx:id="messageLabel" text="Hệ thống sẵn sàng." />
+                <Label fx:id="messageLabel" styleClass="account-status-text" text="Hệ thống sẵn sàng." />
             </children>
+            <padding>
+                <Insets bottom="6.0" left="15.0" right="15.0" top="6.0" />
+            </padding>
         </HBox>
     </children>
 </VBox>

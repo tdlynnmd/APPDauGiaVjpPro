@@ -1615,3 +1615,167 @@
 .settings-status-text {
     -fx-text-fill: #ff9f43;
 }
+/* =========================================================================
+   ACCOUNT COMPONENT - DARK THEME (SETTINGS MATCHED)
+   ========================================================================= */
+
+.account-root {
+    -fx-background-color: #121212; /* Nền đen sâu dịu nhẹ */
+}
+
+/* Thanh tiêu đề phía trên */
+.account-header {
+    -fx-background-color: #1a1a1a; /* Khối xám tối nhô lên */
+    -fx-padding: 12px 20px;
+    -fx-background-radius: 18px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.25), 6, 0, 0, 3);
+}
+
+.account-header-title {
+    -fx-text-fill: #ff9f43; /* Màu cam thương hiệu nổi bật */
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Nút Quay Lại dạng Ghost Cam nhạt */
+.account-btn-back {
+    -fx-background-color: rgba(255, 159, 67, 0.12); /* */
+    -fx-text-fill: #ff9f43; /* */
+    -fx-font-weight: bold;
+    -fx-background-radius: 15px;
+    -fx-padding: 8px 18px;
+    -fx-cursor: hand;
+}
+.account-btn-back:hover {
+    -fx-background-color: #ff9f43; /* Đổi đặc cam khi hover */
+    -fx-text-fill: #121212; /* Chữ đảo sang tối sâu tương phản */
+}
+
+/* Nút làm mới */
+.account-btn-refresh {
+    -fx-background-color: #333333;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15px;
+    -fx-padding: 8px 18px;
+    -fx-cursor: hand;
+}
+.account-btn-refresh:hover {
+    -fx-background-color: #ff9f43;
+    -fx-text-fill: #121212;
+}
+
+/* Cấu trúc bảng cuộn phẳng không viền */
+.account-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-box-border: transparent;
+}
+.account-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+.account-content-container {
+    -fx-background-color: transparent;
+}
+
+/* Thanh cuộn siêu mỏng flat */
+.account-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-width: 8px;
+}
+.account-scroll-pane .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+.account-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #333333; /* */
+    -fx-background-radius: 10px;
+}
+.account-scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #ff9f43; /* Hoá cam khi hover */
+}
+
+/* --- BA KHỐI CARD THẺ CHỨC NĂNG CHÍNH ĐỨNG DỌC --- */
+.account-section-card {
+    -fx-background-color: #1a1a1a; /* Đồng bộ màu card với settings */
+    -fx-background-radius: 18px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 8, 0, 0, 2);
+}
+
+/* Tiêu đề thanh border-left đặc trưng của settings */
+.account-section-title {
+    -fx-text-fill: #ff9f43; /* */
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-border-color: #ff9f43; /* Vạch đứng cam bên trái */
+    -fx-border-width: 0 0 0 4px; /* */
+    -fx-padding: 0 0 0 10px; /* */
+}
+
+/* Định dạng các dòng thông tin */
+.account-info-row {
+    -fx-padding: 6px 0;
+    -fx-border-color: #222226;
+    -fx-border-width: 0 0 1px 0; /* Tạo vạch kẻ gạch chân mờ phân chia tinh tế */
+}
+.account-info-row-total {
+    -fx-padding: 10px 0 2px 0;
+}
+
+.account-field-label {
+    -fx-text-fill: #777777; /* Nhãn text xám dịu */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-pref-width: 280px; /* Tạo độ rộng cố định cho nhãn để thẳng hàng cột giá trị */
+}
+.account-field-value {
+    -fx-text-fill: #ffffff; /* Text giá trị trắng sáng rõ nét */
+    -fx-font-size: 13px;
+}
+
+/* Nhóm hiển thị tiền tệ tài chính */
+.account-balance-available {
+    -fx-text-fill: #2ecc71; /* Màu xanh lá cây của app đấu giá realtime ban đêm */
+    -fx-font-weight: bold;
+}
+.account-balance-frozen {
+    -fx-text-fill: #e74c3c; /* Màu đỏ đóng băng */
+    -fx-font-weight: bold;
+}
+.account-field-label-total {
+    -fx-text-fill: #e5e7eb;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-pref-width: 280px;
+}
+.account-balance-total {
+    -fx-text-fill: #ff9f43; /* Tổng ví màu cam rực rỡ */
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+/* Các số liệu động */
+.account-stat-value {
+    -fx-text-fill: #ff9f43; /* */
+    -fx-font-weight: bold;
+}
+.account-admin-text {
+    -fx-text-fill: #b0b3b8;
+    -fx-font-style: italic;
+    -fx-font-size: 13px;
+}
+
+.account-nested-row { -fx-padding: 4px 0; }
+.account-nested-row-admin { -fx-padding: 6px 0; }
+
+/* Thanh trạng thái đáy */
+.account-status-bar {
+    -fx-background-color: #1a1a1a; /* */
+    -fx-background-radius: 12px;
+}
+.account-status-text {
+    -fx-text-fill: #ff9f43; /* */
+    -fx-font-size: 12px;
+}
