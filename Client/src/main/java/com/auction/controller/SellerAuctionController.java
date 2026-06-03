@@ -15,6 +15,7 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -25,6 +26,9 @@ public class SellerAuctionController {
     private final ObservableList<AuctionSummaryDTO> sellerAuctions = FXCollections.observableArrayList();
 
     private AuctionSummaryDTO selectedAuction;
+
+    // Khai báo formatter chuẩn để hiển thị và đọc dữ liệu thân thiện với người dùng
+    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @FXML private Parent rootContainer;
     @FXML private Label messageLabel;
@@ -67,14 +71,49 @@ public class SellerAuctionController {
                 new SimpleStringProperty(safeText(data.getValue().getAuctionId())));
         auctionItemNameColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(safeText(data.getValue().getItemName())));
+
         auctionStatusColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(safeText(data.getValue().getStatus())));
+        // Tô màu trạng thái phiên cho sinh động (ACTIVE = Xanh lá, kết thúc = Đỏ, chờ = Cam)
+        auctionStatusColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("ACTIVE".equalsIgnoreCase(item) || "OPEN".equalsIgnoreCase(item)) {
+                        setTextFill(javafx.scene.paint.Color.valueOf("#2ecc71"));
+                    } else if ("FINISHED".equalsIgnoreCase(item) || "ENDED".equalsIgnoreCase(item) || "CANCELED".equalsIgnoreCase(item)) {
+                        setTextFill(javafx.scene.paint.Color.valueOf("#e74c3c"));
+                    } else {
+                        setTextFill(javafx.scene.paint.Color.valueOf("#ff9f43"));
+                    }
+                }
+            }
+        });
+
         auctionStartTimeColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(formatTime(data.getValue().getStartTime())));
         auctionEndTimeColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(formatTime(data.getValue().getEndTime())));
+
         auctionStepPriceColumn.setCellValueFactory(data ->
                 new SimpleDoubleProperty(data.getValue().getStepPrice()));
+        // Định dạng cột bước giá hiển thị dấu phân cách hàng nghìn trực quan
+        auctionStepPriceColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(String.format("%,.0f VNĐ", item.doubleValue()));
+                }
+            }
+        });
 
         sellerAuctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
             selectedAuction = newValue;
@@ -110,9 +149,26 @@ public class SellerAuctionController {
             return;
         }
 
-        auctionStepPriceField.setText(String.valueOf(auction.getStepPrice()));
+        /*
+         * KIỂM TRA BẢO VỆ UX: Chỉ cho phép sửa nếu phiên chưa bắt đầu (ví dụ trạng thái: CREATED, PENDING, UPCOMING)
+         * Nếu phiên đang diễn ra hoặc đã kết thúc, ta khóa form chỉnh sửa lại để đảm bảo tính minh bạch.
+         */
+        String status = safeText(auction.getStatus()).toUpperCase();
+        boolean isEditable = status.equals("CREATED") || status.equals("PENDING") || status.equals("UPCOMING") || status.isEmpty();
+
+        auctionStepPriceField.setText(String.format("%.0f", auction.getStepPrice()));
         auctionStartTimeField.setText(formatTime(auction.getStartTime()));
         auctionEndTimeField.setText(formatTime(auction.getEndTime()));
+
+        // Khóa hoặc mở khóa động các ô nhập liệu tùy theo trạng thái phiên
+        auctionStepPriceField.setDisable(!isEditable);
+        auctionStartTimeField.setDisable(!isEditable);
+        auctionEndTimeField.setDisable(!isEditable);
+        updateAuctionButton.setDisable(!isEditable);
+
+        if (!isEditable) {
+            showMessage("Phiên đấu giá đang chạy hoặc đã kết thúc, không thể chỉnh sửa.");
+        }
     }
 
     // Chức năng: cập nhật auction đã chọn.
@@ -163,6 +219,12 @@ public class SellerAuctionController {
             sellerAuctionsTable.getSelectionModel().clearSelection();
         }
         clearUpdateForm();
+
+        // Mở khóa lại form khi reset khôi phục trạng thái ban đầu
+        if (auctionStepPriceField != null) auctionStepPriceField.setDisable(false);
+        if (auctionStartTimeField != null) auctionStartTimeField.setDisable(false);
+        if (auctionEndTimeField != null) auctionEndTimeField.setDisable(false);
+        if (updateAuctionButton != null) updateAuctionButton.setDisable(false);
     }
 
     // Vai trò: quay lại dashboard.
@@ -230,9 +292,10 @@ public class SellerAuctionController {
         }
 
         try {
-            return LocalDateTime.parse(raw);
+            // Đọc định dạng ngày Việt Nam thân thiện thay vì ép định dạng chuỗi ISO thô cứng
+            return LocalDateTime.parse(raw, dateTimeFormatter);
         } catch (DateTimeParseException e) {
-            showError(fieldName + " không hợp lệ. Ví dụ: 2026-05-20T10:30:00.");
+            showError(fieldName + " không đúng định dạng ngày/tháng/năm giờ:phút. Ví dụ: 20/05/2026 10:30");
             return null;
         }
     }
@@ -263,11 +326,17 @@ public class SellerAuctionController {
 
     private void setBusy(boolean busy) {
         setDisabled(refreshButton, busy);
-        setDisabled(updateAuctionButton, busy);
+        // Nếu đang bận thì nút update bị disable hoàn toàn, nếu rảnh thì phụ thuộc vào trạng thái phiên ở fillForm
+        if (busy) {
+            setDisabled(updateAuctionButton, true);
+            setDisabled(auctionStepPriceField, true);
+            setDisabled(auctionStartTimeField, true);
+            setDisabled(auctionEndTimeField, true);
+        } else if (selectedAuction != null) {
+            // Khôi phục lại đúng trạng thái khóa/mở khóa dựa vào loại phiên khi kết thúc tiến trình chạy mạng
+            fillAuctionUpdateForm(selectedAuction);
+        }
         setDisabled(backButton, busy);
-        setDisabled(auctionStepPriceField, busy);
-        setDisabled(auctionStartTimeField, busy);
-        setDisabled(auctionEndTimeField, busy);
         setDisabled(sellerAuctionsTable, busy);
     }
 
@@ -279,8 +348,16 @@ public class SellerAuctionController {
         return response != null && response.isSuccess();
     }
 
+    /**
+     * Định dạng thời gian ra chuỗi dd/MM/yyyy HH:mm để người dùng nhìn trực quan trên bảng
+     */
     private String formatTime(LocalDateTime time) {
-        return time == null ? "" : time.toString();
+        if (time == null) return "";
+        try {
+            return time.format(dateTimeFormatter);
+        } catch (Exception e) {
+            return time.toString();
+        }
     }
 
     private String safeText(String value) {

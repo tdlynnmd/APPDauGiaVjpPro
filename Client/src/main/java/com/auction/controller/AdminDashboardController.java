@@ -18,11 +18,14 @@ import javafx.scene.Parent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.paint.Color;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -179,6 +182,17 @@ public class AdminDashboardController {
             logPageSizeField.setText(String.valueOf(DEFAULT_PAGE_SIZE));
         }
 
+        /*
+         * Dang ky su kien onAction khi Admin thay doi page size va an ENTER.
+         * Giup tai lai trang ngay lap tuc ma khong can click lam moi thu cong.
+         */
+        if (userPageSizeField != null) {
+            userPageSizeField.setOnAction(event -> loadUsers(1));
+        }
+        if (logPageSizeField != null) {
+            logPageSizeField.setOnAction(event -> loadLogs(1));
+        }
+
         showMessage("Dang tai du lieu quan tri...");
     }
 
@@ -221,18 +235,62 @@ public class AdminDashboardController {
             statusColumn.setCellValueFactory(data ->
                     new SimpleStringProperty(data.getValue().getStatus() == null ? "" : data.getValue().getStatus().name())
             );
+            // Dynamic Custom Cell: Highlight color theo trang thai tai khoan cho trực quan
+            statusColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("");
+                    } else {
+                        setText(item);
+                        if ("ACTIVE".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#2ecc71")); // Xanh lá tinh tế
+                        } else if ("LOCKED".equalsIgnoreCase(item) || "BANNED".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#e74c3c")); // Đỏ nổi bật
+                        } else {
+                            setTextFill(Color.valueOf("#ff9f43")); // Cam canh bao
+                        }
+                    }
+                }
+            });
         }
 
         if (availableBalanceColumn != null) {
             availableBalanceColumn.setCellValueFactory(data ->
                     new ReadOnlyDoubleWrapper(data.getValue().getAvailableBalance())
             );
+            // Custom Cell Factory format hien thi so tien te phang dang chuoi phan cach hang nghin
+            availableBalanceColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(Number item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                    } else {
+                        setText(String.format("%,.0f VNĐ", item.doubleValue()));
+                    }
+                }
+            });
         }
 
         if (frozenBalanceColumn != null) {
             frozenBalanceColumn.setCellValueFactory(data ->
                     new ReadOnlyDoubleWrapper(data.getValue().getFrozenBalance())
             );
+            // Custom Cell Factory format hien thi tien dong bang
+            frozenBalanceColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(Number item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                    } else {
+                        setText(String.format("%,.0f VNĐ", item.doubleValue()));
+                    }
+                }
+            });
         }
 
         /*
@@ -747,8 +805,19 @@ public class AdminDashboardController {
         return value == null ? "" : value;
     }
 
+    /**
+     * Dinh dang thoi gian hien thi hieu nang cao cho Audit Log (Vi du: dd/MM/yyyy HH:mm:ss)
+     */
     private String formatDateTime(LocalDateTime value) {
-        return value == null ? "" : value.toString();
+        if (value == null) {
+            return "";
+        }
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            return value.format(formatter);
+        } catch (Exception e) {
+            return value.toString();
+        }
     }
 
     private void setDisable(Button button, boolean disabled) {
