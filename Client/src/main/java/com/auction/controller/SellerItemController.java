@@ -996,12 +996,18 @@ public class SellerItemController {
             return;
         }
 
-        LocalDateTime startTime = readDateTime(startTimeField, "thời gian bắt đầu");
+        // ĐỊNH NGHĨA: Bộ định dạng ngày/tháng/năm giờ:phút thân thiện
+        java.time.format.DateTimeFormatter friendlyFormatter =
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        // CẬP NHẬT: Truyền thêm friendlyFormatter vào hàm đọc thời gian bắt đầu
+        LocalDateTime startTime = readDateTimeWithFormatter(startTimeField, "thời gian bắt đầu", friendlyFormatter);
         if (startTime == null) {
             return;
         }
 
-        LocalDateTime endTime = readDateTime(endTimeField, "thời gian kết thúc");
+        // CẬP NHẬT: Truyền thêm friendlyFormatter vào hàm đọc thời gian kết thúc
+        LocalDateTime endTime = readDateTimeWithFormatter(endTimeField, "thời gian kết thúc", friendlyFormatter);
         if (endTime == null) {
             return;
         }
@@ -1011,6 +1017,7 @@ public class SellerItemController {
             return;
         }
 
+        // Lệnh .toString() ở đây vẫn tự động biến đổi thành chuỗi ISO chuẩn để gửi lên API hoạt động thông suốt
         SocketResponse response = auctionApi.createAuction(
                 itemId,
                 stepPrice,
@@ -1043,6 +1050,22 @@ public class SellerItemController {
         }
 
         loadSellerItems(currentSellerPage, false);
+    }
+
+    private LocalDateTime readDateTimeWithFormatter(TextField field, String fieldName, java.time.format.DateTimeFormatter formatter) {
+        if (field == null) return null;
+        String text = field.getText().trim();
+        if (text.isEmpty()) {
+            showError("Vui lòng nhập " + fieldName + ".");
+            return null;
+        }
+        try {
+            // Dịch chuỗi nhập tay dd/MM/yyyy HH:mm thành đối tượng LocalDateTime
+            return LocalDateTime.parse(text, formatter);
+        } catch (java.time.format.DateTimeParseException e) {
+            showError("Định dạng " + fieldName + " không hợp lệ! Vui lòng nhập đúng dạng dd/MM/yyyy HH:mm (Ví dụ: 04/06/2026 10:45)");
+            return null;
+        }
     }
 
     /**
@@ -1479,9 +1502,14 @@ public class SellerItemController {
     }
 
     private void fillDefaultTimeIfEmpty() {
-        if ((startTimeField == null || isBlank(startTimeField.getText()))
-                && (endTimeField == null || isBlank(endTimeField.getText()))) {
-            fillDefaultTime();
+        java.time.format.DateTimeFormatter friendlyFormatter =
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        if (startTimeField != null && startTimeField.getText().trim().isEmpty()) {
+            startTimeField.setText(LocalDateTime.now().plusMinutes(2).format(friendlyFormatter));
+        }
+        if (endTimeField != null && endTimeField.getText().trim().isEmpty()) {
+            endTimeField.setText(LocalDateTime.now().plusDays(1).format(friendlyFormatter));
         }
     }
 

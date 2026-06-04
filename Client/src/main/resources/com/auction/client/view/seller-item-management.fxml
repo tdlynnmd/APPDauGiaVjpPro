@@ -202,10 +202,12 @@
 
                                                 <Label styleClass="sim-field-label" text="Bước giá tối thiểu ($) (*):" />
                                                 <TextField fx:id="stepPriceField" promptText="Ví dụ: 15.5" styleClass="sim-input" />
-                                                <Label styleClass="sim-field-label" text="Thời gian bắt đầu sàn (ISO):" />
-                                                <TextField fx:id="startTimeField" styleClass="sim-input" />
-                                                <Label styleClass="sim-field-label" text="Thời gian kết thúc sàn (ISO):" />
-                                                <TextField fx:id="endTimeField" styleClass="sim-input" />
+
+                                                <Label styleClass="sim-field-label" text="Thời gian bắt đầu sàn (dd/MM/yyyy HH:mm):" />
+                                                <TextField fx:id="startTimeField" promptText="Ví dụ: 04/06/2026 10:45" styleClass="sim-input" />
+
+                                                <Label styleClass="sim-field-label" text="Thời gian kết thúc sàn (dd/MM/yyyy HH:mm):" />
+                                                <TextField fx:id="endTimeField" promptText="Ví dụ: 05/06/2026 10:45" styleClass="sim-input" />
 
                                                 <HBox alignment="CENTER_RIGHT" spacing="10.0" style="-fx-padding: 5 0 0 0;">
                                                     <children>
