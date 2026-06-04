@@ -1842,3 +1842,247 @@
     -fx-font-weight: bold;
     -fx-text-fill: #F59E0B;     /* Màu chữ Vàng Cam theo Dark giao diện */
 }
+
+/* ========================================================================= */
+/* CẤU HÌNH CSS CLEAN UI - VIẾT RIÊNG CHO MÀN HÌNH ADMIN (DARK MODE)         */
+/* Cô lập hoàn toàn trong .ap-root, kế thừa từ biến màu hệ thống của bạn     */
+/* ========================================================================= */
+
+.ap-root {
+    /* Áp dụng nền đen sâu từ biến -fx-bg-main của bạn */
+    -fx-background-color: -fx-bg-main;
+
+    /* Định nghĩa các biến phụ trợ cục bộ cho bản Dark */
+    -fx-ap-border: #2c2f33;
+    -fx-ap-table-header-bg: #1c1d1f;
+    -fx-ap-danger: #ff4757;
+    -fx-ap-danger-hover: #ff6b81;
+    -fx-ap-warning: -fx-primary-color; /* Dùng luôn màu Cam Vàng làm màu nhấn cảnh báo */
+    -fx-ap-success: #10ac84;
+}
+
+/* --- Khung Đầu App & Menu Điều Hướng Phẳng --- */
+.ap-top-container {
+    -fx-background-color: -fx-bg-card; /* Hộp xám đen */
+    -fx-border-color: transparent transparent -fx-ap-border transparent;
+    -fx-border-width: 1px;
+}
+
+.ap-header-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-main; /* Chữ trắng xám */
+}
+
+.ap-btn-back {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-text-fill: -fx-text-main;
+    -fx-cursor: hand;
+}
+.ap-btn-back:hover {
+    -fx-background-color: #2c2e30;
+}
+
+.ap-btn-clear {
+    -fx-background-color: transparent;
+    -fx-text-fill: #a4b0be;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+.ap-btn-clear:hover {
+    -fx-text-fill: -fx-primary-color; /* Cam Vàng */
+    -fx-border-color: -fx-primary-color;
+}
+
+/* Các nút Tab chuyển đổi dạng phẳng tối giản Dark Mode */
+.ap-btn-nav {
+    -fx-background-color: transparent;
+    -fx-text-fill: #a4b0be;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-cursor: hand;
+}
+.ap-btn-nav:hover {
+    -fx-background-color: #2c2e30;
+    -fx-text-fill: -fx-primary-color; /* Cam Vàng */
+    -fx-background-radius: 4px;
+}
+.ap-btn-nav:focused {
+    -fx-border-color: transparent transparent -fx-primary-color transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-text-fill: -fx-primary-color;
+}
+
+/* --- Khu vực Workspace & SplitPane --- */
+.ap-split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.ap-split-pane .split-pane-divider {
+    -fx-background-color: -fx-ap-border;
+    -fx-padding: 0 1;
+}
+.ap-workspace-pane {
+    -fx-background-color: -fx-bg-card; /* Hộp xám đen */
+}
+.ap-table-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-main;
+}
+
+/* ==========================================================================
+   ĐỊNH DẠNG TABLEVIEW SẠCH (CLEAN UI) & ĐẢM BẢO TƯƠNG PHẢN CHỮ MÀU TỐI
+   ========================================================================== */
+.ap-table {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+}
+/* Thanh tiêu đề bảng */
+.ap-table .column-header-background {
+    -fx-background-color: -fx-ap-table-header-bg;
+}
+.ap-table .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 35px;
+    -fx-border-color: transparent -fx-ap-border transparent transparent;
+}
+.ap-table .column-header .label {
+    -fx-text-fill: -fx-text-main; /* Chữ trắng xám nổi rõ */
+    -fx-font-weight: bold;
+}
+/* Các hàng dữ liệu bên trong bảng */
+.ap-table .table-row-cell {
+    -fx-cell-size: 38px;
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent transparent -fx-ap-border transparent;
+}
+/* Tương phản chữ cực tốt trong môi trường Dark Mode */
+.ap-table .table-cell {
+    -fx-text-fill: -fx-text-main; /* Đảm bảo chữ trắng xám hiện rõ mượt mà trên nền tối */
+}
+/* Khi click chọn một hàng: Đổi sang tone màu Cam Vàng chủ đạo của bạn */
+.ap-table .table-row-cell:filled:selected {
+    -fx-background-color: -fx-primary-color; /* Nền Cam Vàng rực rỡ */
+}
+.ap-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: -fx-bg-main; /* Đảo ngược chữ thành màu Đen sâu để đọc cực kỳ rõ nét */
+    -fx-font-weight: bold;
+}
+
+/* Các thành phần phụ trợ phân trang */
+.ap-text-sm {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-size: 12px;
+}
+.ap-input-sm {
+    -fx-background-color: -fx-bg-main;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-text-fill: -fx-text-main;
+}
+.ap-btn-refresh, .ap-btn-page {
+    -fx-background-color: -fx-bg-main;
+    -fx-text-fill: -fx-text-main;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+.ap-btn-refresh:hover, .ap-btn-page:hover {
+    -fx-background-color: -fx-primary-color;
+    -fx-text-fill: -fx-bg-main; /* Chữ đen trên nền cam */
+    -fx-font-weight: bold;
+}
+.ap-page-indicator {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: bold;
+}
+
+/* --- Khung Tác Vụ Bên Phải (Action Panel Dark) --- */
+.ap-action-pane {
+    -fx-background-color: -fx-bg-main;
+    -fx-border-color: transparent transparent transparent -fx-ap-border;
+    -fx-border-width: 1px;
+}
+.ap-action-header-user { -fx-font-weight: bold; -fx-text-fill: -fx-ap-danger; -fx-font-size: 14px; }
+.ap-action-header-item { -fx-font-weight: bold; -fx-text-fill: -fx-primary-color; -fx-font-size: 14px; }
+.ap-action-header-auction { -fx-font-weight: bold; -fx-text-fill: #54a0ff; -fx-font-size: 14px; }
+
+.ap-card-action-user {
+    -fx-background-color: #241919;      /* Đỏ tối nền */
+    -fx-border-color: #5c2727;          /* Viền đỏ sẫm */
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+.ap-card-action-item {
+    -fx-background-color: #2c2519;      /* Cam tối nền */
+    -fx-border-color: #5c4327;          /* Viền cam sẫm */
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+.ap-card-action-auction {
+    -fx-background-color: #19222c;      /* Xanh dương tối nền */
+    -fx-border-color: #273e5c;          /* Viền xanh sẫm */
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+
+.ap-card-title { -fx-font-weight: bold; -fx-text-fill: -fx-text-main; }
+.ap-input-label { -fx-font-size: 11px; -fx-text-fill: -fx-text-main; }
+
+.ap-input-field {
+    -fx-background-color: -fx-bg-main;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-padding: 6 10;
+    -fx-text-fill: -fx-text-main;
+}
+
+.ap-btn-action-user { -fx-background-color: -fx-ap-danger; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+.ap-btn-action-user:hover { -fx-background-color: -fx-ap-danger-hover; }
+
+.ap-btn-action-item { -fx-background-color: -fx-primary-color; -fx-text-fill: -fx-bg-main; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+.ap-btn-action-auction { -fx-background-color: #54a0ff; -fx-text-fill: -fx-bg-main; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+
+.ap-action-container-log { -fx-alignment: center; -fx-spacing: 10px; }
+.ap-log-info-main { -fx-font-style: italic; -fx-text-fill: #7f8c8d; }
+.ap-log-info-sub { -fx-text-fill: #7f8c8d; -fx-font-size: 11px; }
+
+/* --- Thanh trạng thái chân trang --- */
+.ap-footer-bar {
+    -fx-background-color: #111417;
+    -fx-border-color: -fx-ap-border transparent transparent transparent;
+    -fx-border-width: 1px;
+}
+.ap-status-text {
+    -fx-font-style: italic;
+    -fx-text-fill: #a4b0be;
+}
+/* --- ĐỔ MÀU BADGE TRẠNG THÁI CHO DARK MODE (NỀN TỐI CHỮ PHÁT SÁNG) --- */
+.status-cell {
+    -fx-alignment: center;
+    -fx-font-weight: bold;
+}
+/* Chỉ định đổi màu chữ trơn cho ô TableCell khi có class tương ứng */
+.table-cell.badge-green {
+    -fx-text-fill: #81c995 !important;
+}
+.table-cell.badge-red {
+    -fx-text-fill: #f28b82 !important;
+}
+.table-cell.badge-blue {
+    -fx-text-fill: #8ab4f8 !important;
+}
+.table-cell.badge-orange {
+    -fx-text-fill: #fdd663 !important;
+}

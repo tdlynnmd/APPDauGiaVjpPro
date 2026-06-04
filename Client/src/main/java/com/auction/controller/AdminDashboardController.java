@@ -25,6 +25,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
+import javafx.scene.layout.VBox;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -58,6 +59,22 @@ public class AdminDashboardController {
     private int currentAuctionPage = 1;
     private int totalAuctionPages = 0;
 
+    // =========================================================================
+    // CÁC BIẾN FXML MỚI BỔ SUNG ĐỂ QUẢN LÝ ẨN HIỆN VÀ ĐIỀU HƯỚNG CÁC TAB LAYOUT
+    // =========================================================================
+    @FXML private VBox tabUsersContent;
+    @FXML private VBox tabItemsContent;
+    @FXML private VBox tabAuctionsContent;
+    @FXML private VBox tabLogsContent;
+
+    @FXML private VBox actionUserBox;
+    @FXML private VBox actionItemBox;
+    @FXML private VBox actionAuctionBox;
+    @FXML private VBox actionLogBox;
+
+    // =========================================================================
+    // CÁC BIẾN FXML CŨ (GIỮ NGUYÊN 100%)
+    // =========================================================================
     @FXML private Parent rootContainer;
     @FXML private Label messageLabel;
 
@@ -153,6 +170,45 @@ public class AdminDashboardController {
         loadAuctions(1);
     }
 
+    // =========================================================================
+    // CÁC HÀM XỬ LÝ SỰ KIỆN CLICK CHUYỂN TAB (MỚI BỔ SUNG CHO TRỰC QUAN PHÂN TÁCH)
+    // =========================================================================
+    @FXML
+    private void handleSwitchToUsersTab() {
+        setTabVisibility(true, false, false, false);
+        loadUsers(currentUserPage <= 0 ? 1 : currentUserPage);
+    }
+
+    @FXML
+    private void handleSwitchToItemsTab() {
+        setTabVisibility(false, true, false, false);
+        loadItems(currentItemPage <= 0 ? 1 : currentItemPage);
+    }
+
+    @FXML
+    private void handleSwitchToAuctionsTab() {
+        setTabVisibility(false, false, true, false);
+        loadAuctions(currentAuctionPage <= 0 ? 1 : currentAuctionPage);
+    }
+
+    @FXML
+    private void handleSwitchToLogsTab() {
+        setTabVisibility(false, false, false, true);
+        loadLogs(currentLogPage <= 0 ? 1 : currentLogPage);
+    }
+
+    private void setTabVisibility(boolean userVisible, boolean itemVisible, boolean auctionVisible, boolean logVisible) {
+        if (tabUsersContent != null) tabUsersContent.setVisible(userVisible);
+        if (tabItemsContent != null) tabItemsContent.setVisible(itemVisible);
+        if (tabAuctionsContent != null) tabAuctionsContent.setVisible(auctionVisible);
+        if (tabLogsContent != null) tabLogsContent.setVisible(logVisible);
+
+        if (actionUserBox != null) actionUserBox.setVisible(userVisible);
+        if (actionItemBox != null) actionItemBox.setVisible(itemVisible);
+        if (actionAuctionBox != null) actionAuctionBox.setVisible(auctionVisible);
+        if (actionLogBox != null) actionLogBox.setVisible(logVisible);
+    }
+
     /**
      * Ap dung theme hien tai cua app.
      * Neu FXML chua gan rootContainer thi bo qua, khong lam crash controller.
@@ -224,55 +280,32 @@ public class AdminDashboardController {
      * TableView chi hien thi ObservableList users; khi users.setAll(...) thi UI tu cap nhat.
      */
     private void initializeUsersTable() {
-        if (usersTable == null) {
-            return;
-        }
-
+        if (usersTable == null) return;
         usersTable.setItems(users);
 
-        if (userIdColumn != null) {
-            userIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getId()))
-            );
-        }
-
-        if (usernameColumn != null) {
-            usernameColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getUsername()))
-            );
-        }
-
-        if (emailColumn != null) {
-            emailColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getEmail()))
-            );
-        }
-
-        if (roleColumn != null) {
-            roleColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(data.getValue().getRole() == null ? "" : data.getValue().getRole().name())
-            );
-        }
+        if (userIdColumn != null) userIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getId())));
+        if (usernameColumn != null) usernameColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getUsername())));
+        if (emailColumn != null) emailColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getEmail())));
+        if (roleColumn != null) roleColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getRole() == null ? "" : data.getValue().getRole().name()));
 
         if (statusColumn != null) {
-            statusColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(data.getValue().getStatus() == null ? "" : data.getValue().getStatus().name())
-            );
+            statusColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus() == null ? "" : data.getValue().getStatus().name()));
             statusColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
+                    // Reset sạch class cũ để tránh lỗi lem màu khi cuộn chuột
+                    getStyleClass().removeAll("badge-green", "badge-red", "badge-orange");
+
                     if (empty || item == null) {
                         setText(null);
-                        setStyle("");
                     } else {
                         setText(item);
-                        if ("ACTIVE".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#2ecc71"));
-                        } else if ("LOCKED".equalsIgnoreCase(item) || "BANNED".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#e74c3c"));
+                        String upper = item.toUpperCase().trim();
+                        if ("ACTIVE".equals(upper)) {
+                            getStyleClass().add("badge-green");
                         } else {
-                            setTextFill(Color.valueOf("#ff9f43"));
+                            getStyleClass().add("badge-red");
                         }
                     }
                 }
@@ -280,43 +313,25 @@ public class AdminDashboardController {
         }
 
         if (availableBalanceColumn != null) {
-            availableBalanceColumn.setCellValueFactory(data ->
-                    new ReadOnlyDoubleWrapper(data.getValue().getAvailableBalance())
-            );
+            availableBalanceColumn.setCellValueFactory(data -> new ReadOnlyDoubleWrapper(data.getValue().getAvailableBalance()));
             availableBalanceColumn.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(Number item, boolean empty) {
+                @Override protected void updateItem(Number item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setText(null);
-                    } else {
-                        setText(String.format("%,.0f VNĐ", item.doubleValue()));
-                    }
+                    setText(empty || item == null ? null : String.format("%,.0f VNĐ", item.doubleValue()));
                 }
             });
         }
-
         if (frozenBalanceColumn != null) {
-            frozenBalanceColumn.setCellValueFactory(data ->
-                    new ReadOnlyDoubleWrapper(data.getValue().getFrozenBalance())
-            );
+            frozenBalanceColumn.setCellValueFactory(data -> new ReadOnlyDoubleWrapper(data.getValue().getFrozenBalance()));
             frozenBalanceColumn.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(Number item, boolean empty) {
+                @Override protected void updateItem(Number item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setText(null);
-                    } else {
-                        setText(String.format("%,.0f VNĐ", item.doubleValue()));
-                    }
+                    setText(empty || item == null ? null : String.format("%,.0f VNĐ", item.doubleValue()));
                 }
             });
         }
-
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldUser, newUser) -> {
-            if (newUser != null && lockUserIdField != null) {
-                lockUserIdField.setText(newUser.getId());
-            }
+            if (newUser != null && lockUserIdField != null) lockUserIdField.setText(newUser.getId());
         });
     }
 
@@ -597,37 +612,17 @@ public class AdminDashboardController {
      * Bam sat y het initializeUsersTable – ObservableList, CellValueFactory, selection listener.
      */
     private void initializeItemsTable() {
-        if (itemsTable == null) {
-            return;
-        }
-
+        if (itemsTable == null) return;
         itemsTable.setItems(items);
 
-        if (itemIdColumn != null) {
-            itemIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemId()))
-            );
-        }
-
-        if (itemNameColumn != null) {
-            itemNameColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemName()))
-            );
-        }
-
-        if (itemTypeColumn != null) {
-            itemTypeColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemType()))
-            );
-        }
+        if (itemIdColumn != null) itemIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemId())));
+        if (itemNameColumn != null) itemNameColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemName())));
+        if (itemTypeColumn != null) itemTypeColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemType())));
 
         if (itemPriceColumn != null) {
-            itemPriceColumn.setCellValueFactory(data ->
-                    new ReadOnlyDoubleWrapper(data.getValue().getStartingPrice())
-            );
+            itemPriceColumn.setCellValueFactory(data -> new ReadOnlyDoubleWrapper(data.getValue().getStartingPrice()));
             itemPriceColumn.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(Number item, boolean empty) {
+                @Override protected void updateItem(Number item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty || item == null ? null : String.format("%,.0f VND", item.doubleValue()));
                 }
@@ -635,33 +630,31 @@ public class AdminDashboardController {
         }
 
         if (itemStatusColumn != null) {
-            itemStatusColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getStatus()))
-            );
+            itemStatusColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getStatus())));
             itemStatusColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
+                    getStyleClass().removeAll("badge-green", "badge-red", "badge-orange");
+
                     if (empty || item == null) {
-                        setText(null); setStyle("");
+                        setText(null);
                     } else {
                         setText(item);
-                        if ("ACTIVE".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#2ecc71"));
-                        } else if ("BANNED".equalsIgnoreCase(item) || "REMOVED".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#e74c3c"));
+                        String upper = item.toUpperCase().trim();
+                        if ("ACTIVE".equals(upper)) {
+                            getStyleClass().add("badge-green");
+                        } else if ("SOLD".equals(upper)) {
+                            getStyleClass().add("badge-red");
                         } else {
-                            setTextFill(Color.valueOf("#ff9f43"));
+                            getStyleClass().add("badge-orange");
                         }
                     }
                 }
             });
         }
-
         itemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
-            if (newItem != null && deleteItemIdField != null) {
-                deleteItemIdField.setText(newItem.getItemId());
-            }
+            if (newItem != null && deleteItemIdField != null) deleteItemIdField.setText(newItem.getItemId());
         });
     }
 
@@ -716,31 +709,16 @@ public class AdminDashboardController {
      * Bam sat y het initializeLogsTable.
      */
     private void initializeAuctionsTable() {
-        if (auctionsTable == null) {
-            return;
-        }
-
+        if (auctionsTable == null) return;
         auctionsTable.setItems(auctions);
 
-        if (auctionIdColumn != null) {
-            auctionIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getAuctionId()))
-            );
-        }
-
-        if (auctionItemIdColumn != null) {
-            auctionItemIdColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getItemName()))
-            );
-        }
+        if (auctionIdColumn != null) auctionIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getAuctionId())));
+        if (auctionItemIdColumn != null) auctionItemIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemName())));
 
         if (auctionPriceColumn != null) {
-            auctionPriceColumn.setCellValueFactory(data ->
-                    new ReadOnlyDoubleWrapper(data.getValue().getCurrentPrice())
-            );
+            auctionPriceColumn.setCellValueFactory(data -> new ReadOnlyDoubleWrapper(data.getValue().getCurrentPrice()));
             auctionPriceColumn.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(Number item, boolean empty) {
+                @Override protected void updateItem(Number item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty || item == null ? null : String.format("%,.0f VND", item.doubleValue()));
                 }
@@ -748,41 +726,35 @@ public class AdminDashboardController {
         }
 
         if (auctionStatusColumn != null) {
-            auctionStatusColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getStatus()))
-            );
+            auctionStatusColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getStatus())));
             auctionStatusColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
+                    getStyleClass().removeAll("badge-green", "badge-red", "badge-blue", "badge-orange");
+
                     if (empty || item == null) {
-                        setText(null); setStyle("");
+                        setText(null);
                     } else {
                         setText(item);
-                        if ("RUNNING".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#2ecc71"));
-                        } else if ("CANCELED".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#e74c3c"));
-                        } else if ("OPEN".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#3498db"));
+                        String upper = item.toUpperCase().trim();
+                        if ("RUNNING".equals(upper)) {
+                            getStyleClass().add("badge-green");
+                        } else if ("FINISHED".equals(upper)) {
+                            getStyleClass().add("badge-red");
+                        } else if ("OPEN".equals(upper)) {
+                            getStyleClass().add("badge-blue");
                         } else {
-                            setTextFill(Color.valueOf("#95a5a6"));
+                            getStyleClass().add("badge-orange");
                         }
                     }
                 }
             });
         }
 
-        if (auctionEndTimeColumn != null) {
-            auctionEndTimeColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(formatDateTime(data.getValue().getEndTime()))
-            );
-        }
-
+        if (auctionEndTimeColumn != null) auctionEndTimeColumn.setCellValueFactory(data -> new SimpleStringProperty(formatDateTime(data.getValue().getEndTime())));
         auctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldAuction, newAuction) -> {
-            if (newAuction != null && cancelAuctionIdField != null) {
-                cancelAuctionIdField.setText(newAuction.getAuctionId());
-            }
+            if (newAuction != null && cancelAuctionIdField != null) cancelAuctionIdField.setText(newAuction.getAuctionId());
         });
     }
 
