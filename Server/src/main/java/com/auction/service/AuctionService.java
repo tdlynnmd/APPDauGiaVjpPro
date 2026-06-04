@@ -60,6 +60,7 @@ public class AuctionService {
     private static final Queue<BidTask> dbQueue = new ConcurrentLinkedQueue<>();
     private static final ExecutorService dbWriterExecutor = Executors.newSingleThreadExecutor();
     private static final Set<String> inProgressBids = ConcurrentHashMap.newKeySet();
+    private static final Set<String> inProgressBidders = ConcurrentHashMap.newKeySet();
     private static final ExecutorService autoBidExecutor = Executors.newCachedThreadPool();
     private static final Set<String> activeAutoBidAuctions = ConcurrentHashMap.newKeySet();
     private static volatile AuctionService instance;
@@ -141,7 +142,9 @@ public class AuctionService {
                         // hasPendingBidsForAuction() sẽ thấy entry này và trả về true
                         // cho đến khi commit xong, ngăn finalizeAuction chạy non-farm
                         String cleanId = task.auctionId.trim();
+                        String cleanBidderId = task.bidderId.trim();
                         inProgressBids.add(cleanId);
+                        inProgressBidders.add(cleanBidderId);
                         try {
                             getInstance().persistBidToDatabaseInternal(task);
                         } catch (Exception e) {
@@ -150,6 +153,7 @@ public class AuctionService {
                         } finally {
                             // ✅ Chỉ xóa SAU KHI commit DB xong (bên trong persistBidToDatabaseInternal)
                             inProgressBids.remove(cleanId);
+                            inProgressBidders.remove(cleanBidderId);
                         }
                     } else {
                         Thread.sleep(10); // Tránh chiếm dụng CPU khi hàng đợi rỗng
@@ -333,17 +337,25 @@ public class AuctionService {
         String newBidId = UUID.randomUUID().toString();
         LocalDateTime currentActionTime = LocalDateTime.now();
 
-        // Kiểm tra ví tiền khả dụng trực tiếp trên bộ nhớ đệm RAM live (Chống Over-drafting cực nhanh)
-        if (bidder.getAvailableBalance() < amount) {
-            throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        // BƯỚC 1: CẬP NHẬT RAM (Thay vì đồng bộ DB trước, ta chỉ làm việc trên RAM để tối ưu tốc độ và tránh kiệt quệ connection pool)
+        // BƯỚC 1: CẬP NHẬT RAM & ĐỒNG BỘ KIỂM TRA SỐ DƯ
         synchronized (bidder.getId().intern()) {
+            double requiredBalance = amount;
+            if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
+                requiredBalance = amount - oldPrice;
+            }
+
+            if (bidder.getAvailableBalance() < requiredBalance) {
+                throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+            }
+
             if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
                 bidder.unfreeze(oldPrice);
             }
-            bidder.freeze(amount);
+            
+            boolean freezeOk = bidder.freeze(amount);
+            if (!freezeOk) {
+                throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+            }
             bidder.addJoinedAuction(auction.getId());
         }
 
@@ -600,6 +612,10 @@ public class AuctionService {
         if (amount <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Bid amount must be strictly greater than zero.");
         }
+        Auction auction = getAuctionContext(auctionId);
+        if (bidder.getId().equals(auction.getSellerId())) {
+            throw new AuctionException(AuctionErrorCode.BIDDER_IS_SELLER);
+        }
     }
 
     /**
@@ -614,6 +630,39 @@ public class AuctionService {
             }
         }
         return inProgressBids.contains(cleanId);
+    }
+
+    /**
+     * Kiểm tra xem người dùng có tác vụ thầu nào đang nằm trong hàng đợi hoặc đang ghi DB hay không
+     */
+    public boolean hasPendingBidsForUser(String userId) {
+        if (userId == null) return false;
+        String cleanId = userId.trim();
+        for (BidTask task : dbQueue) {
+            if (task != null && task.bidderId != null && task.bidderId.trim().equals(cleanId)) {
+                return true;
+            }
+        }
+        return inProgressBidders.contains(cleanId);
+    }
+
+    /**
+     * Chặn luồng và chờ cho đến khi toàn bộ các lệnh thầu của người dùng dưới DB được ghi xong xuôi
+     */
+    public void waitForPendingUserBids(String userId) {
+        if (userId == null) return;
+        String cleanId = userId.trim();
+        int attempts = 0;
+        int maxAttempts = 500; // Chờ tối đa 5 giây (500 * 10ms)
+        while (hasPendingBidsForUser(cleanId) && attempts < maxAttempts) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            attempts++;
+        }
     }
 
     public void finalizeAuction(String auctionId) {
@@ -1200,6 +1249,21 @@ public class AuctionService {
     // 🛡️ PRIVATE HELPER METHODS - TRÍCH XUẤT NGỮ CẢNH AN TOÀN
     // =========================================================================
 
+    private void syncAndSendBalanceUpdate(String userId) {
+        User user = UserManage.getInstance().getUser(userId);
+        if (user != null) {
+            if (hasPendingBidsForUser(userId)) {
+                connectionManage.sendBalanceUpdate(userId, user.getAvailableBalance(), user.getFrozenBalance());
+                return;
+            }
+        }
+
+        User freshUser = syncLiveUserBalanceFromDatabase(userId);
+        if (freshUser != null) {
+            connectionManage.sendBalanceUpdate(userId, freshUser.getAvailableBalance(), freshUser.getFrozenBalance());
+        }
+    }
+
     /**
      * Chốt chặn tối cao giúp bốc Entity sạch từ Database kiêm ép kiểu Bidder chuẩn chỉ
      */
@@ -1217,6 +1281,7 @@ public class AuctionService {
             return (Bidder) liveUser;
         }
 
+        waitForPendingUserBids(cleanBidderId);
         User user = userDAO.findById(cleanBidderId)
                 .orElseThrow(() -> new AuthenticationException(AuthErrorCode.USER_NOT_FOUND, "User authentication failed: user not found."));
 
@@ -1226,18 +1291,7 @@ public class AuctionService {
         return (Bidder) user;
     }
 
-    private void syncAndSendBalanceUpdate(String userId) {
-        User user = syncLiveUserBalanceFromDatabase(userId);
-        if (user == null) {
-            return;
-        }
 
-        try {
-            connectionManage.sendBalanceUpdate(userId, user.getAvailableBalance(), user.getFrozenBalance());
-        } catch (Exception ex) {
-            System.err.println("[AuctionService] Loi gui WALLET_UPDATE cho user " + userId + ": " + ex.getMessage());
-        }
-    }
 
     private void syncAndSendBalanceUpdates(Collection<String> userIds) {
         if (userIds == null || userIds.isEmpty()) {
@@ -1298,6 +1352,14 @@ public class AuctionService {
             if (bidder.getId().equals(auction.getSellerId())) {
                 throw new AuctionException(AuctionErrorCode.BIDDER_IS_SELLER);
             }
+            double userTotalBalanceForThisAuction = bidder.getAvailableBalance();
+            if (bidder.getId().equals(auction.getHighestBidderId())) {
+                userTotalBalanceForThisAuction += auction.getCurrentPrice();
+            }
+            if (maxBid > userTotalBalanceForThisAuction) {
+                throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+            }
+
             if (maxBid < auction.getCurrentPrice() + auction.getLiveStepPrice()) {
                 throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW, "Max bid must be at least the next required bid.");
             }

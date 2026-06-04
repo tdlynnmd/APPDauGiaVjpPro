@@ -17,6 +17,7 @@ import com.auction.exception.AuctionErrorCode;
 import com.auction.exception.AuctionException;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
+import com.auction.exception.WalletException;
 import com.auction.manage.AuctionManage;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.ProductManage;
@@ -721,6 +722,66 @@ class AuctionServiceTest {
 
         verify(autoBidDAO).disableAutoBid(any(Connection.class), eq(autoBid.getId()));
         assertEquals(0, auction.getAutoBidsQueue().size());
+    }
+
+    @Test
+    void setupAutoBidShouldThrowWhenMaxBidExceedsAvailableBalance() throws Exception {
+        Item item = sampleItem("item-autobid-limit");
+        Auction auction = sampleAuction("auction-autobid-limit", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auctionManage.addAuction(auction);
+
+        Bidder bidder = new Bidder("bidder-autobid-limit", "khach", "k@gmail.com", "P@ss123", UserRole.BIDDER, 1000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
+
+        WalletException exception = assertThrows(WalletException.class, () ->
+                auctionService.setupAutoBid(bidder.getId(), "auction-autobid-limit", 5000.0, 200.0)
+        );
+        assertEquals("WAL_ACC_001", exception.getErrorCode());
+    }
+
+    @Test
+    void processBidShouldThrowWhenBidderIsSeller() throws Exception {
+        Item item = sampleItem("item-seller-bid");
+        Auction auction = sampleAuction("auction-seller-bid", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auctionManage.addAuction(auction);
+
+        Bidder bidder = new Bidder("seller-1", "seller", "s@gmail.com", "P@ss123", UserRole.BIDDER, 1000000.0, 0.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
+
+        AuctionException exception = assertThrows(AuctionException.class, () ->
+                auctionService.processBid(bidder.getId(), "auction-seller-bid", 12500000.0)
+        );
+        assertEquals("AUC_ROOM_008", exception.getErrorCode());
+    }
+
+    @Test
+    void executeBidInternalShouldSucceedWhenSelfBiddingWithSufficientIncrementalBalance() throws Exception {
+        Electronics item = new Electronics(
+                "Laptop Dell", 1000.0, "Laptop văn phòng", 2022, "seller-1", "dell.png", "Dell", 24
+        );
+        item.setId("item-self-bid-ok");
+        Auction auction = sampleAuction("auction-self-bid-ok", item);
+        auction.updateDetails(100.0, LocalDateTime.now().minusMinutes(5), LocalDateTime.now().plusHours(1));
+        auction.setStatus(AuctionStatus.RUNNING);
+        auctionManage.addAuction(auction);
+
+        Bidder bidder = new Bidder("bidder-self-ok", "bidder", "b@gmail.com", "P@ss123", UserRole.BIDDER, 500.0, 1100.0, UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
+        auction.placeBid(bidder, 1100.0, "old-bid-id");
+        
+        when(userDAO.findById(bidder.getId())).thenReturn(Optional.of(bidder));
+        setBidderOnline(bidder.getId(), true);
+
+        when(userDAO.freezeMoney(any(Connection.class), eq(bidder.getId()), eq(1300.0))).thenReturn(true);
+        when(auctionDAO.updatePriceAndWinner(any(Connection.class), eq("auction-self-bid-ok"), eq(1300.0), eq(bidder.getId()), anyString(), any(LocalDateTime.class), anyDouble())).thenReturn(true);
+        when(bidTransactionDAO.insertBid(any(Connection.class), any())).thenReturn(true);
+
+        assertDoesNotThrow(() -> { auctionService.processBid(bidder.getId(), "auction-self-bid-ok", 1300.0); });
+
+        assertEquals(1300.0, auction.getCurrentPrice());
+        assertEquals(300.0, bidder.getAvailableBalance());
+        assertEquals(1300.0, bidder.getFrozenBalance());
     }
 
     private static class FakeDbConnection implements Connection {
