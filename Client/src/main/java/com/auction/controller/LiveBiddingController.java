@@ -419,43 +419,45 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         };
 
         task.setOnSucceeded(event -> {
-            setBusy(false);
-            if (loadingOverlay != null) {
-                Platform.runLater(() -> {
-                    loadingOverlay.setVisible(false);
-                    loadingOverlay.setManaged(false);
-                });
-            }
-            AuctionDetailDTO detail = task.getValue();
-            if (detail != null) {
-                currentAuctionDetail = detail;
-                displayAuctionDetail(currentAuctionDetail);
-                if (liveRoomJoined) {
-                    showMessage("Đã kết nối vào phòng đấu giá trực tuyến thành công.");
+            setBusy(false); //
+            if (loadingOverlay != null) { //
+                Platform.runLater(() -> { //
+                    loadingOverlay.setVisible(false); //
+                    loadingOverlay.setManaged(false); //
+                }); //
+            } //
+            AuctionDetailDTO detail = task.getValue(); //
+            if (detail != null) { //
+                currentAuctionDetail = detail; //
+                displayAuctionDetail(currentAuctionDetail); //
+                if (liveRoomJoined) { //
+                    showMessage("Đã kết nối vào phòng đấu giá trực tuyến thành công."); //
 
-                    boolean hasAutoBid = currentAuctionDetail.getActiveAutoBidMaxBid() > 0;
-                    updateAutoBidUIState(hasAutoBid);
+                    boolean hasAutoBid = currentAuctionDetail.getActiveAutoBidMaxBid() > 0; //
+                    updateAutoBidUIState(hasAutoBid); //
+
                     if (hasAutoBid) {
+                        // ĐỊNH DẠNG LẠI KHI KHÔI PHỤC DỮ LIỆU TỪ SERVER LÊN GIAO DIỆN CHUẨN VNĐ
                         if (maxAutoBidField != null) {
-                            maxAutoBidField.setText(String.valueOf(currentAuctionDetail.getActiveAutoBidMaxBid()));
+                            maxAutoBidField.setText(formatMoney(currentAuctionDetail.getActiveAutoBidMaxBid()) + " VNĐ");
                         }
                         if (autoBidIncrementField != null) {
-                            autoBidIncrementField.setText(String.valueOf(currentAuctionDetail.getActiveAutoBidIncrement()));
+                            autoBidIncrementField.setText(formatMoney(currentAuctionDetail.getActiveAutoBidIncrement()) + " VNĐ");
                         }
-                        showMessage("✅ Đã khôi phục cấu hình AutoBid của bạn.");
+                        showMessage("✅ Đã khôi phục cấu hình AutoBid của bạn."); //
                     } else {
-                        if (maxAutoBidField != null) {
-                            maxAutoBidField.setText("");
-                        }
-                        if (autoBidIncrementField != null) {
-                            autoBidIncrementField.setText("");
-                        }
+                        if (maxAutoBidField != null) { //
+                            maxAutoBidField.setText(""); //
+                        } //
+                        if (autoBidIncrementField != null) { //
+                            autoBidIncrementField.setText(""); //
+                        } //
                     }
                 } else {
-                    showError("Kết nối Realtime thất bại, vui lòng bấm làm mới!");
+                    showError("Kết nối Realtime thất bại, vui lòng bấm làm mới!"); //
                 }
             } else {
-                showError("Không thể đọc dữ liệu chi tiết phiên đấu giá.");
+                showError("Không thể đọc dữ liệu chi tiết phiên đấu giá."); //
             }
         });
 
@@ -648,59 +650,72 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
     @FXML
     private void handleSetupAutoBid() {
-        if (isBlank(auctionId)) {
-            showError("Không tìm thấy mã phiên đấu giá.");
-            return;
+        if (isBlank(auctionId)) { //
+            showError("Không tìm thấy mã phiên đấu giá."); //
+            return; //
         }
 
-        Double maxBid = readAmount(maxAutoBidField, "Vui lòng nhập giá tối đa mong muốn.");
-        Double increment = readAmount(autoBidIncrementField, "Vui lòng nhập bước tăng tự động.");
+        Double maxBid = readAmount(maxAutoBidField, "Vui lòng nhập giá tối đa mong muốn."); //
+        Double increment = readAmount(autoBidIncrementField, "Vui lòng nhập bước tăng tự động."); //
 
-        if (maxBid == null || increment == null) {
-            return;
+        if (maxBid == null || increment == null) { //
+            return; //
         }
 
-        if (currentAuctionDetail != null) {
-            double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice();
-            if (maxBid < minimumAmount) {
-                showError("Giá đặt tối đa tự động phải lớn hơn hoặc bằng " + formatMoney(minimumAmount) + " VNĐ.");
-                return;
+        if (currentAuctionDetail != null) { //
+            double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice(); //
+            if (maxBid < minimumAmount) { //
+                showError("Giá đặt tối đa tự động phải lớn hơn hoặc bằng " + formatMoney(minimumAmount) + " VNĐ."); //
+                return; //
             }
 
-            double currentStep = currentAuctionDetail.getLiveStepPrice() > 0 ? currentAuctionDetail.getLiveStepPrice() : currentAuctionDetail.getStepPrice();
-            if (increment < currentStep) {
-                showError("Bước tăng tự động phải lớn hơn hoặc bằng bước giá của phiên (" + formatMoney(currentStep) + " VNĐ).");
-                return;
+            double currentStep = currentAuctionDetail.getLiveStepPrice() > 0 ? currentAuctionDetail.getLiveStepPrice() : currentAuctionDetail.getStepPrice(); //
+            if (increment < currentStep) { //
+                showError("Bước tăng tự động phải lớn hơn hoặc bằng bước giá của phiên (" + formatMoney(currentStep) + " VNĐ)."); //
+                return; //
             }
         }
 
-        setBusy(true);
-        showMessage("Đang thiết lập cấu hình tự động đặt giá...");
+        setBusy(true); //
+        showMessage("Đang thiết lập cấu hình tự động đặt giá..."); //
 
-        Task<SocketResponse> task = new Task<>() {
+        Task<SocketResponse> task = new Task<>() { //
             @Override
             protected SocketResponse call() {
-                return auctionApi.setupAutoBid(auctionId, maxBid, increment);
+                return auctionApi.setupAutoBid(auctionId, maxBid, increment); //
             }
         };
 
         task.setOnSucceeded(event -> {
-            setBusy(false);
-            SocketResponse response = task.getValue();
-            if (response == null || !response.isSuccess()) {
-                showError(response == null ? "Không thể cài đặt tự động đấu giá." : response.getMessage());
-                return;
+            setBusy(false); //
+            SocketResponse response = task.getValue(); //
+            if (response == null || !response.isSuccess()) { //
+                showError(response == null ? "Không thể cài đặt tự động đấu giá." : response.getMessage()); //
+                return; //
             }
-            updateAutoBidUIState(true);
-            showMessage(response.getMessage());
+
+            // Khóa form nhập liệu
+            updateAutoBidUIState(true); //
+
+            // ĐỊNH DẠNG ĐUÔI VNĐ CHUẨN XÓA LỖI CHỮ E
+            if (maxAutoBidField != null && maxBid != null) {
+                maxAutoBidField.setText(formatMoney(maxBid) + " VNĐ");
+            }
+            if (autoBidIncrementField != null && increment != null) {
+                autoBidIncrementField.setText(formatMoney(increment) + " VNĐ");
+            }
+
+            String successMsg = response.getMessage() == null ? "Kích hoạt Auto-bid thành công!" : response.getMessage();
+            showMessage(successMsg);
+            showInfo(successMsg); // Hiển thị popup thông báo thành công
         });
 
         task.setOnFailed(event -> {
-            setBusy(false);
-            showError("Lỗi kết nối máy chủ khi cài đặt Auto-bid.");
+            setBusy(false); //
+            showError("Lỗi kết nối máy chủ khi cài đặt Auto-bid."); //
         });
 
-        executeThread(task, "live-setup-autobid");
+        executeThread(task, "live-setup-autobid"); //
     }
 
     private Double readAmount(TextField field, String emptyMessage) {
@@ -725,35 +740,39 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
     @FXML
     private void handleCancelAutoBid() {
-        if (isBlank(auctionId)) {
-            showError("Không xác định được phiên.");
-            return;
+        if (isBlank(auctionId)) { //
+            showError("Không xác định được phiên."); //
+            return; //
         }
 
-        setBusy(true);
-        showMessage("Đang hủy cấu hình tự động đặt giá...");
+        setBusy(true); //
+        showMessage("Đang hủy cấu hình tự động đặt giá..."); //
 
-        Task<SocketResponse> task = new Task<>() {
+        Task<SocketResponse> task = new Task<>() { //
             @Override
             protected SocketResponse call() throws Exception {
-                return auctionApi.cancelAutoBid(auctionId);
+                return auctionApi.cancelAutoBid(auctionId); //
             }
         };
 
         task.setOnSucceeded(event -> {
-            setBusy(false);
-            if (maxAutoBidField != null) maxAutoBidField.clear();
-            if (autoBidIncrementField != null) autoBidIncrementField.clear();
-            updateAutoBidUIState(false);
-            showMessage("Đã hủy cấu hình tự động đấu giá thành công.");
+            setBusy(false); //
+            if (maxAutoBidField != null) maxAutoBidField.clear(); //
+            if (autoBidIncrementField != null) autoBidIncrementField.clear(); //
+
+            updateAutoBidUIState(false); // Mở khóa form nhập liệu
+
+            String cancelMsg = "Đã dừng và hủy cấu hình tự động đấu giá thành công.";
+            showMessage(cancelMsg); //
+            showInfo(cancelMsg);    // Hiển thị popup thông báo thành công
         });
 
         task.setOnFailed(event -> {
-            setBusy(false);
-            showError("Hủy Auto-bid thất bại do lỗi kết nối.");
+            setBusy(false); //
+            showError("Hủy Auto-bid thất bại do lỗi kết nối."); //
         });
 
-        executeThread(task, "live-cancel-autobid");
+        executeThread(task, "live-cancel-autobid"); //
     }
 
     /**
