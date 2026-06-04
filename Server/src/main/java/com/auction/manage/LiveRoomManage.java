@@ -18,34 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * ============================================================
- * LiveRoomManage - Quản lý Socket Connections & Broadcast Events
- * ============================================================
- * TRƯỚC: Quản lý tập trung tất cả socket connections theo phòng (auctionId)
- * Chỉ có method: joinRoom(), leaveRoom(), broadcast()
- * BÂY GIỜ (Refactored with Observer Pattern):
- * - Implement AuctionObserver để lắng nghe sự kiện từ AuctionEventBus
- * - Khi nhận event, tự động broadcast đến tất cả clients trong phòng
- * - Giải phóng AuctionService khỏi trách nhiệm quản lý client notifications
- * Lợi ích của cách này:
- * ✅ Decoupling: AuctionService không cần biết về ClientSession
- * ✅ Scalability: Dễ thêm các Observer khác (NotificationService, AnalyticsService)
- * ✅ Maintainability: Tất cả broadcast logic tập trung ở 1 chỗ
- * ✅ Thread-safe: ConcurrentHashMap + CopyOnWriteArrayList
- * SOLID Principles:
- * - Single Responsibility: Chỉ quản lý broadcast & client sessions
- * - Open/Closed: Mở cho extension (thực thi AuctionObserver), đóng cho modification
- * - Dependency Inversion: Phụ thuộc vào AuctionObserver interface, không concrete class
+ * Lớp quản lý phòng đấu giá trực tuyến và phát sóng (broadcast) sự kiện thời gian thực.
  */
 public class LiveRoomManage implements AuctionObserver {
     private static final Logger log = LoggerFactory.getLogger(LiveRoomManage.class);
     private static volatile LiveRoomManage instance;
 
-    // Key: auctionId, Value: List<ClientSession> đang theo dõi phiên
     private final Map<String, CopyOnWriteArrayList<ClientSession>> rooms
             = new ConcurrentHashMap<>();
 
-    // JSON serializer - dùng để serialize SocketResponse
     private static final com.google.gson.Gson gson = GsonProvider.getGson();
 
     private LiveRoomManage() {
@@ -68,10 +49,6 @@ public class LiveRoomManage implements AuctionObserver {
         return temp;
     }
 
-    // ============================================================
-    // OBSERVER PATTERN: Implement AuctionObserver interface
-    // ============================================================
-
     /**
      * Callback gọi khi AuctionEventBus publish sự kiện
      * Mục đích:
@@ -91,7 +68,6 @@ public class LiveRoomManage implements AuctionObserver {
 
         log.debug("[LiveRoom] 📨 Nhận event Vòng đời: {} từ phòng {}", eventType, roomId);
 
-        // 🔥 SỬA ĐỒNG BỘ: Xóa hoàn toàn VIEWER_COUNT_CHANGED, tách biệt đích danh ActionType mạng
         switch (eventType) {
             case NEW_BID:
                 handleNewBidEvent(roomId, event.getPayload());
@@ -105,24 +81,24 @@ public class LiveRoomManage implements AuctionObserver {
                 handleStatusChangedEvent(roomId, event.getPayload());
                 break;
 
-            // Đưa người vào xem trực tiếp -> Bắn mã mạng LIVE_ENTERED
             case LIVE_ENTERED:
                 handleRoomNotification(roomId, event.getPayload(), ActionType.LIVE_ENTERED);
                 break;
 
-            // Đóng màn hình xem trực tiếp -> Bắn mã mạng LIVE_EXITED
             case LIVE_EXITED:
                 handleRoomNotification(roomId, event.getPayload(), ActionType.LIVE_EXITED);
                 break;
 
-            // Người dùng đăng ký theo dõi nền -> Bắn mã mạng SUBSCRIBE_AUCTION
             case AUCTION_SUBSCRIBED:
                 handleRoomNotification(roomId, event.getPayload(), ActionType.AUCTION_SUBSCRIBED);
                 break;
 
-            // Người dùng hủy theo dõi nền -> Bắn mã mạng UNSUBSCRIBE_AUCTION
             case AUCTION_UNSUBSCRIBED:
                 handleRoomNotification(roomId, event.getPayload(), ActionType.AUCTION_UNSUBSCRIBED);
+                break;
+
+            case AUTO_BID_DEACTIVATED:
+                handleAutoBidDeactivatedEvent(roomId, event.getPayload());
                 break;
 
             default:
@@ -144,23 +120,20 @@ public class LiveRoomManage implements AuctionObserver {
             return;
         }
 
-        // Tạo cấu trúc Body phản hồi thông minh gửi xuống Client chứa cả 2 thông tin
         Map<String, Object> responseBody = new HashMap<>();
         responseBody.put("roomId", roomId);
-        responseBody.put("highestBidderName", bidData.getBidderName());  // Người dẫn đầu mới
-        responseBody.put("highestPrice", bidData.getAmount());   // Giá đỉnh mới
-        responseBody.put("newEndTime", bidData.getNewEndTime()); // Đồng bộ thời gian kết thúc mới
-        responseBody.put("liveStepPrice", bidData.getLiveStepPrice()); // Đồng bộ bước giá live mới
-        responseBody.put("bidTransaction", bidData);             // Nguyên thực thể DTO để vẽ dòng lịch sử
+        responseBody.put("highestBidderName", bidData.getBidderName());
+        responseBody.put("highestPrice", bidData.getAmount());
+        responseBody.put("newEndTime", bidData.getNewEndTime());
+        responseBody.put("liveStepPrice", bidData.getLiveStepPrice());
+        responseBody.put("bidTransaction", bidData);
 
-        // Tạo SocketResponse với ActionType chung (ví dụ ActionType.BID_UPDATE của bạn)
         SocketResponse response = SocketResponse.event(
                 ActionType.BID_UPDATE,
                 "Phòng đấu giá có biến động đặt giá mới từ: " + bidData.getBidderName(),
                 responseBody
         );
 
-        // Phát loa duy nhất 1 lần xuống cho cả phòng
         String jsonMessage = gson.toJson(response);
         broadcast(roomId, jsonMessage);
 
@@ -200,7 +173,6 @@ public class LiveRoomManage implements AuctionObserver {
             String newStatus = (String) statusMap.get("newStatus");
             String message = (String) statusMap.get("message");
 
-            // Gói tin cực kỳ gọn nhẹ, không chứa thông tin tài chính dư thừa
             SocketResponse response = SocketResponse.event(
                     ActionType.STATUS_UPDATED,
                     message != null ? message : "Trạng thái phiên thay đổi sang: " + newStatus,
@@ -212,7 +184,6 @@ public class LiveRoomManage implements AuctionObserver {
 
             log.info("[LiveRoom] 🔄 Vòng đời phòng đổi sang: {}", newStatus);
 
-            // Tự động giải phóng bộ nhớ khi phiên đóng cửa
             if ("FINISHED".equals(newStatus) || "CANCELED".equals(newStatus)) {
                 clearRoom(roomId);
             }
@@ -231,9 +202,6 @@ public class LiveRoomManage implements AuctionObserver {
      * @param actionType Mã định danh mạng đích danh (LIVE_ENTERED, LIVE_EXITED, SUBSCRIBE_AUCTION, UNSUBSCRIBE_AUCTION)
      */
     private void handleRoomNotification(String roomId, Object payload, ActionType actionType) {
-        // ===================================================================
-        // BƯỚC 1: TRÍCH XUẤT DỮ LIỆU PAYLOAD AN TOÀN (DEFENSIVE CHECK)
-        // ===================================================================
         if (!(payload instanceof Map<?, ?> payloadMap)) {
             log.error("[LiveRoom] ❌ Định dạng Payload đầu vào bất hợp lệ cho tác vụ: {}", actionType);
             return;
@@ -241,9 +209,8 @@ public class LiveRoomManage implements AuctionObserver {
 
         String message = (String) payloadMap.get("message");
         Integer viewerCount = (Integer) payloadMap.get("viewerCount");
-        String username = (String) payloadMap.get("username"); // 🔥 TỐI ƯU MỚI: Lấy thêm tên người kích hoạt sự kiện
+        String username = (String) payloadMap.get("username");
 
-        // Cơ chế bẫy dữ liệu dự phòng (Fallback) thông minh
         if (message == null) {
             message = "Hệ thống ghi nhận thay đổi trạng thái phòng.";
         }
@@ -251,31 +218,21 @@ public class LiveRoomManage implements AuctionObserver {
             viewerCount = getRoomSize(roomId);
         }
 
-        // ===================================================================
-        // BƯỚC 2: KHỞI TẠO CẤU TRÚC JSON PHẢN HỒI GIÀU THÔNG TIN
-        // ===================================================================
         Map<String, Object> responseBody = new HashMap<>();
         responseBody.put("roomId", roomId);
-        responseBody.put("logMessage", message);             // Chuỗi hiển thị lên khung chat trực tuyến
-        responseBody.put("currentViewerCount", viewerCount); // Con số cập nhật nhãn số lượng người xem trên UI
+        responseBody.put("logMessage", message);
+        responseBody.put("currentViewerCount", viewerCount);
 
         if (username != null) {
-            responseBody.put("username", username);          // 🔥 BỔ SUNG: Giúp Client biết chính xác ĐÍCH DANH ai vừa ra/vào phòng để vẽ avatar hoặc hiệu ứng UI nếu cần
+            responseBody.put("username", username);
         }
 
-        // ===================================================================
-        // BƯỚC 3: ĐÓNG GÓI SỬ DỤNG ĐÍCH DANH ACTIONTYPE CỦA LƯỚI MẠNG
-        // ===================================================================
-        // Vỏ bọc SocketResponse mang đúng bản chất hành động mạng (LIVE_ENTERED hoặc LIVE_EXITED)
         SocketResponse response = SocketResponse.event(
                 actionType,
                 message,
                 responseBody
         );
 
-        // ===================================================================
-        // BƯỚC 4: THỰC THI PHÁT LOA TRUYỀN THÔNG BẤT ĐỒNG BỘ CHỐNG NGHẼN
-        // ===================================================================
         String jsonMessage = gson.toJson(response);
         broadcast(roomId, jsonMessage);
 
@@ -295,11 +252,10 @@ public class LiveRoomManage implements AuctionObserver {
             if (room == null) room = new CopyOnWriteArrayList<>();
             if (!room.contains(clientSession)) {
                 room.add(clientSession);
-                // 🔥 VÁ LỖI TẠI ĐÂY: Ghi dấu phòng trực tuyến vào cấu trúc Session của Client
                 clientSession.setCurrentAuctionId(auctionId);
                 log.info("[LiveRoom] ✅ Client JOIN phiên {}", auctionId);
             }
-            return room; // Trả list đã update ngược lại vào Map
+            return room;
         });
     }
 
@@ -311,16 +267,27 @@ public class LiveRoomManage implements AuctionObserver {
     public void leaveRoom(String auctionId, ClientSession clientSession) {
         if (auctionId == null || clientSession == null) return;
 
-        // Tính toán lại giá trị của phòng này trong trạng thái khóa an toàn
         rooms.computeIfPresent(auctionId, (key, room) -> {
             room.remove(clientSession);
-            // 🔥 VÁ LỖI TẠI ĐÂY: Giải phóng con trỏ phòng trực tuyến của Client về null
             clientSession.setCurrentAuctionId(null);
             log.info("[LiveRoom] ❌ Client LEAVE phiên {}", auctionId);
 
-            // Nếu List rỗng, trả về null -> ConcurrentHashMap sẽ TỰ ĐỘNG XÓA key này!
             return room.isEmpty() ? null : room;
         });
+    }
+
+    private void handleAutoBidDeactivatedEvent(String roomId, Object payload) {
+        if (payload instanceof Map<?, ?> payloadMap) {
+            String userId = (String) payloadMap.get("userId");
+            String reason = (String) payloadMap.get("reason");
+
+            SocketResponse response = SocketResponse.event(
+                    ActionType.AUTO_BID_DEACTIVATED,
+                    "Auto-bid configuration deactivated",
+                    Map.of("roomId", roomId, "userId", userId, "reason", reason)
+            );
+            broadcast(roomId, gson.toJson(response));
+        }
     }
 
     /**
@@ -342,16 +309,14 @@ public class LiveRoomManage implements AuctionObserver {
 
         CopyOnWriteArrayList<ClientSession> room = rooms.get(auctionId);
         if (room == null || room.isEmpty()) {
-            return; // Không có ai trong phòng
+            return;
         }
 
         log.debug("[LiveRoom] 📢 Broadcast tới {} clients ở phiên {}", room.size(), auctionId);
 
-        // Iterate từ CopyOnWriteArrayList - thread-safe
         for (ClientSession client : room) {
             boolean success = client.sendMessage(jsonMessage);
             if (!success) {
-                // Nếu gửi lỗi (client disconnect), tự động xóa khỏi phòng
                 log.warn("[LiveRoom] ⚠️ Gửi message lỗi tới {}, tự động dọn dẹp khỏi phòng.", client.getUserId());
                 leaveRoom(auctionId, client);
             }

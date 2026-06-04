@@ -18,12 +18,19 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích SettingsController xử lý giao diện Client JavaFX.
+ */
 public class SettingsController {
     private final ClientUserApi userApi = new ClientUserApi();
 
     @FXML private VBox rootContainer;
     @FXML private Label messageLabel;
     @FXML private Label currentThemeLabel;
+
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
 
     @FXML private TextField usernameField;
     @FXML private TextField emailField;
@@ -35,16 +42,15 @@ public class SettingsController {
     @FXML private Button themeToggleButton;
     @FXML private Button backButton;
 
-    // --- CÁC THÀNH PHẦN THÊM MỚI ĐỂ PHỤC VỤ CHỨC NĂNG TỰ CUỘN BẢNG ---
-    @FXML private ScrollPane settingsScrollPane;    // ScrollPane chứa nội dung bên phải
-    @FXML private VBox mainContentContainer;         // Container tổng chứa cả 3 thẻ card bên trong ScrollPane
-    @FXML private VBox cardThongTinHoSo;             // Khối card Thông Tin Hồ Sơ
-    @FXML private VBox cardDoiMatKhau;               // Khối card Đổi Mật Khẩu
-    @FXML private VBox cardGiaoDien;                 // Khối card Giao Diện Ứng Dụng
+    @FXML private ScrollPane settingsScrollPane;
+    @FXML private VBox mainContentContainer;
+    @FXML private VBox cardThongTinHoSo;
+    @FXML private VBox cardDoiMatKhau;
+    @FXML private VBox cardGiaoDien;
 
-    // Vai trò: khởi tạo màn settings.
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
         updateThemeLabel();
 
@@ -57,7 +63,6 @@ public class SettingsController {
         handleLoadProfile();
     }
 
-    // Chức năng: tải profile mới nhất từ backend.
     @FXML
     private void handleLoadProfile() {
         runRequest(
@@ -67,7 +72,6 @@ public class SettingsController {
         );
     }
 
-    // Chức năng: cập nhật username và email.
     @FXML
     private void handleUpdateProfile() {
         String username = usernameField == null ? "" : usernameField.getText().trim();
@@ -90,7 +94,6 @@ public class SettingsController {
         );
     }
 
-    // Chức năng: đổi mật khẩu tài khoản hiện tại.
     @FXML
     private void handleUpdatePassword() {
         String oldPassword = oldPasswordField == null ? "" : oldPasswordField.getText();
@@ -118,7 +121,6 @@ public class SettingsController {
         );
     }
 
-    // Chức năng: đổi light mode / dark mode.
     @FXML
     private void handleToggleTheme() {
         SceneNavigator.isAppDarkMode = !SceneNavigator.isAppDarkMode;
@@ -127,28 +129,22 @@ public class SettingsController {
         showMessage(SceneNavigator.isAppDarkMode ? "Đã bật Dark mode." : "Đã bật Light mode.");
     }
 
-    // Vai trò: quay lại Dashboard.
     @FXML
     private void handleBack() {
         SceneNavigator.showDashboard();
     }
 
-    // CHỨC NĂNG BỔ SUNG: Điều hướng cuộn mượt mà (Smooth Scroll) tới các phân khu card nội dung
     private void scrollToNode(javafx.scene.Node targetNode) {
         if (settingsScrollPane == null || targetNode == null || mainContentContainer == null) return;
 
-        // Tính toán tổng chiều cao có thể cuộn thực tế của nội dung
         double totalScrollableHeight = mainContentContainer.getBoundsInLocal().getHeight() - settingsScrollPane.getViewportBounds().getHeight();
         if (totalScrollableHeight <= 0) return;
 
-        // Lấy tọa độ Y của card đích so với container chứa nó
         double targetY = targetNode.getBoundsInParent().getMinY();
 
-        // Tính toán tỷ lệ vvalue tương ứng (trong khoảng từ 0.0 đến 1.0)
         double targetVvalue = targetY / totalScrollableHeight;
         targetVvalue = Math.max(0.0, Math.min(1.0, targetVvalue));
 
-        // Thực hiện hiệu ứng dịch chuyển vvalue mượt mà trong 300ms
         Timeline timeline = new Timeline();
         KeyValue keyValue = new KeyValue(settingsScrollPane.vvalueProperty(), targetVvalue);
         KeyFrame keyFrame = new KeyFrame(Duration.millis(300), keyValue);
@@ -156,25 +152,21 @@ public class SettingsController {
         timeline.play();
     }
 
-    // Chức năng: Xử lý sự kiện click menu "Thông Tin Hồ Sơ"
     @FXML
     private void handleMenuThongTinHoSo() {
         scrollToNode(cardThongTinHoSo);
     }
 
-    // Chức năng: Xử lý sự kiện click menu "Đổi Mật Khẩu"
     @FXML
     private void handleMenuDoiMatKhau() {
         scrollToNode(cardDoiMatKhau);
     }
 
-    // Chức năng: Xử lý sự kiện click menu "Giao Diện Ứng Dụng"
     @FXML
     private void handleMenuGiaoDien() {
         scrollToNode(cardGiaoDien);
     }
 
-    // Vai trò: xử lý response tải profile.
     private void handleProfileResponse(SocketResponse response) {
         if (!isSuccessful(response)) {
             showError(response == null ? "Server không phản hồi." : response.getMessage());
@@ -192,7 +184,6 @@ public class SettingsController {
         showMessage("Đã tải thông tin tài khoản.");
     }
 
-    // Vai trò: xử lý response cập nhật profile.
     private void handleUpdateProfileResponse(SocketResponse response) {
         if (!isSuccessful(response)) {
             showError(response == null ? "Cập nhật thất bại." : response.getMessage());
@@ -208,7 +199,6 @@ public class SettingsController {
         showInfo(response.getMessage() == null ? "Cập nhật tài khoản thành công." : response.getMessage());
     }
 
-    // Vai trò: xử lý response đổi mật khẩu.
     private void handleUpdatePasswordResponse(SocketResponse response) {
         if (!isSuccessful(response)) {
             showError(response == null ? "Đổi mật khẩu thất bại." : response.getMessage());
@@ -221,7 +211,6 @@ public class SettingsController {
         showInfo(response.getMessage() == null ? "Đổi mật khẩu thành công." : response.getMessage());
     }
 
-    // Vai trò: đổ dữ liệu user vào form.
     private void fillProfileForm(UserDTO user) {
         if (user == null) return;
 
@@ -229,7 +218,6 @@ public class SettingsController {
         if (emailField != null) emailField.setText(safeText(user.getEmail()));
     }
 
-    // Vai trò: chạy request backend ngoài UI thread.
     private void runRequest(String loadingMessage, Supplier<SocketResponse> request, Consumer<SocketResponse> onSuccess) {
         setBusy(true);
         showMessage(loadingMessage);
@@ -256,7 +244,6 @@ public class SettingsController {
         worker.start();
     }
 
-    // Vai trò: áp dụng theme hiện tại cho màn settings.
     private void applyTheme() {
         if (rootContainer == null) return;
 
@@ -274,7 +261,6 @@ public class SettingsController {
         }
     }
 
-    // Vai trò: cập nhật nhãn trạng thái theme.
     private void updateThemeLabel() {
         if (currentThemeLabel != null) {
             currentThemeLabel.setText(SceneNavigator.isAppDarkMode ? "Dark mode" : "Light mode");

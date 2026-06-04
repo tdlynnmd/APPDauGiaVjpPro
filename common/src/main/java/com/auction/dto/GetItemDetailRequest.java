@@ -3,7 +3,7 @@ package com.auction.dto;
 import java.io.Serializable;
 
 /**
- * Request DTO used when the client asks for full detail of one item.
+ * DTO gửi yêu cầu lấy thông tin chi tiết của một sản phẩm/vật phẩm.
  */
 public class GetItemDetailRequest implements Serializable {
     private static final long serialVersionUID = 1L;

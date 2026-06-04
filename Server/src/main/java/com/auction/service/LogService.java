@@ -9,12 +9,12 @@ import com.auction.exception.ValidationException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Dịch vụ lưu trữ và ghi nhận nhật ký kiểm toán (Audit Logs) hệ thống.
+ */
 public class LogService {
     private final LogDAOImpl logDAO = new LogDAOImpl();
 
-    /**
-     * Returns paginated audit logs with stable pagination metadata for the admin UI.
-     */
     public PageDTO<ActionLogDTO> getLogsForAdminDashboard(int page, int pageSize) {
         if (page <= 0 || pageSize <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Page index and frame boundary size must be positive.");

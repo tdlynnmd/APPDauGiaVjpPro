@@ -31,39 +31,22 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * SellerItemController là controller phía Client cho màn Seller quản lý vật phẩm.
- *
- * Vai trò chính:
- * - Quản lý danh sách item của Seller.
- * - Tạo item mới.
- * - Xem chi tiết item.
- * - Cập nhật item.
- * - Xóa/ẩn item.
- * - Chọn item để tạo phiên đấu giá.
- * - Gửi request qua ClientItemApi / ClientAuctionApi, không xử lý socket trực tiếp.
- *
- * Controller này được thiết kế để người làm FXML có thể dựng màn hoàn chỉnh.
- * Các fx:id/onAction bên dưới là contract giữa FXML và controller.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích SellerItemController xử lý giao diện Client JavaFX.
  */
 public class SellerItemController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
     private final ClientItemApi itemApi = new ClientItemApi();
 
-    // Dữ liệu gốc chứa toàn bộ vật phẩm lấy từ Server về
     private final ObservableList<ItemSummaryDTO> allServerItems = FXCollections.observableArrayList();
-    // Danh sách chứa vật phẩm của TRANG HIỆN TẠI để hiển thị lên bảng TableView
     private final ObservableList<ItemSummaryDTO> sellerItems = FXCollections.observableArrayList();
     private ItemSummaryDTO selectedItem;
     private javafx.collections.transformation.FilteredList<ItemSummaryDTO> filteredItems;
-    private boolean showAllStatusesMode = true; // false: Chỉ hiện ACTIVE | true: Hiện tất cả
+    private boolean showAllStatusesMode = true;
     private boolean isRefreshing = false;
     private boolean isNameAscending = true;
     private boolean isPriceAscending = true;
     private boolean isTypeAscending = true;
 
-    // =========================================================================
-    // KHAI BÁO BIẾN TRẠNG THÁI PHÂN TRANG & TÌM KIẾM MỚI (BỔ SUNG THEO YÊU CẦU)
-    // =========================================================================
     private int currentSellerPage = 1;
     private int totalSellerPages = 0;
     private static final int DEFAULT_SELLER_PAGE_SIZE = 10;
@@ -76,16 +59,9 @@ public class SellerItemController {
     @FXML private Button nextPageButton;
     @FXML private Button refreshButton;
 
-    // =========================================================================
-    // KHAI BÁO BIẾN ĐIỀU KHIỂN LUỒNG FORM RIÊNG BIỆT: TẠO RIÊNG - SỬA RIÊNG
-    // =========================================================================
     @FXML private ScrollPane rightSplitPaneContainer;
-    @FXML private VBox formCreateContainer;     // Form chuyên biệt phục vụ việc TẠO MỚI
-    @FXML private VBox formEditContainer;       // Form chuyên biệt phục vụ việc CHỈNH SỬA & ĐẤU GIÁ
-
-    // =========================
-    // Root / Header / Status UI
-    // =========================
+    @FXML private VBox formCreateContainer;
+    @FXML private VBox formEditContainer;
 
     @FXML private StackPane rootContainer;
     @FXML private Label dynamicTitleLabel;
@@ -95,10 +71,9 @@ public class SellerItemController {
     @FXML private Label messageLabel;
     @FXML private Button btnSubmit;
 
-    // =========================
-    // Item list UI
-    // =========================
-    // FXML nên khai báo TableView này để Seller chọn item cụ thể.
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
 
     @FXML private TableView<ItemSummaryDTO> sellerItemsTable;
     @FXML private TableColumn<ItemSummaryDTO, String> itemIdColumn;
@@ -106,12 +81,6 @@ public class SellerItemController {
     @FXML private TableColumn<ItemSummaryDTO, String> itemTypeColumn;
     @FXML private TableColumn<ItemSummaryDTO, Number> startingPriceColumn;
     @FXML private TableColumn<ItemSummaryDTO, String> statusColumn;
-
-    // =========================
-    // Item form UI
-    // =========================
-    // Có thể dùng ComboBox hoặc TextField cho itemType.
-    // Nếu FXML có cả hai, ComboBox được ưu tiên.
 
     @FXML private ComboBox<String> itemTypeComboBox;
     @FXML private TextField itemTypeField;
@@ -121,31 +90,24 @@ public class SellerItemController {
     @FXML private TextField yearCreatedField;
     @FXML private TextField imageUrlField;
 
-    // Field riêng cho ART.
     @FXML private VBox artFieldsBox;
     @FXML private TextField painterField;
     @FXML private TextField artStyleField;
 
-    // Field riêng cho ELECTRONICS.
     @FXML private VBox electronicsFieldsBox;
     @FXML private TextField brandField;
     @FXML private TextField warrantyMonthsField;
 
-    // Field riêng cho VEHICLES.
     @FXML private VBox vehicleFieldsBox;
     @FXML private TextField modelField;
     @FXML private TextField engineTypeField;
     @FXML private TextField licensePlateField;
     @FXML private TextField kmAgeField;
 
-    // Các field phụ cho update/delete/detail.
     @FXML private TextField updateItemIdField;
     @FXML private TextField deleteItemIdField;
     @FXML private TextField detailItemIdField;
 
-    // =========================================================================
-    // CÁC THÀNH PHẦN INPUT ĐỘC LẬP DÀNH RIÊNG CHO FORM CHỈNH SỬA (PREFIX: edit)
-    // =========================================================================
     @FXML private ComboBox<String> editItemTypeComboBox;
     @FXML private TextField editItemNameField;
     @FXML private TextField editStartingPriceField;
@@ -167,10 +129,6 @@ public class SellerItemController {
     @FXML private TextField editLicensePlateField;
     @FXML private TextField editKmAgeField;
 
-    // =========================
-    // Auction form UI
-    // =========================
-
     @FXML private TextField itemIdField;
     @FXML private TextField stepPriceField;
     @FXML private TextField startTimeField;
@@ -188,13 +146,11 @@ public class SellerItemController {
     private void applyStatusFilterAndSort() {
         if (filteredItems == null) return;
 
-        // 1. KẾT HỢP BỘ LỌC TRẠNG THÁI VÀ TỪ KHÓA TÌM KIẾM ĐỂ KHÔNG BỊ XUNG ĐỘT TRANG
         String keyword = (searchField != null) ? searchField.getText().trim().toLowerCase() : "";
 
         filteredItems.setPredicate(item -> {
             if (item == null) return false;
 
-            // Lọc trạng thái ẩn/hiện trước
             boolean matchesStatus = true;
             if (item.getStatus() != null) {
                 String status = item.getStatus().toUpperCase();
@@ -205,7 +161,6 @@ public class SellerItemController {
                 matchesStatus = false;
             }
 
-            // Lọc từ khóa tìm kiếm (theo Tên vật phẩm)
             boolean matchesKeyword = true;
             if (!keyword.isEmpty()) {
                 String itemName = item.getItemName() == null ? "" : item.getItemName().toLowerCase();
@@ -215,7 +170,6 @@ public class SellerItemController {
             return matchesStatus && matchesKeyword;
         });
 
-        // 2. TÍNH TOÁN LẠI SỐ TRANG DỰA TRÊN SỐ LƯỢNG SAU KHI LỌC THỰC TẾ
         int pageSize = DEFAULT_SELLER_PAGE_SIZE;
         if (pageSizeField != null && !pageSizeField.getText().trim().isEmpty()) {
             try {
@@ -236,7 +190,6 @@ public class SellerItemController {
             currentSellerPage = 1;
         }
 
-        // 3. CẮT PHÂN ĐOẠN (SUBLIST) DỮ LIỆU ĐỂ ĐƯA VÀO BẢNG THEO TRANG HIỆN TẠI
         int fromIndex = (currentSellerPage - 1) * pageSize;
         int toIndex = Math.min(fromIndex + pageSize, totalFilteredCount);
 
@@ -246,11 +199,9 @@ public class SellerItemController {
         }
         sellerItems.setAll(pageItems);
 
-        // 4. BỘ SẮP XẾP SỬA ĐỔI THEO THỨ TỰ YÊU CẦU
         SortedList<ItemSummaryDTO> sortedItems = new SortedList<>(sellerItems);
 
         if (sellerItemsTable.getSortOrder().isEmpty()) {
-            // Mặc định: Sắp xếp theo ACTIVE ➔ SOLD ➔ INACTIVE
             sortedItems.setComparator((item1, item2) -> {
                 if (item1 == null || item2 == null) return 0;
                 String s1 = item1.getStatus() == null ? "" : item1.getStatus().toUpperCase();
@@ -304,38 +255,30 @@ public class SellerItemController {
 
     @FXML
     public void initialize() {
-        // 1. Khởi tạo các thành phần điều khiển và cấu trúc bảng dữ liệu trước (ĐỂ TRÁNH RESET CÁC CONTROL)
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         initializeItemTypeControl();
         initializeSellerItemsTable();
         fillDefaultTimeIfEmpty();
 
-        // 2. Áp dụng theme hệ thống và nạp giao diện placeholder động tương ứng cho bảng
         applyTheme();
 
-        // 3. Khởi tạo ban đầu: Ẩn hết toàn bộ Panel bên phải đi cho thoáng màn hình
         if (rightSplitPaneContainer != null) { rightSplitPaneContainer.setVisible(false); rightSplitPaneContainer.setManaged(false); }
         if (formCreateContainer != null) { formCreateContainer.setVisible(false); formCreateContainer.setManaged(false); }
         if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
         if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
 
-        // 4. Tải dữ liệu từ database lên bảng
-        updateTypeSpecificFieldsVisibility(readItemType()); // Đưa hàm này xuống sát phần load dữ liệu
+        updateTypeSpecificFieldsVisibility(readItemType());
 
-        // Gọi hàm load ban đầu ở trang 1
         loadSellerItems(1, true);
 
-        // Chức năng: tự đồng bộ lại danh sách item để thấy INACTIVE/SOLD khi auction kết thúc
         startSellerAutoRefresh();
     }
-    // Chức năng: tự refresh màn seller định kỳ, thay cho realtime server push
     private javafx.animation.Timeline sellerAutoRefreshTimeline;
-    // Chức năng: tự load lại item mỗi 5 giây để cập nhật trạng thái ACTIVE/INACTIVE/SOLD
     private void startSellerAutoRefresh() {
         if (sellerAutoRefreshTimeline != null) {
             return;
         }
 
-        // Thay đổi gọi refresh âm thầm giữ nguyên số trang hiện tại
         sellerAutoRefreshTimeline = new javafx.animation.Timeline(
                 new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), event -> loadSellerItems(currentSellerPage, false))
         );
@@ -343,7 +286,6 @@ public class SellerItemController {
         sellerAutoRefreshTimeline.play();
     }
 
-    // Chức năng: dừng auto refresh khi rời màn để tránh chạy thừa
     private void stopSellerAutoRefresh() {
         if (sellerAutoRefreshTimeline != null) {
             sellerAutoRefreshTimeline.stop();
@@ -358,7 +300,6 @@ public class SellerItemController {
             return;
         }
 
-        // Xóa bỏ các stylesheet cũ để tránh xung đột
         rootContainer.getStylesheets().clear();
 
         String cssPath = SceneNavigator.isAppDarkMode
@@ -372,7 +313,6 @@ public class SellerItemController {
             System.out.println("Không thể nạp theme cho SIM: " + cssPath);
         }
 
-        // --- ĐOẠN CODE TỰ ĐỘNG THÔNG BÁO CHẾ ĐỘ MÀU CHUẨN PHONG CÁCH SIM ---
         if (SceneNavigator.isAppDarkMode) {
             setLabelText(dynamicTitleLabel, "QUẢN LÝ VẬT PHẨM");
             showMessage("● SYSTEM DARK MODE SIGNED ⚡");
@@ -381,7 +321,6 @@ public class SellerItemController {
             showMessage("✓ Hệ thống đã sẵn sàng.");
         }
 
-        // --- CẬP NHẬT: TỰ ĐỘNG ĐỔI ICON VÀ CHỮ KHI BẢNG RỖNG ---
         if (sellerItemsTable != null) {
             javafx.scene.layout.VBox placeholderBox = new javafx.scene.layout.VBox();
             placeholderBox.setAlignment(javafx.geometry.Pos.CENTER);
@@ -439,7 +378,6 @@ public class SellerItemController {
             return;
         }
 
-        // Gắn FilteredList vào danh sách nguồn gốc từ Server phục vụ tìm kiếm động
         filteredItems = new javafx.collections.transformation.FilteredList<>(allServerItems, p -> true);
         applyStatusFilterAndSort();
         sellerItemsTable.setFixedCellSize(48);
@@ -539,7 +477,6 @@ public class SellerItemController {
             statusColumn.getGraphic().setOnMouseClicked(event -> {
                 showAllStatusesMode = !showAllStatusesMode;
 
-                // Đồng bộ ép quay về trang 1 khi lọc trạng thái để tính toán đúng
                 currentSellerPage = 1;
                 applyStatusFilterAndSort();
 
@@ -568,9 +505,7 @@ public class SellerItemController {
             });
         }
 
-        // --- ĐOẠN ĐƯỢC CẬP NHẬT TẠI VỊ TRÍ 3 ---
         sellerItemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
-            // 1. NẾU HỆ THỐNG ĐANG AUTO-REFRESH NGẦM THÌ BỎ QUA HOÀN TOÀN, KHÔNG HIỆN THÔNG BÁO GÌ CẢ
             if (isRefreshing) {
                 return;
             }
@@ -578,7 +513,6 @@ public class SellerItemController {
             if (newItem == null) return;
 
             if (auctionConfigContainer != null && auctionConfigContainer.isVisible()) {
-                // 2. CHỈ CẢNH BÁO KHI Ô BƯỚC GIÁ ĐÃ ĐƯỢC NHẬP THỦ CÔNG (Bỏ qua hai ô thời gian tự động điền)
                 if (stepPriceField != null && !stepPriceField.getText().trim().isEmpty()) {
                     Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                     alert.setTitle("Xác nhận thay đổi");
@@ -677,7 +611,6 @@ public class SellerItemController {
             return;
         }
 
-        // Kiểm tra trạng thái: Chỉ cho phép chỉnh sửa vật phẩm ACTIVE
         String status = selectedItem.getStatus();
         if (!"ACTIVE".equalsIgnoreCase(status)) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
@@ -690,7 +623,6 @@ public class SellerItemController {
 
         this.currentEditingItem = selectedItem;
 
-        // Gọi workflow chuẩn: nạp đúng dữ liệu của item được chọn vào form trước khi hiển thị
         activateEditFormWorkflow(selectedItem);
     }
 
@@ -816,8 +748,6 @@ public class SellerItemController {
         setNodeVisible(editVehicleFieldsBox, "VEHICLES".equals(normalizedType) || "VEHICLE".equals(normalizedType));
     }
 
-    // =========================================================================
-
     /**
      * FXML action: tải danh sách item của seller đang đăng nhập.
      */
@@ -826,12 +756,9 @@ public class SellerItemController {
         loadSellerItems(currentSellerPage, true);
     }
 
-    // =========================================================================
-    // CÁC HÀM XỬ LÝ LOGIC PHÂN TRANG VÀ TÌM KIẾM MỚI (ĐÃ FIX KHÔNG LỖI)
-    // =========================================================================
     @FXML
     private void handleSearch() {
-        currentSellerPage = 1; // Ép về trang đầu tiên khi gõ tìm kiếm mới
+        currentSellerPage = 1;
         applyStatusFilterAndSort();
         showMessage("Kết quả tìm kiếm cho từ khóa: " + searchField.getText().trim());
     }
@@ -886,13 +813,10 @@ public class SellerItemController {
 
             isRefreshing = true;
 
-            // Nạp toàn bộ dữ liệu gốc từ Server trả về vào biến allServerItems độc lập
             allServerItems.setAll(allItems);
 
-            // Đồng bộ trang hiện tại
             currentSellerPage = page;
 
-            // Áp dụng bộ lọc tổ hợp (Search + Trạng thái) và phân chia trang lên UI bảng
             applyStatusFilterAndSort();
 
             if (selectedItem != null) {

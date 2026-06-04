@@ -1,6 +1,8 @@
 package com.auction.controller;
 
 import com.auction.dto.ActionLogDTO;
+import com.auction.dto.AuctionSummaryDTO;
+import com.auction.dto.ItemSummaryDTO;
 import com.auction.dto.PageDTO;
 import com.auction.dto.SocketResponse;
 import com.auction.dto.UserDTO;
@@ -32,20 +34,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * AdminDashboardController la controller phia Client cho man hinh quan tri.
- *
- * Vai tro chinh:
- * - Hien thi danh sach user cho Admin.
- * - Goi server de khoa user.
- * - Hien thi audit log.
- * - Goi server de cancel auction vi pham.
- * - Goi server de delete/ban item vi pham.
- *
- * Luu y kien truc:
- * - Controller nay khong doc socket truc tiep.
- * - Moi request di qua ClientAdminApi.
- * - ClientAdminApi moi dong goi SocketRequest va goi ClientSocketService.
- * - Server van la noi kiem tra quyen Admin that su.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích AdminDashboardController xử lý giao diện Client JavaFX.
  */
 public class AdminDashboardController {
     private static final int DEFAULT_PAGE_SIZE = 10;
@@ -54,6 +43,8 @@ public class AdminDashboardController {
 
     private final ObservableList<UserDTO> users = FXCollections.observableArrayList();
     private final ObservableList<ActionLogDTO> logs = FXCollections.observableArrayList();
+    private final ObservableList<ItemSummaryDTO> items = FXCollections.observableArrayList();
+    private final ObservableList<AuctionSummaryDTO> auctions = FXCollections.observableArrayList();
 
     private int currentUserPage = 1;
     private int totalUserPages = 0;
@@ -61,16 +52,14 @@ public class AdminDashboardController {
     private int currentLogPage = 1;
     private int totalLogPages = 0;
 
-    // =========================
-    // Root / status
-    // =========================
+    private int currentItemPage = 1;
+    private int totalItemPages = 0;
+
+    private int currentAuctionPage = 1;
+    private int totalAuctionPages = 0;
 
     @FXML private Parent rootContainer;
     @FXML private Label messageLabel;
-
-    // =========================
-    // User table
-    // =========================
 
     @FXML private TableView<UserDTO> usersTable;
     @FXML private TableColumn<UserDTO, String> userIdColumn;
@@ -91,10 +80,6 @@ public class AdminDashboardController {
     @FXML private Button nextUserPageButton;
     @FXML private Button lockUserButton;
 
-    // =========================
-    // Audit log table
-    // =========================
-
     @FXML private TableView<ActionLogDTO> logsTable;
     @FXML private TableColumn<ActionLogDTO, String> logIdColumn;
     @FXML private TableColumn<ActionLogDTO, String> logAdminIdColumn;
@@ -110,10 +95,6 @@ public class AdminDashboardController {
     @FXML private Button previousLogPageButton;
     @FXML private Button nextLogPageButton;
 
-    // =========================
-    // Admin action forms
-    // =========================
-
     @FXML private TextField cancelAuctionIdField;
     @FXML private TextField cancelAuctionReasonField;
     @FXML private TextField deleteItemIdField;
@@ -121,6 +102,34 @@ public class AdminDashboardController {
 
     @FXML private Button cancelAuctionButton;
     @FXML private Button deleteItemButton;
+
+    @FXML private TableView<ItemSummaryDTO> itemsTable;
+    @FXML private TableColumn<ItemSummaryDTO, String> itemIdColumn;
+    @FXML private TableColumn<ItemSummaryDTO, String> itemNameColumn;
+    @FXML private TableColumn<ItemSummaryDTO, String> itemTypeColumn;
+    @FXML private TableColumn<ItemSummaryDTO, Number> itemPriceColumn;
+    @FXML private TableColumn<ItemSummaryDTO, String> itemStatusColumn;
+
+    @FXML private Label itemPageLabel;
+    @FXML private TextField itemPageSizeField;
+
+    @FXML private Button refreshItemsButton;
+    @FXML private Button previousItemPageButton;
+    @FXML private Button nextItemPageButton;
+
+    @FXML private TableView<AuctionSummaryDTO> auctionsTable;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionIdColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionItemIdColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, Number> auctionPriceColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionStatusColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionEndTimeColumn;
+
+    @FXML private Label auctionPageLabel;
+    @FXML private TextField auctionPageSizeField;
+
+    @FXML private Button refreshAuctionsButton;
+    @FXML private Button previousAuctionPageButton;
+    @FXML private Button nextAuctionPageButton;
 
     @FXML
     public void initialize() {
@@ -135,9 +144,13 @@ public class AdminDashboardController {
         initializeDefaults();
         initializeUsersTable();
         initializeLogsTable();
+        initializeItemsTable();
+        initializeAuctionsTable();
 
         loadUsers(1);
         loadLogs(1);
+        loadItems(1);
+        loadAuctions(1);
     }
 
     /**
@@ -182,15 +195,25 @@ public class AdminDashboardController {
             logPageSizeField.setText(String.valueOf(DEFAULT_PAGE_SIZE));
         }
 
-        /*
-         * Dang ky su kien onAction khi Admin thay doi page size va an ENTER.
-         * Giup tai lai trang ngay lap tuc ma khong can click lam moi thu cong.
-         */
+        if (itemPageSizeField != null && isBlank(itemPageSizeField.getText())) {
+            itemPageSizeField.setText(String.valueOf(DEFAULT_PAGE_SIZE));
+        }
+
+        if (auctionPageSizeField != null && isBlank(auctionPageSizeField.getText())) {
+            auctionPageSizeField.setText(String.valueOf(DEFAULT_PAGE_SIZE));
+        }
+
         if (userPageSizeField != null) {
             userPageSizeField.setOnAction(event -> loadUsers(1));
         }
         if (logPageSizeField != null) {
             logPageSizeField.setOnAction(event -> loadLogs(1));
+        }
+        if (itemPageSizeField != null) {
+            itemPageSizeField.setOnAction(event -> loadItems(1));
+        }
+        if (auctionPageSizeField != null) {
+            auctionPageSizeField.setOnAction(event -> loadAuctions(1));
         }
 
         showMessage("Dang tai du lieu quan tri...");
@@ -235,7 +258,6 @@ public class AdminDashboardController {
             statusColumn.setCellValueFactory(data ->
                     new SimpleStringProperty(data.getValue().getStatus() == null ? "" : data.getValue().getStatus().name())
             );
-            // Dynamic Custom Cell: Highlight color theo trang thai tai khoan cho trực quan
             statusColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
@@ -246,11 +268,11 @@ public class AdminDashboardController {
                     } else {
                         setText(item);
                         if ("ACTIVE".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#2ecc71")); // Xanh lá tinh tế
+                            setTextFill(Color.valueOf("#2ecc71"));
                         } else if ("LOCKED".equalsIgnoreCase(item) || "BANNED".equalsIgnoreCase(item)) {
-                            setTextFill(Color.valueOf("#e74c3c")); // Đỏ nổi bật
+                            setTextFill(Color.valueOf("#e74c3c"));
                         } else {
-                            setTextFill(Color.valueOf("#ff9f43")); // Cam canh bao
+                            setTextFill(Color.valueOf("#ff9f43"));
                         }
                     }
                 }
@@ -261,7 +283,6 @@ public class AdminDashboardController {
             availableBalanceColumn.setCellValueFactory(data ->
                     new ReadOnlyDoubleWrapper(data.getValue().getAvailableBalance())
             );
-            // Custom Cell Factory format hien thi so tien te phang dang chuoi phan cach hang nghin
             availableBalanceColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(Number item, boolean empty) {
@@ -279,7 +300,6 @@ public class AdminDashboardController {
             frozenBalanceColumn.setCellValueFactory(data ->
                     new ReadOnlyDoubleWrapper(data.getValue().getFrozenBalance())
             );
-            // Custom Cell Factory format hien thi tien dong bang
             frozenBalanceColumn.setCellFactory(col -> new TableCell<>() {
                 @Override
                 protected void updateItem(Number item, boolean empty) {
@@ -293,10 +313,6 @@ public class AdminDashboardController {
             });
         }
 
-        /*
-         * Khi Admin click chon user trong bang, controller tu fill userId sang form khoa user.
-         * Nhu vay Admin khong can copy/paste ID bang tay.
-         */
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldUser, newUser) -> {
             if (newUser != null && lockUserIdField != null) {
                 lockUserIdField.setText(newUser.getId());
@@ -350,10 +366,6 @@ public class AdminDashboardController {
             );
         }
     }
-
-    // =========================
-    // User actions
-    // =========================
 
     @FXML
     private void handleRefreshUsers() {
@@ -456,10 +468,6 @@ public class AdminDashboardController {
         showMessage("Da tai " + data.size() + " user.");
     }
 
-    // =========================
-    // Log actions
-    // =========================
-
     @FXML
     private void handleRefreshLogs() {
         loadLogs(currentLogPage <= 0 ? 1 : currentLogPage);
@@ -514,10 +522,6 @@ public class AdminDashboardController {
 
         showMessage("Da tai " + data.size() + " audit log.");
     }
-
-    // =========================
-    // Auction / item moderation
-    // =========================
 
     /**
      * Goi server de Admin huy phien dau gia vi pham.
@@ -583,8 +587,249 @@ public class AdminDashboardController {
                     clearText(deleteItemIdField);
                     clearText(deleteItemReasonField);
                     loadLogs(1);
+                    loadItems(1);
                 }
         );
+    }
+
+    /**
+     * Cau hinh bang items cho Admin Dashboard.
+     * Bam sat y het initializeUsersTable – ObservableList, CellValueFactory, selection listener.
+     */
+    private void initializeItemsTable() {
+        if (itemsTable == null) {
+            return;
+        }
+
+        itemsTable.setItems(items);
+
+        if (itemIdColumn != null) {
+            itemIdColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getItemId()))
+            );
+        }
+
+        if (itemNameColumn != null) {
+            itemNameColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getItemName()))
+            );
+        }
+
+        if (itemTypeColumn != null) {
+            itemTypeColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getItemType()))
+            );
+        }
+
+        if (itemPriceColumn != null) {
+            itemPriceColumn.setCellValueFactory(data ->
+                    new ReadOnlyDoubleWrapper(data.getValue().getStartingPrice())
+            );
+            itemPriceColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(Number item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : String.format("%,.0f VND", item.doubleValue()));
+                }
+            });
+        }
+
+        if (itemStatusColumn != null) {
+            itemStatusColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getStatus()))
+            );
+            itemStatusColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null); setStyle("");
+                    } else {
+                        setText(item);
+                        if ("ACTIVE".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#2ecc71"));
+                        } else if ("BANNED".equalsIgnoreCase(item) || "REMOVED".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#e74c3c"));
+                        } else {
+                            setTextFill(Color.valueOf("#ff9f43"));
+                        }
+                    }
+                }
+            });
+        }
+
+        itemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
+            if (newItem != null && deleteItemIdField != null) {
+                deleteItemIdField.setText(newItem.getItemId());
+            }
+        });
+    }
+
+    @FXML
+    private void handleRefreshItems() {
+        loadItems(currentItemPage <= 0 ? 1 : currentItemPage);
+    }
+
+    @FXML
+    private void handlePreviousItemPage() {
+        if (currentItemPage <= 1) return;
+        loadItems(currentItemPage - 1);
+    }
+
+    @FXML
+    private void handleNextItemPage() {
+        if (totalItemPages > 0 && currentItemPage >= totalItemPages) return;
+        loadItems(currentItemPage + 1);
+    }
+
+    private void loadItems(int page) {
+        Integer pageSize = readPositiveInt(itemPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang item");
+        if (pageSize == null) return;
+
+        runServerCall(
+                "Dang tai danh sach vat pham...",
+                () -> adminApi.getItems(page, pageSize),
+                response -> {
+                    PageDTO<ItemSummaryDTO> itemPage = adminApi.parseItemPage(response);
+                    applyItemPage(itemPage, page);
+                }
+        );
+    }
+
+    private void applyItemPage(PageDTO<ItemSummaryDTO> itemPage, int requestedPage) {
+        List<ItemSummaryDTO> data = itemPage == null || itemPage.getData() == null
+                ? List.of() : itemPage.getData();
+
+        items.setAll(data);
+
+        currentItemPage = itemPage == null ? requestedPage : itemPage.getCurrentPage();
+        totalItemPages = itemPage == null ? 0 : itemPage.getTotalPages();
+
+        updateItemPageLabel();
+        updateItemPageButtons();
+
+        showMessage("Da tai " + data.size() + " vat pham.");
+    }
+
+    /**
+     * Cau hinh bang auctions cho Admin Dashboard.
+     * Bam sat y het initializeLogsTable.
+     */
+    private void initializeAuctionsTable() {
+        if (auctionsTable == null) {
+            return;
+        }
+
+        auctionsTable.setItems(auctions);
+
+        if (auctionIdColumn != null) {
+            auctionIdColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getAuctionId()))
+            );
+        }
+
+        if (auctionItemIdColumn != null) {
+            auctionItemIdColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getItemName()))
+            );
+        }
+
+        if (auctionPriceColumn != null) {
+            auctionPriceColumn.setCellValueFactory(data ->
+                    new ReadOnlyDoubleWrapper(data.getValue().getCurrentPrice())
+            );
+            auctionPriceColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(Number item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : String.format("%,.0f VND", item.doubleValue()));
+                }
+            });
+        }
+
+        if (auctionStatusColumn != null) {
+            auctionStatusColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(safeText(data.getValue().getStatus()))
+            );
+            auctionStatusColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null); setStyle("");
+                    } else {
+                        setText(item);
+                        if ("RUNNING".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#2ecc71"));
+                        } else if ("CANCELED".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#e74c3c"));
+                        } else if ("OPEN".equalsIgnoreCase(item)) {
+                            setTextFill(Color.valueOf("#3498db"));
+                        } else {
+                            setTextFill(Color.valueOf("#95a5a6"));
+                        }
+                    }
+                }
+            });
+        }
+
+        if (auctionEndTimeColumn != null) {
+            auctionEndTimeColumn.setCellValueFactory(data ->
+                    new SimpleStringProperty(formatDateTime(data.getValue().getEndTime()))
+            );
+        }
+
+        auctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldAuction, newAuction) -> {
+            if (newAuction != null && cancelAuctionIdField != null) {
+                cancelAuctionIdField.setText(newAuction.getAuctionId());
+            }
+        });
+    }
+
+    @FXML
+    private void handleRefreshAuctions() {
+        loadAuctions(currentAuctionPage <= 0 ? 1 : currentAuctionPage);
+    }
+
+    @FXML
+    private void handlePreviousAuctionPage() {
+        if (currentAuctionPage <= 1) return;
+        loadAuctions(currentAuctionPage - 1);
+    }
+
+    @FXML
+    private void handleNextAuctionPage() {
+        if (totalAuctionPages > 0 && currentAuctionPage >= totalAuctionPages) return;
+        loadAuctions(currentAuctionPage + 1);
+    }
+
+    private void loadAuctions(int page) {
+        Integer pageSize = readPositiveInt(auctionPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang auction");
+        if (pageSize == null) return;
+
+        runServerCall(
+                "Dang tai danh sach phien dau gia...",
+                () -> adminApi.getAuctions(page, pageSize),
+                response -> {
+                    PageDTO<AuctionSummaryDTO> auctionPage = adminApi.parseAuctionPage(response);
+                    applyAuctionPage(auctionPage, page);
+                }
+        );
+    }
+
+    private void applyAuctionPage(PageDTO<AuctionSummaryDTO> auctionPage, int requestedPage) {
+        List<AuctionSummaryDTO> data = auctionPage == null || auctionPage.getData() == null
+                ? List.of() : auctionPage.getData();
+
+        auctions.setAll(data);
+
+        currentAuctionPage = auctionPage == null ? requestedPage : auctionPage.getCurrentPage();
+        totalAuctionPages = auctionPage == null ? 0 : auctionPage.getTotalPages();
+
+        updateAuctionPageLabel();
+        updateAuctionPageButtons();
+
+        showMessage("Da tai " + data.size() + " phien dau gia.");
     }
 
     @FXML
@@ -607,10 +852,6 @@ public class AdminDashboardController {
 
         showMessage("Da lam moi form Admin.");
     }
-
-    // =========================
-    // Server-call helper
-    // =========================
 
     /**
      * Chay request server tren background thread de UI JavaFX khong bi dung.
@@ -673,11 +914,15 @@ public class AdminDashboardController {
 
         setDisable(cancelAuctionButton, busy);
         setDisable(deleteItemButton, busy);
-    }
 
-    // =========================
-    // UI state helpers
-    // =========================
+        setDisable(refreshItemsButton, busy);
+        setDisable(previousItemPageButton, busy);
+        setDisable(nextItemPageButton, busy);
+
+        setDisable(refreshAuctionsButton, busy);
+        setDisable(previousAuctionPageButton, busy);
+        setDisable(nextAuctionPageButton, busy);
+    }
 
     private void updateUserPageLabel() {
         if (userPageLabel != null) {
@@ -688,6 +933,18 @@ public class AdminDashboardController {
     private void updateLogPageLabel() {
         if (logPageLabel != null) {
             logPageLabel.setText("Logs page " + currentLogPage + " / " + Math.max(totalLogPages, 0));
+        }
+    }
+
+    private void updateItemPageLabel() {
+        if (itemPageLabel != null) {
+            itemPageLabel.setText("Items page " + currentItemPage + " / " + Math.max(totalItemPages, 0));
+        }
+    }
+
+    private void updateAuctionPageLabel() {
+        if (auctionPageLabel != null) {
+            auctionPageLabel.setText("Auctions page " + currentAuctionPage + " / " + Math.max(totalAuctionPages, 0));
         }
     }
 
@@ -708,6 +965,24 @@ public class AdminDashboardController {
 
         if (nextLogPageButton != null) {
             nextLogPageButton.setDisable(totalLogPages <= 0 || currentLogPage >= totalLogPages);
+        }
+    }
+
+    private void updateItemPageButtons() {
+        if (previousItemPageButton != null) {
+            previousItemPageButton.setDisable(currentItemPage <= 1);
+        }
+        if (nextItemPageButton != null) {
+            nextItemPageButton.setDisable(totalItemPages <= 0 || currentItemPage >= totalItemPages);
+        }
+    }
+
+    private void updateAuctionPageButtons() {
+        if (previousAuctionPageButton != null) {
+            previousAuctionPageButton.setDisable(currentAuctionPage <= 1);
+        }
+        if (nextAuctionPageButton != null) {
+            nextAuctionPageButton.setDisable(totalAuctionPages <= 0 || currentAuctionPage >= totalAuctionPages);
         }
     }
 
@@ -745,10 +1020,6 @@ public class AdminDashboardController {
                 .filter(buttonType -> buttonType == javafx.scene.control.ButtonType.OK)
                 .isPresent();
     }
-
-    // =========================
-    // Small helpers
-    // =========================
 
     private boolean isSuccessful(SocketResponse response) {
         return response != null && response.isSuccess();

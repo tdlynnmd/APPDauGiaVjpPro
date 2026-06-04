@@ -16,20 +16,7 @@ import javafx.scene.layout.Pane;
 import java.util.Objects;
 
 /**
- * LoginController là Controller phía Client cho màn hình đăng nhập.
- *
- * Vai trò:
- * - Nhận username/email và password từ giao diện.
- * - Kiểm tra sơ bộ dữ liệu trước khi gửi lên Server.
- * - Gọi ClientAuthApi.login() để gửi request LOGIN qua socket.
- * - Nhận SocketResponse từ Server.
- * - Nếu đăng nhập thành công, lấy LoginResultDTO từ response.body và lưu session phía Client.
- *
- * Lưu ý:
- * - Controller chỉ xử lý giao diện và điều hướng.
- * - Controller không kiểm tra password đúng/sai.
- * - Controller không tự tạo token.
- * - Những nghiệp vụ đó thuộc về AuthService phía Server.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích LoginController xử lý giao diện Client JavaFX.
  */
 public class LoginController {
     @FXML
@@ -44,8 +31,6 @@ public class LoginController {
     @FXML
     private Pane rootContainer;
 
-    // Biến cục bộ cũ đã gỡ bỏ để chuyển sang dùng quản lý tập trung ở SceneNavigator
-
     /**
      * initialize() được JavaFX tự động gọi sau khi load login.fxml.
      * Nhiệm vụ:
@@ -54,7 +39,6 @@ public class LoginController {
      */
     @FXML
     public void initialize() {
-        // --- ĐOẠN CODE TỰ ĐỘNG ÁP DỤNG THEME KHI VỪA MỞ MÀN HÌNH LOGIN ---
         rootContainer.getStylesheets().clear();
         String currentPath = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/dark.css"
@@ -65,7 +49,6 @@ public class LoginController {
         } catch (Exception e) {
             System.out.println("Không thể nạp theme hệ thống: " + currentPath);
         }
-        // ---------------------------------------------------------------------
 
         errorLabel.setVisible(false);
     }
@@ -78,7 +61,6 @@ public class LoginController {
     public void toggleTheme(ActionEvent event) {
         rootContainer.getStylesheets().clear();
 
-        // Đọc trạng thái từ SceneNavigator thay vì biến cục bộ cũ để đồng bộ toàn app
         String path = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/light.css"
                 : "/com/auction/client/view/dark.css";
@@ -87,7 +69,6 @@ public class LoginController {
             String css = Objects.requireNonNull(getClass().getResource(path)).toExternalForm();
             rootContainer.getStylesheets().add(css);
 
-            // Cập nhật lại trạng thái tổng của toàn App để các màn hình khác dùng chung
             SceneNavigator.isAppDarkMode = !SceneNavigator.isAppDarkMode;
         } catch (Exception e) {
             System.out.println("Không tìm thấy file CSS tại " + path);
@@ -115,15 +96,11 @@ public class LoginController {
 
         errorLabel.setVisible(true);
 
-        // Kiểm tra rỗng ở Client để tránh gửi request thiếu dữ liệu lên Server.
-        // Server vẫn phải validate lại, vì dữ liệu từ Client không bao giờ được tin tuyệt đối.
         if (username.isEmpty() || password.isEmpty()) {
             showError("Please enter your full username and passwords.");
             return;
         }
 
-        // Gọi lớp API phía Client để gửi request LOGIN qua socket.
-        // Controller không tự làm việc với Socket trực tiếp.
         ClientAuthApi authApi = new ClientAuthApi();
         SocketResponse response = authApi.login(username, password);
 
@@ -133,14 +110,10 @@ public class LoginController {
         }
 
         if (!response.isSuccess()) {
-            // Nếu Server báo lỗi, hiển thị message do Server trả về.
-            // Ví dụ: sai tài khoản, sai mật khẩu, tài khoản bị khóa.
             showError(response.getMessage());
             return;
         }
 
-        // LOGIN thành công thì response.body chứa LoginResultDTO.
-        // LoginResultDTO gồm token và UserDTO an toàn để lưu phía Client.
         LoginResultDTO loginResult = authApi.parseBody(response, LoginResultDTO.class);
 
         if (loginResult == null || loginResult.getUser() == null) {
@@ -150,7 +123,6 @@ public class LoginController {
 
         showSuccess("Đăng nhập thành công. Đang chuyển màn hình...");
 
-        // Lưu session phía Client để các màn hình sau biết user hiện tại là ai.
         ClientSession.saveLoginSession(
                 loginResult.getToken(),
                 loginResult.getUser()

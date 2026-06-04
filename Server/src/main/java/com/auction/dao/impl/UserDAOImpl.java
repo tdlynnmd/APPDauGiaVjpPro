@@ -12,9 +12,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Lớp triển khai JDBC truy vấn dữ liệu cho thông tin tài khoản và ví tiền.
+ */
 public class UserDAOImpl implements UserDAO {
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào và ném SQLException lên Service điều phối
     @Override
     public boolean insertUser(Connection conn, User user) throws SQLException {
         String sql = "INSERT INTO users (id, user_type, username, email, password_hash, available_balance, frozen_balance, status) VALUES (UUID_TO_BIN(?, 1), ?, ?, ?, ?, ?, ?, ?)";
@@ -33,9 +35,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public Optional<User> findById(String id) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
@@ -56,9 +55,6 @@ public class UserDAOImpl implements UserDAO {
         return Optional.empty();
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public java.util.Map<String, String> findUsernamesByIds(List<String> ids) {
         java.util.Map<String, String> map = new java.util.HashMap<>();
@@ -93,9 +89,6 @@ public class UserDAOImpl implements UserDAO {
         return map;
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public Optional<User> findByUsername(String username) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE username = ? AND deleted_at IS NULL";
@@ -116,9 +109,6 @@ public class UserDAOImpl implements UserDAO {
         return Optional.empty();
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public Optional<User> findByEmail(String email) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE email = ? AND deleted_at IS NULL";
@@ -138,8 +128,6 @@ public class UserDAOImpl implements UserDAO {
         }
         return Optional.empty();
     }
-
-    // --- CÁC HÀM QUẢN LÝ TIỀN CHỐNG RACE CONDITION (ĐÃ THROWS SẴN) ---
 
     @Override
     public boolean freezeMoney(Connection conn, String userId, double amount) throws SQLException {
@@ -200,7 +188,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào để bọc vào Transaction quản lý tài chính chung, ném SQLException lên Service
     @Override
     public boolean withdrawAvailableBalance(Connection conn, String userId, double amount) throws SQLException {
         String sql = "UPDATE users SET available_balance = available_balance - ? " +
@@ -215,7 +202,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    // 🔥 SỬA: Loại bỏ khối try-catch, ném SQLException ra ngoài Service bọc lót Transaction
     @Override
     public boolean addJoinedAuction(Connection conn, String userId, String auctionId) throws SQLException {
         String sql = "INSERT IGNORE INTO bidder_joined_auctions (user_id, auction_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1))";
@@ -229,7 +215,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào, loại bỏ khối try-catch, ném SQLException lên trên
     @Override
     public void removeJoinedAuction(Connection conn, String userId, String auctionId) throws SQLException {
         String sql = "DELETE FROM bidder_joined_auctions WHERE user_id = UUID_TO_BIN(?, 1) AND auction_id = UUID_TO_BIN(?, 1)";
@@ -241,9 +226,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public List<User> findPaginated(int limit, int offset) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE deleted_at IS NULL LIMIT ? OFFSET ?";
@@ -266,9 +248,6 @@ public class UserDAOImpl implements UserDAO {
         return users;
     }
 
-    /**
-     * Đếm tổng số người dùng trong hệ thống
-     */
     @Override
     public long countTotalUsers() {
         String sql = "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL";
@@ -286,7 +265,6 @@ public class UserDAOImpl implements UserDAO {
         return 0;
     }
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào (để bọc lót Transaction cưỡng chế Kick/Ban từ Admin), ném SQLException ra ngoài
     @Override
     public boolean updateStatus(Connection conn, String userId, String name) throws SQLException {
         String sql = "UPDATE users SET status = ? WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
@@ -299,10 +277,6 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /**
-     * Helper Method: Ánh xạ dữ liệu từ SQL sang Object Java
-     * Hàm này giữ nguyên throws外 lý sẵn rất sạch sẽ
-     */
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
         String username = rs.getString("username");

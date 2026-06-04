@@ -3,9 +3,10 @@ package com.auction.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
+/**
+ * DTO chứa thông tin chi tiết đầy đủ của một phiên đấu giá bao gồm lịch sử thầu và cấu hình AutoBid.
+ */
 public class AuctionDetailDTO {
-    // Thông tin phiên
     private String auctionId;
     private double currentPrice;
     private double stepPrice;
@@ -13,18 +14,14 @@ public class AuctionDetailDTO {
     private LocalDateTime endTime;
     private String status;
 
-    // Thông tin vật phẩm
     private String itemName;
     private String itemDescription;
     private String imageUrl;
 
-    // Thông tin người bán
     private String sellerUsername;
 
-    // Lịch sử đặt giá (Quan trọng để hiển thị bảng lịch sử)
     private List<BidTransactionDTO> bidHistory;
 
-    // Cấu hình AutoBid đang hoạt động của người dùng hiện tại (nếu có)
     private double activeAutoBidMaxBid;
     private double activeAutoBidIncrement;
 
@@ -55,7 +52,6 @@ public class AuctionDetailDTO {
     public String getAuctionId() {
         return auctionId;
     }
-
 
     public double getCurrentPrice() {
         return currentPrice;
@@ -119,5 +115,15 @@ public class AuctionDetailDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    private int viewerCount;
+
+    public int getViewerCount() {
+        return viewerCount;
+    }
+
+    public void setViewerCount(int viewerCount) {
+        this.viewerCount = viewerCount;
     }
 }

@@ -4,17 +4,18 @@ import com.auction.enums.ItemStatus;
 import com.auction.enums.ItemType;
 import java.time.LocalDateTime;
 
+/**
+ * Lớp biểu diễn thực thể Vehicle trong hệ thống.
+ */
 public class Vehicle extends Item {
     private String model;
     private double kmage;
     private String licensePlate;
     private String engineType;
 
-    // Constructor 1: Tạo mới
     public Vehicle(String name, double startingPrice, String description, int yearCreated,
                    String sellerId, String imageUrl, String model, String engineType,
                    String licensePlate, double kmage) {
-        // Tự động truyền ItemType.VEHICLES
         super(name, startingPrice, description, yearCreated, sellerId, ItemType.VEHICLES, imageUrl);
         this.model = model;
         this.engineType = engineType;
@@ -22,12 +23,10 @@ public class Vehicle extends Item {
         this.kmage = kmage;
     }
 
-    // Constructor 2: Load từ Database
     public Vehicle(String id, String name, double startingPrice, String description,
                    int yearCreated, String sellerId, String imageUrl, ItemStatus status,
                    LocalDateTime createdAt, String model, String engineType,
                    String licensePlate, double kmage) {
-        // Tự động truyền ItemType.VEHICLES
         super(id, name, startingPrice, description, yearCreated, sellerId, ItemType.VEHICLES, imageUrl, status, createdAt);
         this.model = model;
         this.engineType = engineType;

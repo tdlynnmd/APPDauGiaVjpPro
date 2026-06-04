@@ -10,9 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Lớp triển khai JDBC truy vấn dữ liệu cho vật phẩm đa hình.
+ */
 public class ItemDAOImpl implements ItemDAO {
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào (giống các DAO khác) và ném SQLException lên Service
     @Override
     public boolean insertItem(Connection conn, Item item) throws SQLException {
         String sql = "INSERT INTO items (id, item_type, seller_id, name, description, starting_price, year_created, image_url, status, " +
@@ -21,7 +23,6 @@ public class ItemDAOImpl implements ItemDAO {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // 1. Set các trường CHUNG (Common fields)
             stmt.setString(1, item.getId());
             stmt.setString(2, item.getItemType().name());
             stmt.setString(3, item.getSellerId());
@@ -38,17 +39,15 @@ public class ItemDAOImpl implements ItemDAO {
             stmt.setString(8, item.getImageUrl());
             stmt.setString(9, item.getStatus() != null ? item.getStatus().name() : "ACTIVE");
 
-            // 2. Set các trường ĐẶC THÙ (Khởi tạo toàn bộ bằng NULL trước)
-            stmt.setNull(10, Types.VARCHAR); // painter
-            stmt.setNull(11, Types.VARCHAR); // art_style
-            stmt.setNull(12, Types.VARCHAR); // brand
-            stmt.setNull(13, Types.INTEGER); // warranty_months
-            stmt.setNull(14, Types.VARCHAR); // model
-            stmt.setNull(15, Types.DECIMAL); // km_age
-            stmt.setNull(16, Types.VARCHAR); // license_plate
-            stmt.setNull(17, Types.VARCHAR); // engine_type
+            stmt.setNull(10, Types.VARCHAR);
+            stmt.setNull(11, Types.VARCHAR);
+            stmt.setNull(12, Types.VARCHAR);
+            stmt.setNull(13, Types.INTEGER);
+            stmt.setNull(14, Types.VARCHAR);
+            stmt.setNull(15, Types.DECIMAL);
+            stmt.setNull(16, Types.VARCHAR);
+            stmt.setNull(17, Types.VARCHAR);
 
-            // 3. Phân loại theo instanceof để điền giá trị thật đè lên NULL
             switch (item) {
                 case Art art -> {
                     if (art.getPainter() != null) stmt.setString(10, art.getPainter());
@@ -76,9 +75,6 @@ public class ItemDAOImpl implements ItemDAO {
         }
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public Optional<Item> findById(String id) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, item_type, BIN_TO_UUID(seller_id, 1) AS seller_id, name, description, starting_price, year_created, image_url, status, painter, art_style, brand, warranty_months, model, km_age, license_plate, engine_type, created_at FROM items WHERE id = UUID_TO_BIN(?, 1) AND deleted_at IS NULL";
@@ -95,9 +91,6 @@ public class ItemDAOImpl implements ItemDAO {
         return Optional.empty();
     }
 
-    /**
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public List<Item> findBySellerId(String sellerId) {
         List<Item> items = new ArrayList<>();
@@ -117,7 +110,6 @@ public class ItemDAOImpl implements ItemDAO {
         return items;
     }
 
-    // 🔥 SỬA: Loại bỏ khối try-catch nuốt lỗi, ném trực tiếp lỗi ra ngoài Service phục vụ rollback chuỗi Transaction
     @Override
     public boolean updateStatus(Connection conn, String itemId, String newStatus) throws SQLException {
         String sql = "UPDATE items SET status = ? WHERE id = UUID_TO_BIN(?, 1)";
@@ -128,7 +120,6 @@ public class ItemDAOImpl implements ItemDAO {
         }
     }
 
-    // 🔥 SỬA: Nhận Connection từ ngoài truyền vào và ném lỗi lên Service điều phối
     @Override
     public boolean updateItem(Connection conn, Item item) throws SQLException {
         String sql = "UPDATE items SET name = ?, description = ?, starting_price = ?, year_created = ?, image_url = ?, status = ?, " +
@@ -137,7 +128,6 @@ public class ItemDAOImpl implements ItemDAO {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // 1. Gán giá trị cho các trường thông tin CHUNG
             stmt.setString(1, item.getName());
             stmt.setString(2, item.getDescription());
             stmt.setDouble(3, item.getStartingPrice());
@@ -150,17 +140,15 @@ public class ItemDAOImpl implements ItemDAO {
             stmt.setString(5, item.getImageUrl());
             stmt.setString(6, item.getStatus().name());
 
-            // 2. Khởi tạo mặc định NULL cho toàn bộ các trường ĐẶC THÙ của các lớp con
-            stmt.setNull(7, Types.VARCHAR);  // painter
-            stmt.setNull(8, Types.VARCHAR);  // art_style
-            stmt.setNull(9, Types.VARCHAR);  // brand
-            stmt.setNull(10, Types.INTEGER); // warranty_months
-            stmt.setNull(11, Types.VARCHAR); // model
-            stmt.setNull(12, Types.DECIMAL); // km_age
-            stmt.setNull(13, Types.VARCHAR); // license_plate
-            stmt.setNull(14, Types.VARCHAR); // engine_type
+            stmt.setNull(7, Types.VARCHAR);
+            stmt.setNull(8, Types.VARCHAR);
+            stmt.setNull(9, Types.VARCHAR);
+            stmt.setNull(10, Types.INTEGER);
+            stmt.setNull(11, Types.VARCHAR);
+            stmt.setNull(12, Types.DECIMAL);
+            stmt.setNull(13, Types.VARCHAR);
+            stmt.setNull(14, Types.VARCHAR);
 
-            // 3. Sử dụng switch pattern matching để ghi đè dữ liệu thực tế dựa trên kiểu thực thể
             switch (item) {
                 case Art art -> {
                     if (art.getPainter() != null) stmt.setString(7, art.getPainter());
@@ -180,17 +168,12 @@ public class ItemDAOImpl implements ItemDAO {
                 }
             }
 
-            // 4. Khớp điều kiện WHERE bằng ID của vật phẩm ở vị trí cuối cùng
             stmt.setString(15, item.getId());
 
             return stmt.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Helper method: Xử lý Đa hình (Polymorphism) Hydration
-     * Hàm này vốn dĩ đã throws SQLException sẵn nên giữ nguyên cấu trúc
-     */
     private Item mapResultSetToItem(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
         String name = rs.getString("name");
@@ -245,5 +228,42 @@ public class ItemDAOImpl implements ItemDAO {
             stmt.setString(1, itemId);
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    @Override
+    public List<Item> findAllPaginated(int limit, int offset) {
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, item_type, BIN_TO_UUID(seller_id, 1) AS seller_id, " +
+                "name, description, starting_price, year_created, image_url, status, " +
+                "painter, art_style, brand, warranty_months, model, km_age, license_plate, engine_type, created_at " +
+                "FROM items WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        List<Item> result = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            stmt.setInt(2, offset);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapResultSetToItem(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi findAllPaginated (Admin Items): " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public long countAllItems() {
+        String sql = "SELECT COUNT(*) FROM items WHERE deleted_at IS NULL";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi countAllItems (Admin): " + e.getMessage());
+        }
+        return 0;
     }
 }

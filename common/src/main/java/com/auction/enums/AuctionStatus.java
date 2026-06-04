@@ -1,8 +1,11 @@
 package com.auction.enums;
 
+/**
+ * Enum định nghĩa các trạng thái vòng đời của một phiên đấu giá.
+ */
 public enum AuctionStatus {
-    OPEN,      // Phiên vừa tạo, chưa bắt đầu
-    RUNNING,   // Đang trong thời gian đấu giá
-    FINISHED,  // Đã hết thời gian
-    CANCELED   // Phiên bị hủy do lỗi hoặc vi phạm
+    OPEN,
+    RUNNING,
+    FINISHED,
+    CANCELED
 }

@@ -2,6 +2,9 @@ package com.auction.dto;
 
 import java.io.Serializable;
 
+/**
+ * DTO gửi yêu cầu hủy cấu hình tự động đặt giá (AutoBid) cho một phiên.
+ */
 public class CancelAutoBidRequest implements Serializable {
     private String auctionId;
 

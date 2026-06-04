@@ -336,4 +336,50 @@ class ClientSessionTest {
 
         assertEquals("bidder01", session.getUsername());
     }
+
+    // close khi client ở trong phòng live (currentAuctionId != null) phải rời phòng live và phát LIVE_EXITED event
+    @Test
+    void closeShouldCleanupLiveRoomAndPublishExitedEvent() {
+        ClientSession session = sessionWithoutWriter();
+        session.setUserId("user-1");
+        session.setUsername("bidder01");
+        session.setRole(UserRole.BIDDER);
+        
+        String auctionId = "auction-test-123";
+        
+        // Đưa session vào phòng live
+        com.auction.manage.LiveRoomManage.getInstance().joinRoom(auctionId, session);
+        session.setCurrentAuctionId(auctionId);
+        
+        assertEquals(1, com.auction.manage.LiveRoomManage.getInstance().getRoomSize(auctionId));
+        
+        // Đăng ký một observer để hứng event kiểm tra
+        java.util.concurrent.atomic.AtomicReference<com.auction.event.AuctionEvent> receivedEvent = new java.util.concurrent.atomic.AtomicReference<>();
+        com.auction.event.AuctionObserver observer = receivedEvent::set;
+        com.auction.event.AuctionEventBus.getInstance().attach(observer);
+        
+        try {
+            // Thực thi đóng session đột ngột (giả lập sập nguồn/mất mạng)
+            session.close();
+            
+            // 1. Phải dọn dẹp sạch sẽ danh sách phòng live
+            assertEquals(0, com.auction.manage.LiveRoomManage.getInstance().getRoomSize(auctionId));
+            
+            // 2. Phải bắn sự kiện LIVE_EXITED đồng bộ
+            com.auction.event.AuctionEvent event = receivedEvent.get();
+            assertNotNull(event);
+            assertEquals(auctionId, event.getRoomId());
+            assertEquals(com.auction.event.AuctionEventType.LIVE_EXITED, event.getType());
+            
+            // 3. Payload phải chuẩn để Client cập nhật số người xem: viewerCount = 0
+            Object payload = event.getPayload();
+            assertTrue(payload instanceof java.util.Map);
+            java.util.Map<?, ?> payloadMap = (java.util.Map<?, ?>) payload;
+            assertEquals("bidder01", payloadMap.get("username"));
+            assertEquals(0, payloadMap.get("viewerCount"));
+        } finally {
+            com.auction.event.AuctionEventBus.getInstance().detach(observer);
+            com.auction.manage.LiveRoomManage.getInstance().clearRoom(auctionId);
+        }
+    }
 }

@@ -9,28 +9,45 @@ import com.auction.dto.PageDTO;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
 import com.auction.models.Auction.BidTransaction;
+import com.auction.models.Auction.Auction;
+import com.auction.manage.AuctionManage;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Dịch vụ quản lý lịch sử giao dịch đặt giá (Bid History).
+ */
 public class BidTransactionService {
     private final BidTransactionDAO bidTransactionDAO = new BidTransactionDAOImpl();
     private final UserDAO userDAO = new UserDAOImpl();
 
-
-    /**
-     * LẤY LỊCH SỬ ĐẶT GIÁ THEO PHIÊN (PHÂN TRANG TRỌN GÓI)
-     */
     public PageDTO<BidTransactionDTO> getAuctionBidsPaged(String auctionId, int page, int pageSize) {
-        // Hàng rào kiểm tra tham số đầu vào (Đã tốt, giữ nguyên cấu trúc sạch)
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID is required.");
         }
-        // 🔥 SỬA ĐỒNG BỘ: page index thông thường bắt đầu từ 1, check <= 0 là chuẩn xác
         if (page <= 0 || pageSize <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Page index and size must be greater than 0.");
+        }
+
+        Auction auction = AuctionManage.getInstance().getAuctionById(auctionId);
+        if (auction != null) {
+            List<BidTransaction> ramHistory = auction.getBidHistoryRam();
+            if (ramHistory == null || ramHistory.isEmpty()) {
+                return new PageDTO<>(new ArrayList<>(), page, 0, 0);
+            }
+            int offset = (page - 1) * pageSize;
+            if (offset >= ramHistory.size()) {
+                int totalPages = (int) Math.ceil((double) ramHistory.size() / pageSize);
+                return new PageDTO<>(new ArrayList<>(), page, totalPages, ramHistory.size());
+            }
+            List<BidTransaction> subList = ramHistory.subList(offset, Math.min(offset + pageSize, ramHistory.size()));
+            List<BidTransactionDTO> dtoList = convertToTransactionDTOs(subList);
+            long totalElements = ramHistory.size();
+            int totalPages = (int) Math.ceil((double) totalElements / pageSize);
+            return new PageDTO<>(dtoList, page, totalPages, totalElements);
         }
 
         int offset = (page - 1) * pageSize;
@@ -48,9 +65,6 @@ public class BidTransactionService {
         return new PageDTO<>(dtoList, page, totalPages, totalElements);
     }
 
-    /**
-     * LẤY LỊCH SỬ ĐI ĐẤU GIÁ CỦA MỘT BIDDER (PHÂN TRANG TRỌN GÓI)
-     */
     public PageDTO<BidTransactionDTO> getBidderHistoryPaged(String bidderId, int page, int pageSize) {
         if (bidderId == null || bidderId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Bidder ID is required.");
@@ -74,10 +88,6 @@ public class BidTransactionService {
         return new PageDTO<>(dtoList, page, totalPages, totalElements);
     }
 
-
-    /**
-     * 🔥 TỐI ƯU HOÀN TOÀN: Hàm chuyển đổi dữ liệu DTO
-     */
     private List<BidTransactionDTO> convertToTransactionDTOs(List<BidTransaction> rawBids) {
         if (rawBids == null || rawBids.isEmpty()) return new ArrayList<>();
 
@@ -86,10 +96,6 @@ public class BidTransactionService {
                 .distinct()
                 .toList();
 
-        // 💡 GIẢI PHÁP CHUYÊN NGHIỆP THAY THẾ N+1 QUERY:
-        // Thay vì gọi userDAO.findById từng vòng lặp, bạn nên viết thêm hàm findUsernamesByIds(bidderIds) trong UserDAO.
-        // Câu lệnh SQL bên dưới DAO sẽ dùng cú pháp: SELECT id, username FROM users WHERE id IN (?, ?, ?, ...)
-        // Điều này gộp 20 câu lệnh SELECT đơn lẻ thành duy nhất 1 câu lệnh quét, tối ưu hóa tốc độ phản hồi gấp hàng chục lần!
         Map<String, String> userMap = userDAO.findUsernamesByIds(bidderIds);
 
         return rawBids.stream().map(bid -> {

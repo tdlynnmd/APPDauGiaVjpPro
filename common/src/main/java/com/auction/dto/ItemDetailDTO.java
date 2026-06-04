@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * Detail DTO returned by the server for create, update, and detail item requests.
+ * DTO chứa thông tin chi tiết đầy đủ của một sản phẩm bao gồm đặc tính đa hình.
  */
 public class ItemDetailDTO implements Serializable {
     private static final long serialVersionUID = 1L;

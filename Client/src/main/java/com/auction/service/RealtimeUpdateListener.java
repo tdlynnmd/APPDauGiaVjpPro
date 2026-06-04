@@ -3,16 +3,7 @@ package com.auction.service;
 import com.auction.dto.SocketResponse;
 
 /**
- * RealtimeUpdateListener la interface cho cac man hinh muon nhan realtime event tu Server.
- *
- * Vi du:
- * - LiveBiddingController nhan BID_UPDATE de cap nhat gia moi.
- * - LiveBiddingController nhan TIME_UPDATE de cap nhat thoi gian con lai.
- * - LiveBiddingController nhan LIVE_ENTERED / LIVE_EXITED de cap nhat so nguoi xem.
- * - LiveBiddingController co the nhan STATUS_UPDATED khi Server chot format trang thai.
- *
- * ClientSocketService khong can biet controller cu the nao dang lang nghe.
- * Service chi can goi onRealtimeUpdate(...) cho tat ca listener da dang ky.
+ * Interface định nghĩa bộ lắng nghe sự kiện cập nhật thời gian thực từ Server.
  */
 public interface RealtimeUpdateListener {
 

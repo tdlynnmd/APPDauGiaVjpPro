@@ -28,27 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * WalletController la controller phia Client cho man hinh vi cua Bidder.
- *
- * Lien he voi cac class quan trong:
- * - ClientWalletApi:
- *   Tao SocketRequest va gui action GET_USER_PROFILE / DEPOSIT_MONEY / WITHDRAW_MONEY sang Server.
- *
- * - ClientSocketService:
- *   Nam ben trong ClientWalletApi, la noi gui request that qua socket va cho SocketResponse tu Server.
- *
- * - UserController phia Server:
- *   Nhan request wallet, validate amount, roi goi UserService.
- *
- * - UserService phia Server:
- *   Xu ly nghiep vu nap/rut tien, dong bo RAM + database.
- *
- * - AuthorizationService phia Server:
- *   Hien tai chi cho BIDDER goi DEPOSIT_MONEY va WITHDRAW_MONEY.
- *
- * - ClientSession:
- *   Luu user hien tai o phia Client. Sau khi nap/rut thanh cong,
- *   controller cap nhat lai ClientSession bang UserDTO moi Server tra ve.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích WalletController xử lý giao diện Client JavaFX.
  */
 public class WalletController {
     private final ClientUserApi walletApi = new ClientUserApi();
@@ -56,15 +36,9 @@ public class WalletController {
     private final NumberFormat moneyFormat =
             NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-    // Biến cờ hiệu quản lý luồng quét QR giả định
     private boolean isDepositAction = true;
     private Double pendingAmount = 0.0;
     private boolean isProcessingTransaction = false;
-
-    // =========================
-    // FXML contract
-    // =========================
-    // wallet.fxml can khai bao dung cac fx:id duoi day.
 
     @FXML private Parent rootContainer;
 
@@ -75,11 +49,14 @@ public class WalletController {
     @FXML private Label totalBalanceLabel;
     @FXML private Label messageLabel;
 
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
+
     @FXML private TextField amountField;
 
     @FXML private HBox transactionBox;
 
-    // Các FXID mới phục vụ cấu trúc chia đôi và các ô tích chọn có chứa ảnh
     @FXML private VBox formLeftPane;
     @FXML private VBox qrRightPane;
     @FXML private ToggleGroup paymentMethodGroup;
@@ -99,7 +76,6 @@ public class WalletController {
     @FXML private Button confirmQRButton;
     @FXML private Button cancelQRButton;
 
-    // Khối thông báo đang cập nhật dành riêng cho Seller
     @FXML private VBox sellerMaintenanceBox;
 
     @FXML private Button refreshButton;
@@ -109,19 +85,15 @@ public class WalletController {
 
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
 
-        /*
-         * Chan tu phia Client de tranh user khong dung role vao nham man hinh.
-         * Day chi la guard UI. Server van la noi check quyen that su.
-         */
         if (!isWalletViewerSession()) {
             showError("Chi tai khoan Bidder hoac Seller moi duoc xem vi.");
             SceneNavigator.showDashboard();
             return;
         }
 
-        // Mặc định ẩn hoàn toàn khung QR bên phải khi chưa phát lệnh giao dịch nào
         if (qrRightPane != null) {
             qrRightPane.setVisible(false);
             qrRightPane.setManaged(false);
@@ -167,7 +139,6 @@ public class WalletController {
         }
     }
 
-
     private boolean isWalletViewerSession() {
         if (!ClientSession.isLoggedIn() || ClientSession.getCurrentUser() == null) {
             return false;
@@ -186,12 +157,10 @@ public class WalletController {
     private void applyWalletModeByRole() {
         boolean bidder = canUseWalletTransactions();
 
-        // 1. Điều khiển đóng/mở tính năng dựa theo vai trò (Guard logic cũ của bạn)
         setDisabled(depositButton, !bidder);
         setDisabled(withdrawButton, !bidder);
         setDisabled(amountField, !bidder);
 
-        // Vô hiệu hóa các ô tích chọn nếu không phải là bidder
         if (paymentMethodGroup != null && !bidder) {
             momoToggle.setDisable(true);
             zalopayToggle.setDisable(true);
@@ -199,7 +168,6 @@ public class WalletController {
             shopeepayToggle.setDisable(true);
         }
 
-        // 2. KÍCH HOẠT GIAO DIỆN THÍCH ỨNG THÔNG MINH (Role-based UI)
         if (bidder) {
             if (transactionBox != null) {
                 transactionBox.setVisible(true);
@@ -218,7 +186,6 @@ public class WalletController {
                 sellerMaintenanceBox.setVisible(true);
                 sellerMaintenanceBox.setManaged(true);
             }
-            // Cập nhật dòng chữ Footer thông báo chuyên nghiệp cho Seller
             showMessage("Chế độ xem số dư ví (Dành riêng cho Seller). Chức năng đang cập nhật.");
         }
     }
@@ -245,7 +212,6 @@ public class WalletController {
      */
     @FXML
     private void handleRefresh() {
-        // Nếu đang mở QR mà ấn refresh, ta đưa giao diện về trạng thái gốc trước khi tải lại
         resetFormToNormalState();
         loadWalletProfile();
     }
@@ -291,7 +257,6 @@ public class WalletController {
         isDepositAction = true;
         pendingAmount = amount;
 
-        // Kích hoạt luồng dựng QR và làm mờ bảng bên trái
         activateQRLayoutFlow(true, amount, method);
     }
 
@@ -327,7 +292,6 @@ public class WalletController {
         isDepositAction = false;
         pendingAmount = amount;
 
-        // Kích hoạt luồng dựng QR và làm mờ bảng bên trái
         activateQRLayoutFlow(false, amount, method);
     }
 
@@ -346,11 +310,9 @@ public class WalletController {
             setLabelText(qrHintLabel, "Quét mã để xác nhận chuyển " + formattedMoney + " về tài khoản.");
         }
 
-        // 1. Đẩy khung QR hiện ra bên phải
         qrRightPane.setVisible(true);
         qrRightPane.setManaged(true);
 
-        // 2. LÀM MỜ TOÀN BỘ PHẦN BÊN TRÁI để nổi bật vùng quét QR
         formLeftPane.setDisable(true);
 
         showMessage("Đang chờ quét mã QR giao dịch...");
@@ -368,7 +330,6 @@ public class WalletController {
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Nếu đồng ý thoát: đưa form về trạng thái mở ban đầu
             resetFormToNormalState();
             showMessage("Đã hủy yêu cầu giao dịch.");
         }
@@ -418,7 +379,6 @@ public class WalletController {
             );
         }
 
-        // Sau khi đẩy lệnh đi, đóng QR và mở lại khóa form trái
         if (qrRightPane != null) {
             qrRightPane.setVisible(false);
             qrRightPane.setManaged(false);
@@ -494,14 +454,12 @@ public class WalletController {
     private void handleWalletResponse(SocketResponse response) {
         if (response == null) {
             showError("Server khong tra ve phan hoi.");
-            // Nếu thất bại, mở lại form bên trái cho user thao tác lại
             if (formLeftPane != null) formLeftPane.setDisable(false);
             return;
         }
 
         if (!response.isSuccess()) {
             showError(response.getMessage() == null ? "Thao tac vi that bai." : response.getMessage());
-            // Nếu thất bại, mở lại form bên trái cho user thao tác lại
             if (formLeftPane != null) formLeftPane.setDisable(false);
             return;
         }
@@ -517,10 +475,9 @@ public class WalletController {
         renderBalances(updatedUser);
         bindCurrentUserToHeader();
 
-        // CHÍNH THỨC RESET BIẾN VÀ MỞ KHÓA GIAO DIỆN KHI THÀNH CÔNG THẬT SỰ
         this.pendingAmount = 0.0;
         if (formLeftPane != null) {
-            formLeftPane.setDisable(false); // Mở khóa form nhập bên trái
+            formLeftPane.setDisable(false);
         }
         if (amountField != null) {
             amountField.clear();
@@ -608,7 +565,6 @@ public class WalletController {
         Platform.runLater(() -> {
             boolean transactionAllowed = canUseWalletTransactions();
 
-            // Chỉ thực hiện khóa/mở nút nếu vai trò hiện tại có quyền giao dịch
             if (transactionAllowed) {
                 setDisabled(depositButton, busy);
                 setDisabled(withdrawButton, busy);

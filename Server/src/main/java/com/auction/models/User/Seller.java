@@ -1,6 +1,5 @@
 package com.auction.models.User;
 
-
 import com.auction.enums.UserRole;
 import com.auction.enums.UserStatus;
 import com.auction.models.Item.Item;
@@ -10,6 +9,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Lớp biểu diễn thực thể Seller trong hệ thống.
+ */
 public class Seller extends User {
     private double rating;
     private transient List<Item> myItems;
@@ -27,16 +29,13 @@ public class Seller extends User {
         this.myItems = new ArrayList<>();
     }
 
-    //Thêm vật đấu giá
     public void addItem(Item item){
         this.myItems.add(item);
     }
 
-    //Xoá vật đấu giá
     public void removeItem(Item item){
         this.myItems.remove(item);
     }
-
 
     public double getRating() {
         return this.rating;

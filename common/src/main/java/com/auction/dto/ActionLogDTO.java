@@ -3,6 +3,9 @@ package com.auction.dto;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * DTO lưu trữ nhật ký thao tác kiểm duyệt của quản trị viên (Admin).
+ */
 public class ActionLogDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -13,7 +16,6 @@ public class ActionLogDTO implements Serializable {
     private String targetId;
     private LocalDateTime timestamp;
 
-    // Constructor toàn bộ tham số phục vụ việc map dữ liệu từ Database lên
     public ActionLogDTO(String logId, String adminId, String actionDetail, String targetType, String targetId, LocalDateTime timestamp) {
         this.logId = logId;
         this.adminId = adminId;
@@ -22,10 +24,6 @@ public class ActionLogDTO implements Serializable {
         this.targetId = targetId;
         this.timestamp = timestamp;
     }
-
-    // =========================================================================
-    // GETTERS & SETTERS (Bắt buộc phải viết đầy đủ để TableView JavaFX nhận diện)
-    // =========================================================================
 
     public String getLogId() { return logId; }
     public void setLogId(String logId) { this.logId = logId; }

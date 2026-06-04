@@ -17,20 +17,7 @@ import javafx.scene.layout.Pane;
 import java.util.Objects;
 
 /**
- RegisterController là Controller phía Client cho màn hình đăng ký.
-
- Vai trò:
- - Nhận username, email, password, confirm password và role từ giao diện.
- - Kiểm tra sơ bộ dữ liệu trước khi gửi lên Server.
- - Gọi clientAuthApi.register() để gửi request REGISTER qua socket.
- - Nhận SocketResponse và hiển thị kết quả cho người dùng.
-
- * Lưu ý quan trọng:
- - Controller chỉ xử lý giao diện.
- - Controller không tạo User.
- - Controller không kiểm tra username/email trùng.
- - Controller không hash password.
- - Những nghiệp vụ đó thuộc về AuthService phía Server.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích RegisterController xử lý giao diện Client JavaFX.
  */
 public class RegisterController {
 
@@ -55,8 +42,6 @@ public class RegisterController {
     @FXML
     private Pane rootContainer;
 
-    // Biến cục bộ cũ đã gỡ bỏ để chuyển sang dùng quản lý tập trung ở SceneNavigator
-
     /**
      * initialize() được JavaFX tự động gọi sau khi load register.fxml.
      * Nhiệm vụ:
@@ -69,7 +54,6 @@ public class RegisterController {
      */
     @FXML
     public void initialize() {
-        // --- ĐOẠN CODE TỰ ĐỘNG ÁP DỤNG THEME KHI VỪA MỞ MÀN HÌNH REGISTER ---
         rootContainer.getStylesheets().clear();
         String currentPath = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/dark.css"
@@ -80,13 +64,10 @@ public class RegisterController {
         } catch (Exception e) {
             System.out.println("Không thể nạp theme hệ thống: " + currentPath);
         }
-        // ---------------------------------------------------------------------
 
         roleComboBox.getItems().setAll(UserRole.BIDDER, UserRole.SELLER);
         roleComboBox.setValue(UserRole.BIDDER);
 
-        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
-        // Giữ setVisible(true) để chiếm sẵn không gian cố định, đặt chuỗi rỗng để giấu chữ ban đầu.
         errorLabel.setVisible(true);
         errorLabel.setText("");
     }
@@ -111,46 +92,35 @@ public class RegisterController {
 
         errorLabel.setVisible(true);
 
-        // Kiểm tra rỗng ở Client để tránh gửi request thiếu dữ liệu lên Server.
-        // Server vẫn phải validate lại, vì dữ liệu từ Client không bao giờ được tin tuyệt đối.
         if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             showError("Please fill in all registration information!");
             return;
         }
 
-        // Confirm password là lỗi nhập liệu thuộc về giao diện,
-        // nên kiểm tra ở Client là hợp lý.
         if (!password.equals(confirmPassword)) {
             showError("Passwords do not match!");
             return;
         }
 
-        // Role bắt buộc phải có để Server biết tạo Bidder hay Seller.
         if (role == null) {
             showError("Please select an account role!");
             return;
         }
 
-        // Gọi lớp API phía Client để gửi request REGISTER qua socket.
-        // Controller không tự làm việc với Socket trực tiếp.
         ClientAuthApi authApi = new ClientAuthApi();
         SocketResponse response = authApi.register(username, password, email, role);
 
         if (response.isSuccess()) {
             showSuccess("Registration successful! Returning to the login screen.");
 
-            // Thông báo rõ cho người dùng biết tài khoản đã được tạo.
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Registration Successful");
             alert.setHeaderText(null);
             alert.setContentText("Your account has been created. You can log in now.");
             alert.showAndWait();
 
-            // Đăng ký xong thì quay về Login để người dùng đăng nhập.
             SceneNavigator.showLogin();
         } else {
-            // Nếu Server báo lỗi, hiển thị message do Server trả về.
-            // Ví dụ: username đã tồn tại, email sai format, password yếu.
             showError(response.getMessage());
         }
     }
@@ -172,7 +142,6 @@ public class RegisterController {
     public void toggleTheme(ActionEvent event) {
         rootContainer.getStylesheets().clear();
 
-        // Đọc trạng thái từ SceneNavigator thay vì biến cục bộ cũ để đồng bộ toàn app
         String path = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/light.css"
                 : "/com/auction/client/view/dark.css";
@@ -181,7 +150,6 @@ public class RegisterController {
             String css = Objects.requireNonNull(getClass().getResource(path)).toExternalForm();
             rootContainer.getStylesheets().add(css);
 
-            // Cập nhật lại trạng thái tổng của toàn App để các màn hình khác dùng chung
             SceneNavigator.isAppDarkMode = !SceneNavigator.isAppDarkMode;
         } catch (Exception e) {
             e.printStackTrace();
@@ -193,8 +161,6 @@ public class RegisterController {
      * Hiển thị lỗi lên label.
      */
     private void showError(String message) {
-        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
-        // Giữ hiển thị true cố định để không đẩy dịch layout dưới
         errorLabel.setVisible(true);
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: red;");
@@ -204,8 +170,6 @@ public class RegisterController {
      * Hiển thị thông báo thành công lên label.
      */
     private void showSuccess(String message) {
-        // --- ĐÃ CHỈNH SỬA THEO YÊU CẦU ---
-        // Giữ hiển thị true cố định để không đẩy dịch layout dưới
         errorLabel.setVisible(true);
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: green;");

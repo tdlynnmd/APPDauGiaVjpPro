@@ -6,44 +6,27 @@ import com.auction.enums.ActionType;
 import com.google.gson.JsonObject;
 
 /**
- SocketRequest là phong bì chung cho mọi request gửi từ Client sang Server.
- Tạo SocketRequest để Sever nhìn Action là biết gọi Controller nào
- Co 2 phan:
- - action: Client muon lam gi: LOGIN, REGISTER, PLACE_BID
- - body: du lieu chi tiet cua action do duoi dang JSON
- - requestId dùng để ghép response trả về với request đã gửi.
-
+ * DTO giao thức mạng bọc các yêu cầu gửi từ Client sang Server qua kết nối TCP Socket.
  */
-
 public class SocketRequest {
     private String requestId;
     private ActionType action;
     private String body;
 
-    /**
-      Constructor rỗng cần cho Gson khi parse JSON thành object.
-     */
     public SocketRequest() {
     }
 
-    /**
-      Dùng khi Client tạo request mới.
-      requestId tự sinh để Client/Server có thể theo dõi request.
-     */
     public SocketRequest(ActionType action, JsonObject body) {
         this.requestId = UUID.randomUUID().toString();
         this.action = action;
         this.body = body.toString();
     }
-    
-    // Dùng khi body đã là JSON string.
-     
+
     public SocketRequest(ActionType action, String body) {
         this.requestId = UUID.randomUUID().toString();
         this.action = action;
         this.body = body;
     }
-
 
     public String getRequestId() {
         return requestId;

@@ -1,14 +1,10 @@
 package com.auction.dto;
 
 /**
- Chứa thông tin đăng xuất Client gửi lên Server
- Mang userId của người đang đăng nhập
- Giúp Server biết user nào cần Logout
- Hỗ trợ trường hợp ClientSession phía Server bị thiếu userId.
+ * DTO gửi yêu cầu đăng xuất khỏi hệ thống.
  */
-
 public class LogoutRequest {
-    private String userID;      // ID của user hiện tại đang đăng nhập
+    private String userID;
     public LogoutRequest(){
     }
     public LogoutRequest(String userID){

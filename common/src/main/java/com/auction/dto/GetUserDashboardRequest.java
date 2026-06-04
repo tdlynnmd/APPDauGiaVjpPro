@@ -3,13 +3,13 @@ package com.auction.dto;
 import java.io.Serializable;
 
 /**
- * Request DTO để lấy danh sách user (chỉ Admin)
+ * DTO gửi yêu cầu lấy danh sách người dùng kèm phân trang phục vụ màn hình Admin.
  */
 public class GetUserDashboardRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private int page;      // Trang hiện tại (bắt đầu từ 1)
-    private int pageSize;  // Số dòng mỗi trang
+    private int page;
+    private int pageSize;
 
     public GetUserDashboardRequest() {
     }

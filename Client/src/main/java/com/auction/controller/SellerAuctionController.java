@@ -28,25 +28,28 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích SellerAuctionController xử lý giao diện Client JavaFX.
+ */
 public class SellerAuctionController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
 
-    // List dữ liệu gốc nhận về từ máy chủ (Master list ban đầu là sellerAuctions)
     private final ObservableList<AuctionSummaryDTO> sellerAuctions = FXCollections.observableArrayList();
-    // Bộ lọc dữ liệu phục vụ tìm kiếm theo tên vật phẩm thời gian thực
     private FilteredList<AuctionSummaryDTO> filteredDataList;
 
     private AuctionSummaryDTO selectedAuction;
 
-    // Khai báo formatter chuẩn để hiển thị và đọc dữ liệu thân thiện với người dùng
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    // Quản lý trạng thái phân trang nội bộ cho bảng danh sách
     private int currentPageIndex = 1;
     private int rowsPerPage = 10;
 
     @FXML private Parent rootContainer;
     @FXML private Label messageLabel;
+
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
 
     @FXML private TableView<AuctionSummaryDTO> sellerAuctionsTable;
     @FXML private TableColumn<AuctionSummaryDTO, String> auctionIdColumn;
@@ -64,32 +67,28 @@ public class SellerAuctionController {
     @FXML private Button updateAuctionButton;
     @FXML private Button backButton;
 
-    // Các thành phần UI điều khiển tìm kiếm và phân trang bổ sung từ FXML
     @FXML private TextField searchField;
     @FXML private TextField pageSizeField;
     @FXML private Label pageLabel;
     @FXML private Button previousPageButton;
     @FXML private Button nextPageButton;
 
-    // Khai báo thêm các thành phần UI quản lý đóng mở form động theo yêu cầu mới
     @FXML private Button editAuctionButton;
     @FXML private ScrollPane rightSplitPaneContainer;
-    @FXML private Button clearFilterButton; // Nút xóa bộ lọc tìm kiếm nhanh
+    @FXML private Button clearFilterButton;
     @FXML private Button searchButton;
 
-    // Khai báo thêm các nhãn quản lý nội dung thông báo bảng trống động theo yêu cầu mới
     @FXML private Label placeholderIcon;
     @FXML private Label placeholderText;
 
     @FXML
     private void handleSearch() {
-        // Gọi lại hàm xử lý tải danh sách đấu giá (hàm này đã có sẵn logic đọc từ searchField)
         handleLoadSellerAuctions();
     }
 
-    // Vai trò: khởi tạo màn quản lý auction của seller.
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
 
         if (!ClientSession.isLoggedIn()) {
@@ -98,12 +97,11 @@ public class SellerAuctionController {
         }
 
         initializeSellerAuctionsTable();
-        setupSearchAndPaginationLogic(); // Khởi tạo ràng buộc lắng nghe tìm kiếm và kích thước dòng
-        setupTablePlaceholderByTheme(SceneNavigator.isAppDarkMode); // Thiết lập thông báo bảng trống tương ứng cho từng giao diện riêng biệt
+        setupSearchAndPaginationLogic();
+        setupTablePlaceholderByTheme(SceneNavigator.isAppDarkMode);
         handleLoadSellerAuctions();
     }
 
-    // Chức năng: cấu hình bảng danh sách auction.
     private void initializeSellerAuctionsTable() {
         auctionIdColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(safeText(data.getValue().getAuctionId())));
@@ -113,7 +111,6 @@ public class SellerAuctionController {
         auctionStatusColumn.setCellValueFactory(data ->
                 new SimpleStringProperty(safeText(data.getValue().getStatus())));
 
-        // GIỮ NGUYÊN MÀU ĐẶC THÙ CHO TRẠNG THÁI (OPEN: xanh dương, RUNNING: xanh lá, FINISHED: đỏ)
         auctionStatusColumn.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -156,22 +153,15 @@ public class SellerAuctionController {
             }
         });
 
-        /* ==========================================================================
-           LOGIC NÂNG CAO: XỬ LÝ CHỌN SẢN PHẨM KHI FORM ĐANG MỞ
-           ========================================================================== */
         sellerAuctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            // Nếu click ra vùng trống hoặc danh sách bị xóa rỗng thì bỏ qua
             if (newValue == null) return;
 
-            // KIỂM TRA TRẠNG THÁI MỞ CỦA FORM CHỈNH SỬA
             if (rightSplitPaneContainer.isVisible()) {
 
-                // TRƯỜNG HỢP 1: Chọn phải sản phẩm không hợp lệ (Trạng thái khác OPEN)
                 String newStatus = safeText(newValue.getStatus()).toUpperCase().trim();
                 if (!"OPEN".equals(newStatus)) {
                     showError("Không thể chọn phiên này! Chỉ được phép xem/sửa các phiên đấu giá ở trạng thái OPEN.\nPhiên vừa chọn đang ở trạng thái: " + newStatus);
 
-                    // Khôi phục vùng chọn ngược lại dòng sản phẩm cũ để tránh bị lệch UI
                     javafx.application.Platform.runLater(() -> {
                         sellerAuctionsTable.getSelectionModel().selectedItemProperty().removeListener((javafx.beans.value.ChangeListener)obs);
                         if (oldValue != null) {
@@ -184,9 +174,7 @@ public class SellerAuctionController {
                     return;
                 }
 
-                // TRƯỜNG HỢP 2: Chọn sản phẩm OPEN hợp lệ mới
                 if (isFormChangedFromDefault()) {
-                    // Nếu thông tin trên form hiện tại đang bị sửa đổi dở dang và chưa lưu -> Phải hỏi xác nhận
                     Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                     alert.setTitle("Xác nhận chuyển đổi phiên");
                     alert.setHeaderText(null);
@@ -194,11 +182,9 @@ public class SellerAuctionController {
 
                     Optional<ButtonType> result = alert.showAndWait();
                     if (result.isPresent() && result.get() == ButtonType.OK) {
-                        // Người dùng đồng ý hủy thay đổi cũ -> Tiến hành nạp dữ liệu phiên mới lên form
                         selectedAuction = newValue;
                         fillAuctionUpdateForm(selectedAuction);
                     } else {
-                        // Người dùng bấm Hủy -> Không chuyển nữa, giữ nguyên dòng chọn cũ trên bảng
                         javafx.application.Platform.runLater(() -> {
                             sellerAuctionsTable.getSelectionModel().selectedItemProperty().removeListener((javafx.beans.value.ChangeListener)obs);
                             sellerAuctionsTable.getSelectionModel().select(oldValue);
@@ -206,12 +192,10 @@ public class SellerAuctionController {
                         });
                     }
                 } else {
-                    // Nếu dữ liệu trên form chưa có bất kỳ chỉnh sửa gì -> Tự động nạp luôn thông tin mới mà không hỏi
                     selectedAuction = newValue;
                     fillAuctionUpdateForm(selectedAuction);
                 }
             } else {
-                // Nếu form đang ĐÓNG: Chỉ gán con trỏ đối tượng chọn như bình thường (Theo thiết kế cũ)
                 selectedAuction = newValue;
             }
         });
@@ -223,11 +207,9 @@ public class SellerAuctionController {
      */
     private void setupTablePlaceholderByTheme(boolean isDarkMode) {
         if (isDarkMode) {
-            // CẤU HÌNH CHO GIAO DIỆN TỐI (DARK MODE)
             if (placeholderIcon != null) placeholderIcon.setText("🌌");
             if (placeholderText != null) placeholderText.setText("Không tìm thấy dữ liệu phiên trong bóng đêm");
         } else {
-            // CẤU HÌNH CHO GIAO DIỆN SÁNG (LIGHT MODE)
             if (placeholderIcon != null) placeholderIcon.setText("☀️");
             if (placeholderText != null) placeholderText.setText("Danh sách phiên đấu giá hiện đang trống");
         }
@@ -239,24 +221,20 @@ public class SellerAuctionController {
      */
     @FXML
     private void handleOpenEditForm() {
-        // Trường hợp 1: Chưa chọn phiên nào trên bảng
         if (selectedAuction == null) {
             showError("Vui lòng chọn một phiên đấu giá trên bảng trước khi sửa.");
             return;
         }
 
-        // Trường hợp 2: Chọn phiên không hợp lệ (Không phải trạng thái OPEN)
         String status = safeText(selectedAuction.getStatus()).toUpperCase();
         if (!"OPEN".equals(status)) {
             showError("Phiên đấu giá không hợp lệ! Chỉ cho phép sửa đổi phiên ở trạng thái OPEN.\nPhiên hiện tại đang là: " + status);
             return;
         }
 
-        // Trường hợp 3: Chọn phiên hợp lệ -> Mở form sửa ở bên phải, đẩy bảng về bên trái
         rightSplitPaneContainer.setVisible(true);
         rightSplitPaneContainer.setManaged(true);
 
-        // Đổ dữ liệu chuẩn của đối tượng được chọn vào các ô nhập liệu
         fillAuctionUpdateForm(selectedAuction);
     }
 
@@ -274,11 +252,10 @@ public class SellerAuctionController {
 
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() != ButtonType.OK) {
-                return; // Người dùng chọn Cancel -> Không đóng form nữa
+                return;
             }
         }
 
-        // Tắt form và mở rộng bảng toàn màn hình như ban đầu
         rightSplitPaneContainer.setVisible(false);
         rightSplitPaneContainer.setManaged(false);
     }
@@ -299,11 +276,10 @@ public class SellerAuctionController {
 
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() != ButtonType.OK) {
-                return; // Dừng lại không reset dữ liệu
+                return;
             }
         }
 
-        // Nạp lại dữ liệu chuẩn ban đầu vào form
         fillAuctionUpdateForm(selectedAuction);
     }
 
@@ -313,7 +289,7 @@ public class SellerAuctionController {
     @FXML
     private void handleClearFilter() {
         if (searchField != null) {
-            searchField.clear(); // Làm rỗng ô nhập, Listener tự động cập nhật lại bảng
+            searchField.clear();
         }
     }
 
@@ -327,7 +303,6 @@ public class SellerAuctionController {
         String defaultStartTime = formatTime(selectedAuction.getStartTime());
         String defaultEndTime = formatTime(selectedAuction.getEndTime());
 
-        // Đã sửa lỗi: loại bỏ phương thức không hợp lệ, kiểm tra null an toàn cho cả 3 trường nhập liệu
         String currentStepPrice = auctionStepPriceField.getText() == null ? "" : auctionStepPriceField.getText().trim();
         String currentStartTime = auctionStartTimeField.getText() == null ? "" : auctionStartTimeField.getText().trim();
         String currentEndTime = auctionEndTimeField.getText() == null ? "" : auctionEndTimeField.getText().trim();
@@ -342,10 +317,8 @@ public class SellerAuctionController {
      * và tính toán số hàng hiển thị trên mỗi trang khi người dùng thay đổi.
      */
     private void setupSearchAndPaginationLogic() {
-        // Đóng gói danh sách gốc sellerAuctions vào FilteredList
         filteredDataList = new FilteredList<>(sellerAuctions, p -> true);
 
-        // Lắng nghe thay đổi chữ trên ô search để lọc theo Item Name tức tức thì
         searchField.textProperty().addListener((observable, oldValue, newValue) -> {
             filteredDataList.setPredicate(auction -> {
                 if (newValue == null || newValue.trim().isEmpty()) {
@@ -357,22 +330,20 @@ public class SellerAuctionController {
                 }
                 return false;
             });
-            currentPageIndex = 1; // Reset về trang đầu khi gõ từ khóa tìm kiếm mới
+            currentPageIndex = 1;
             renderPaginatedTable();
         });
 
-        // Lắng nghe thay đổi số lượng dòng hiển thị từ ô nhập kích thước trang
         pageSizeField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null && !newValue.trim().isEmpty()) {
                 try {
                     int size = Integer.parseInt(newValue.trim());
                     if (size > 0) {
                         rowsPerPage = size;
-                        currentPageIndex = 1; // Reset về trang đầu khi đổi cấu hình phân trang
+                        currentPageIndex = 1;
                         renderPaginatedTable();
                     }
                 } catch (NumberFormatException e) {
-                    // Bỏ qua lỗi định dạng khi người dùng đang nhập dở chữ cái
                 }
             }
         });
@@ -387,27 +358,23 @@ public class SellerAuctionController {
         int maxPageIdx = (int) Math.ceil((double) totalItems / rowsPerPage);
         if (maxPageIdx == 0) maxPageIdx = 1;
 
-        // Đảm bảo chỉ mục trang luôn nằm trong vùng an toàn
         if (currentPageIndex > maxPageIdx) currentPageIndex = maxPageIdx;
         if (currentPageIndex < 1) currentPageIndex = 1;
 
         int fromIndex = (currentPageIndex - 1) * rowsPerPage;
         int toIndex = Math.min(fromIndex + rowsPerPage, totalItems);
 
-        // Trích xuất tập hợp con của trang dữ liệu hiện hành
         List<AuctionSummaryDTO> pageSubList = new ArrayList<>();
         if (fromIndex < totalItems) {
             pageSubList = filteredDataList.subList(fromIndex, toIndex);
         }
 
-        // Ép kiểu chuyển đổi và giữ nguyên tính năng click chọn sắp xếp cột cho bảng
         ObservableList<AuctionSummaryDTO> pageObservableList = FXCollections.observableArrayList(pageSubList);
         SortedList<AuctionSummaryDTO> sortedData = new SortedList<>(pageObservableList);
         sortedData.comparatorProperty().bind(sellerAuctionsTable.comparatorProperty());
 
         sellerAuctionsTable.setItems(sortedData);
 
-        // Cập nhật nhãn và trạng thái các nút bấm phân trang
         pageLabel.setText(String.format("Trang %d / %d", currentPageIndex, maxPageIdx));
         previousPageButton.setDisable(currentPageIndex == 1);
         nextPageButton.setDisable(currentPageIndex == maxPageIdx);
@@ -437,7 +404,6 @@ public class SellerAuctionController {
         }
     }
 
-    // Chức năng: tải danh sách auction do seller tạo.
     @FXML
     private void handleLoadSellerAuctions() {
         runRequest(
@@ -447,7 +413,6 @@ public class SellerAuctionController {
         );
     }
 
-    // Vai trò: xử lý phản hồi danh sách auction.
     private void handleLoadSellerAuctionsResponse(SocketResponse response) {
         if (!isSuccessful(response)) {
             showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
@@ -455,22 +420,17 @@ public class SellerAuctionController {
         }
 
         sellerAuctions.setAll(auctionApi.parseAuctionSummaryList(response));
-        currentPageIndex = 1; // Đưa về trang đầu sau khi nạp mới từ server
-        renderPaginatedTable(); // Đổ dữ liệu phân trang lên bảng
+        currentPageIndex = 1;
+        renderPaginatedTable();
         showMessage("Đã đồng bộ danh sách phiên đấu giá.");
     }
 
-    // Chức năng: đưa auction đang chọn vào form sửa.
     private void fillAuctionUpdateForm(AuctionSummaryDTO auction) {
         if (auction == null) {
             clearUpdateForm();
             return;
         }
 
-        /*
-         * KIỂM TRA BẢO VỆ UX: Chỉ cho phép sửa nếu phiên đấu giá đang ở trạng thái OPEN.
-         * Nếu phiên đang chạy (RUNNING) hoặc đã kết thúc (FINISHED), khóa form chỉnh sửa lại.
-         */
         String status = safeText(auction.getStatus()).toUpperCase();
         boolean isEditable = status.equals("OPEN");
 
@@ -478,7 +438,6 @@ public class SellerAuctionController {
         auctionStartTimeField.setText(formatTime(auction.getStartTime()));
         auctionEndTimeField.setText(formatTime(auction.getEndTime()));
 
-        // Khóa hoặc mở khóa động các ô nhập liệu tùy theo trạng thái phiên
         auctionStepPriceField.setDisable(!isEditable);
         auctionStartTimeField.setDisable(!isEditable);
         auctionEndTimeField.setDisable(!isEditable);
@@ -489,7 +448,6 @@ public class SellerAuctionController {
         }
     }
 
-    // Chức năng: cập nhật auction đã chọn.
     @FXML
     private void handleUpdateAuction() {
         if (selectedAuction == null) {
@@ -511,7 +469,6 @@ public class SellerAuctionController {
             return;
         }
 
-        // SỬA ĐỔI THEO YÊU CẦU MỚI: Hỏi lại người dùng một lần nữa (Xác nhận lần 2) trước khi đẩy lệnh lên Server
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Xác nhận thay đổi dữ liệu");
         confirmAlert.setHeaderText(null);
@@ -519,7 +476,7 @@ public class SellerAuctionController {
 
         Optional<ButtonType> clickResult = confirmAlert.showAndWait();
         if (clickResult.isPresent() && clickResult.get() != ButtonType.OK) {
-            return; // Dừng lại không thực thi đẩy gói tin socket nữa
+            return;
         }
 
         runRequest(
@@ -529,7 +486,6 @@ public class SellerAuctionController {
         );
     }
 
-    // Vai trò: xử lý phản hồi cập nhật auction.
     private void handleUpdateAuctionResponse(SocketResponse response) {
         if (!isSuccessful(response)) {
             showError(response == null ? "Cập nhật phiên thất bại." : response.getMessage());
@@ -538,14 +494,12 @@ public class SellerAuctionController {
 
         showInfo(response.getMessage() == null ? "Cập nhật phiên đấu giá thành công." : response.getMessage());
 
-        // Sau khi lưu mạng thành công, đóng form bên phải lại và trả bảng về kích thước rộng đầy đủ
         rightSplitPaneContainer.setVisible(false);
         rightSplitPaneContainer.setManaged(false);
 
         handleLoadSellerAuctions();
     }
 
-    // Chức năng: xóa dữ liệu form cập nhật.
     @FXML
     private void handleClearUpdateForm() {
         selectedAuction = null;
@@ -554,20 +508,17 @@ public class SellerAuctionController {
         }
         clearUpdateForm();
 
-        // Mở khóa lại form khi reset khôi phục trạng thái ban đầu
         if (auctionStepPriceField != null) auctionStepPriceField.setDisable(false);
         if (auctionStartTimeField != null) auctionStartTimeField.setDisable(false);
         if (auctionEndTimeField != null) auctionEndTimeField.setDisable(false);
         if (updateAuctionButton != null) updateAuctionButton.setDisable(false);
     }
 
-    // Vai trò: quay lại dashboard.
     @FXML
     private void handleBack() {
         SceneNavigator.showDashboard();
     }
 
-    // Vai trò: chạy request socket ngoài UI thread.
     private void runRequest(String loadingMessage, Supplier<SocketResponse> request, Consumer<SocketResponse> onSuccess) {
         setBusy(true);
         showMessage(loadingMessage);
@@ -594,7 +545,6 @@ public class SellerAuctionController {
         worker.start();
     }
 
-    // Vai trò: đọc và kiểm tra bước giá.
     private Double readStepPrice() {
         String raw = auctionStepPriceField == null ? "" : auctionStepPriceField.getText().trim();
 
@@ -616,7 +566,6 @@ public class SellerAuctionController {
         }
     }
 
-    // Vai trò: đọc và kiểm tra thời gian ISO.
     private LocalDateTime readDateTime(TextField field, String fieldName) {
         String raw = field == null ? "" : field.getText().trim();
 
@@ -626,7 +575,6 @@ public class SellerAuctionController {
         }
 
         try {
-            // Đọc định dạng ngày Việt Nam thân thiện thay vì ép định dạng chuỗi ISO thô cứng
             return LocalDateTime.parse(raw, dateTimeFormatter);
         } catch (DateTimeParseException e) {
             showError(fieldName + " không đúng định dạng ngày/tháng/năm giờ:phút. Ví dụ: 20/05/2026 10:30");
@@ -634,7 +582,6 @@ public class SellerAuctionController {
         }
     }
 
-    // Vai trò: áp dụng theme hiện tại.
     private void applyTheme() {
         if (rootContainer == null) return;
 
@@ -666,14 +613,12 @@ public class SellerAuctionController {
         setDisabled(pageSizeField, busy);
         setDisabled(editAuctionButton, busy);
         setDisabled(clearFilterButton, busy);
-        // Nếu đang bận thì nút update bị disable hoàn toàn, nếu rảnh thì phụ thuộc vào trạng thái phiên ở fillForm
         if (busy) {
             setDisabled(updateAuctionButton, true);
             setDisabled(auctionStepPriceField, true);
             setDisabled(auctionStartTimeField, true);
             setDisabled(auctionEndTimeField, true);
         } else if (selectedAuction != null) {
-            // Khôi phục lại đúng trạng thái khóa/mở khóa dựa vào loại phiên khi kết thúc tiến trình chạy mạng
             fillAuctionUpdateForm(selectedAuction);
         }
         setDisabled(backButton, busy);

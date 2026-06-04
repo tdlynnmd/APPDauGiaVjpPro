@@ -22,11 +22,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import static com.auction.enums.AuctionStatus .*;
 
+/**
+ * Bộ quản lý vòng đời và bộ đệm RAM (Cache) của các phiên đấu giá trực tuyến.
+ */
 public class AuctionManage {
     public static volatile AuctionManage instance;
-    // 🔥 THÊM MỚI: Quản lý thời gian tương tác cuối cùng của các phiên trên RAM (Để dọn dẹp phiên rác)
     private final Map<String, LocalDateTime> lastAccessedTime = new ConcurrentHashMap<>();
-    // Cấu hình thời gian tối đa một phiên được phép "nằm im" trên RAM nếu không phải trạng thái RUNNING
     private static final long MAX_IDLE_MINUTES = 10;
     private final Map<String, Auction> activeAuctions = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -45,22 +46,19 @@ public class AuctionManage {
         return temp;
     }
 
-
     public void addAuction(Auction auction){
         activeAuctions.put(auction.getId(),auction);
-        // 🔥 THÊM MỚI: Đánh dấu thời gian nạp vào RAM ban đầu
         lastAccessedTime.put(auction.getId(), LocalDateTime.now());
     }
 
     public void removeAuctionById(String id){
         activeAuctions.remove(id);
-        lastAccessedTime.remove(id); // 🔥 Tháo dỡ vết cache
+        lastAccessedTime.remove(id);
     }
 
     public Auction getAuctionById(String id){
         Auction auction = activeAuctions.get(id);
         if (auction != null) {
-            // 🔥 THÊM MỚI: Mỗi khi có người truy cập (xem chi tiết, đặt giá), cập nhật mốc thời gian "sống"
             lastAccessedTime.put(id, LocalDateTime.now());
         }
         return auction;
@@ -74,42 +72,38 @@ public class AuctionManage {
         Auction auction = activeAuctions.get(auctionId);
         if (auction != null) {
             synchronized (auctionId.trim().intern()) {
-                // DOUBLE-CHECK: Lỡ có ai vừa vặn đặt giá và gia hạn thêm 60s khi ta đang đứng đợi khóa thì sao?
                 auction.refreshStatus(LocalDateTime.now());
                 if (auction.getStatus() != FINISHED) {
-                    return; // Quay xe, chưa hết giờ!
+                    return;
                 }
 
-                // 1. Gọi Service Kế toán để trừ/cộng tiền trong Database
-                AuctionService.getInstance().finalizeAuction(auctionId);
-
-                // Xóa khỏi danh sách "đang hoạt động" để giải phóng bộ nhớ RAM
-                activeAuctions.remove(auctionId);
-                lastAccessedTime.remove(auctionId);
+                try {
+                    AuctionService.getInstance().finalizeAuction(auctionId);
+                } catch (Exception e) {
+                    System.err.println("[AuctionManage] ❌ Lỗi nghiêm trọng khi chốt phiên " + auctionId + ": " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    activeAuctions.remove(auctionId);
+                    lastAccessedTime.remove(auctionId);
+                }
             }
         }
     }
 
-
-    //Quản lý vòng đời của auction tự động bằng realtime
     public void startLifecycleMonitor() {
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 LocalDateTime now = LocalDateTime.now();
 
-                // Luồng dọn dẹp sản phẩm rác ké luồng đếm giờ hệ thống
                 ProductManage.getInstance().cleanupIdleProducts();
 
                 for (Auction auction : activeAuctions.values()) {
-                    //  Lưu lại trạng thái cũ
                     AuctionStatus oldStatus = auction.getStatus();
 
-                    //  Refresh trạng thái theo thời gian thực
                     auction.refreshStatus(now);
                     AuctionStatus newStatus = auction.getStatus();
                     String auctionId = auction.getId();
 
-                    // 1. Tự động phát sự kiện TIMER_TICK mỗi giây cho phòng đang chạy
                     if (newStatus == RUNNING) {
                         long secondsLeft = Duration.between(now, auction.getEndTime()).toSeconds();
                         if (secondsLeft < 0) secondsLeft = 0;
@@ -120,18 +114,13 @@ public class AuctionManage {
                                 secondsLeft
                         );
                         AuctionEventBus.getInstance().publish(timerEvent);
-                        // Vì phòng đang RUNNING và bắn tick liên tục, ta luôn cập nhật để giữ nó trên RAM
                         lastAccessedTime.put(auctionId, now);
                     }
 
-                    // 2. Thông báo khi VỪA MỚI chuyển trạng thái từ OPEN sang RUNNING
                     if (oldStatus == OPEN && newStatus == RUNNING) {
-                        // 🔥 THAY ĐỔI TẠI ĐÂY: Đồng bộ các Khóa dữ liệu khi phiên chính thức khai hỏa
                         AuctionEvent startEvent = getAuctionEvent(auctionId);
                         AuctionEventBus.getInstance().publish(startEvent);
 
-                        // Kích hoạt AutoBid ngay khi phiên chuyển sang RUNNING
-                        // đảm bảo các lệnh autobid đặt trước không bị bỏ qua giây đầu tiên
                         try {
                             synchronized (auction.getId().trim().intern()) {
                                 AuctionService.getInstance().triggerAutoBids(auction);
@@ -141,26 +130,19 @@ public class AuctionManage {
                         }
                     }
 
-                    // 3. Nếu VỪA MỚI kết thúc thì gọi hàm xử lý
                     if (oldStatus == RUNNING && newStatus == FINISHED) {
                         finishAuction(auction.getId());
                         continue;
                     }
 
-                    // 🔥 LUỒNG 4 (THÊM MỚI): KIỂM TRA ĐỂ TRỤC XUẤT CÁC PHIÊN KHÔNG HOẠT ĐỘNG (CACHE EVICTION)
-                    // Điều kiện trục xuất: Phiên KHÔNG PHẢI đang chạy (có thể là OPEN hoặc đã đóng)
-                    // VÀ không có ai tương tác (đặt giá, xem chi tiết) quá MAX_IDLE_MINUTES
                     if (newStatus != RUNNING) {
-                        // Tính toán xem còn bao nhiêu phút nữa thì phiên này bắt đầu chạy (startTime)
                         long minutesUntilStart = Duration.between(now, auction.getStartTime()).toMinutes();
 
-                        // LUẬT BẢO VỆ: Nếu còn dưới 15 phút nữa là mở cửa, KHÔNG ĐƯỢC trục xuất khỏi RAM
                         if (minutesUntilStart > 15) {
                             LocalDateTime lastAccess = lastAccessedTime.get(auctionId);
                             if (lastAccess != null) {
                                 long idleMinutes = Duration.between(lastAccess, now).toMinutes();
                                 if (idleMinutes >= MAX_IDLE_MINUTES) {
-                                    // Đủ điều kiện nằm im và còn lâu mới chạy -> Tiến hành dọn dẹp giải phóng RAM
                                     activeAuctions.remove(auctionId);
                                     lastAccessedTime.remove(auctionId);
                                 }
@@ -169,14 +151,11 @@ public class AuctionManage {
                     }
                 }
             } catch (Exception e) {
-                // Bọc toàn bộ thân Task trong try-catch để đảm bảo luồng đếm giờ không bao giờ chết
-                // dù có lỗi phát sinh từ bất kỳ phiên đấu giá nào
                 System.err.println("[AuctionManage] ❌ Lỗi trong vòng quét lifecycle, bỏ qua: " + e.getMessage());
                 e.printStackTrace();
             }
-        }, 0, 1, TimeUnit.SECONDS); // Quét mỗi giây 1 lần
+        }, 0, 1, TimeUnit.SECONDS);
 
-        // Task dọn dẹp chạy mỗi 10 phút
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 performDatabaseCleanup();
@@ -193,7 +172,6 @@ public class AuctionManage {
         try (java.sql.Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                // Query 1: Xóa cứng các phiên đấu giá đã kết thúc/hủy lâu hơn 24 giờ
                 String deleteAuctionsSql = "DELETE FROM auctions WHERE status IN ('FINISHED', 'CANCELED', 'PAID') AND end_time <= ?";
                 try (java.sql.PreparedStatement stmt1 = conn.prepareStatement(deleteAuctionsSql)) {
                     stmt1.setTimestamp(1, java.sql.Timestamp.valueOf(threshold));
@@ -203,7 +181,6 @@ public class AuctionManage {
                     }
                 }
 
-                // Query 2: Xóa cứng các vật phẩm đã bị xóa mềm và không còn phiên đấu giá nào tham chiếu
                 String deleteItemsSql = "DELETE i FROM items i LEFT JOIN auctions a ON i.id = a.item_id WHERE i.deleted_at IS NOT NULL AND a.id IS NULL";
                 try (java.sql.PreparedStatement stmt2 = conn.prepareStatement(deleteItemsSql)) {
                     int deletedItems = stmt2.executeUpdate();
@@ -242,7 +219,6 @@ public class AuctionManage {
     public void forceSyncRamToDatabase() {
         System.out.println("[AuctionManage] 💾 Đang kích hoạt tiến trình đồng bộ khẩn cấp RAM -> Database...");
 
-        // Defensive check: Nếu RAM trống thì không cần tốn tài nguyên mở kết nối DB
         if (activeAuctions.isEmpty()) {
             System.out.println("[AuctionManage] ℹ️ Không có phiên đấu giá nào trên RAM cần đồng bộ.");
             return;
@@ -251,11 +227,7 @@ public class AuctionManage {
         int successCount = 0;
         int totalCount = activeAuctions.size();
 
-        // Sử dụng values() chạy trên ConcurrentHashMap an toàn đa luồng.
-        // Kể cả khi có luồng khác đang đọc ghi, tiến trình quét này vẫn không bị dính ConcurrentModificationException
         for (Auction auction : activeAuctions.values()) {
-            // Tối ưu hóa: Sử dụng kỹ thuật cô lập lỗi (Error Isolation).
-            // Nếu 1 phiên bị lỗi dữ liệu, hệ thống vẫn phải tiếp tục ghi nhận các phiên tiếp theo, không được phép sập luồng ngắt quãng.
             try {
                 AuctionDAO auctionDAO = new AuctionDAOImpl();
                 boolean isSynced = auctionDAO.updateAuctionStatusAndBidding(auction);
@@ -283,22 +255,18 @@ public class AuctionManage {
     public void stopScheduler() {
         System.out.println("[AuctionManage] ⏳ Đang tiến hành đóng băng luồng đếm giây ngầm...");
 
-        // 1. Ra lệnh không tiếp nhận chu kỳ quét mới nữa
         scheduler.shutdown();
 
         try {
-            // 2. Chờ tối đa 3 giây cho lượt quét hiện tại (nếu đang chạy dở) kịp kết thúc an toàn
             if (!scheduler.awaitTermination(3, TimeUnit.SECONDS)) {
-                // Nếu quá 3 giây mà luồng vẫn cố tình treo, cưỡng chế hủy diệt lập tức
                 scheduler.shutdownNow();
                 System.out.println("[AuctionManage] ⚠️ Luồng ngầm không chịu dừng, đã cưỡng chế hủy (ShutdownNow).");
             } else {
                 System.out.println("[AuctionManage] ✅ Bộ quét luồng ngầm đã hạ cánh an toàn.");
             }
         } catch (InterruptedException e) {
-            // Bị ngắt quãng trong quá trình đợi, cưỡng chế dừng luôn
             scheduler.shutdownNow();
-            Thread.currentThread().interrupt(); // Khôi phục lại trạng thái ngắt quãng của Thread
+            Thread.currentThread().interrupt();
             System.err.println("[AuctionManage] ❌ Quá trình đóng luồng bị ngắt quãng, cưỡng chế dừng.");
         }
     }

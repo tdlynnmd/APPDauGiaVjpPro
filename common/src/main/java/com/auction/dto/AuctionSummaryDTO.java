@@ -2,8 +2,9 @@ package com.auction.dto;
 
 import java.time.LocalDateTime;
 
-//Dành cho hiển thị danh sách auction bidder tham gia
-
+/**
+ * DTO tóm tắt thông tin cơ bản của phiên đấu giá để hiển thị trên danh sách.
+ */
 public class AuctionSummaryDTO {
     private String auctionId;
     private String itemName;
@@ -13,9 +14,6 @@ public class AuctionSummaryDTO {
     private LocalDateTime startTime;
     private double stepPrice;
 
-    /**
-     * Constructor rỗng cần cho Gson khi parse JSON thành object.
-     */
     public AuctionSummaryDTO() {
     }
 

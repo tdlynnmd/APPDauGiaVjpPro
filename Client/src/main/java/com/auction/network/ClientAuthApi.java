@@ -12,10 +12,7 @@ import com.auction.utils.GsonProvider;
 import com.google.gson.JsonObject;
 
 /**
- * ClientAuthApi tạo các request cho ClientSocketService gui va nhận về response
- *
- * API này không trả LoginResponse/RegisterResponse/LogoutResponse nữa.
- * Mọi phản hồi từ Server đều là SocketResponse.
+ * API Client xử lý xác thực đăng nhập, đăng ký tài khoản.
  */
 public class ClientAuthApi {
     private final com.google.gson.Gson gson = GsonProvider.getGson();
@@ -59,11 +56,6 @@ public class ClientAuthApi {
             JsonObject body = gson.toJsonTree(requestBody).getAsJsonObject();
             socketRequest = new SocketRequest(ActionType.valueOf(action), body);
 
-            /*
-             * Khong doc socket truc tiep trong API nua.
-             * ClientSocketService la noi duy nhat doc message tu Server,
-             * nen no co the tach RESPONSE cho request va EVENT realtime cho UI.
-             */
             return ClientSocketService.getInstance().sendRequest(socketRequest);
 
         } catch (Exception e) {

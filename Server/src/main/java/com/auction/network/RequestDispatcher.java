@@ -15,9 +15,7 @@ import com.google.gson.JsonSyntaxException;
 import java.util.List;
 
 /**
- * =========================================================================
- * RequestDispatcher - Trung tâm điều phối và biên dịch gói tin phía Server
- * =========================================================================
+ * Bộ điều phối mạng trung tâm của Server, định tuyến các yêu cầu (Request) từ Client đến Controller tương ứng.
  */
 public class RequestDispatcher {
     private static final Logger log = LoggerFactory.getLogger(RequestDispatcher.class);
@@ -70,32 +68,26 @@ public class RequestDispatcher {
                     return;
                 }
 
-                // 🔥 RATE LIMITER: Chặn sớm nếu Client gửi quá nhiều request trong 1 giây
-                // PING được miễn rate limit để đảm bảo keep-alive luôn hoạt động
                 if (actionType != ActionType.PING && session.isRateLimited()) {
                     sendFailure(session, socketRequest, "Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ.", "TOO_MANY_REQUESTS");
                     return;
                 }
 
-                // Kiểm tra phân quyền dựa trên Action chuỗi và Session
                 authorizationService.canAccess(action, session);
 
                 switch (actionType) {
-                    // 🔥 PING KEEP-ALIVE: Trả PONG ngay lập tức, không cần xử lý nghiệp vụ
                     case PING -> sendSuccess(session, socketRequest, "PONG", null);
 
                     case LOGIN -> handleLogin(socketRequest, session);
                     case REGISTER -> handleRegister(socketRequest, session);
                     case LOGOUT -> handleLogout(socketRequest, session);
 
-                    // PHÂN HỆ VẬT PHẨM (End-user)
                     case CREATE_ITEM -> handleCreateItem(socketRequest, session);
                     case UPDATE_ITEM -> handleUpdateItem(socketRequest, session);
                     case GET_SELLER_ITEMS -> handleGetSellerItems(socketRequest, session);
                     case GET_ITEM_DETAIL -> handleGetItemDetail(socketRequest, session);
                     case SELLER_DELETE_ITEM -> handleDeleteItem(socketRequest, session);
 
-                    // PHÂN HỆ ĐẤU GIÁ LIVE (End-user)
                     case GET_ACTIVE_AUCTIONS -> handleGetActiveAuctions(socketRequest, session);
                     case GET_AUCTION_DETAIL -> handleGetAuctionDetail(socketRequest, session);
                     case CREATE_AUCTION -> handleCreateAuction(socketRequest, session);
@@ -110,28 +102,22 @@ public class RequestDispatcher {
                     case GET_SELLER_AUCTIONS -> handleGetSellerAuctions(socketRequest, session);
                     case UPDATE_AUCTION -> handleUpdateAuction(socketRequest, session);
 
-                    // ================================================================
-                    // 🛡️ PHÂN HỆ NGHIỆP VỤ USER (UserController)
-                    // ================================================================
                     case GET_USER_PROFILE -> handleGetUserProfile(socketRequest, session);
                     case UPDATE_PROFILE -> handleUpdateProfile(socketRequest, session);
                     case UPDATE_PASSWORD -> handleUpdatePassword(socketRequest, session);
                     case DEPOSIT_MONEY -> handleDepositMoney(socketRequest, session);
                     case WITHDRAW_MONEY -> handleWithdrawMoney(socketRequest, session);
 
-                    // ================================================================
-                    // 🛠️ PHÂN HỆ QUẢN TRỊ CAO CẤP (AdminController)
-                    // ================================================================
                     case CMD_ADMIN_GET_USERS -> handleAdminGetUsers(socketRequest, session);
                     case CMD_ADMIN_LOCK_USER -> handleAdminLockUser(socketRequest, session);
                     case CMD_ADMIN_CANCEL_AUCTION -> handleAdminCancelAuction(socketRequest, session);
                     case CMD_ADMIN_DELETE_ITEM -> handleAdminDeleteItem(socketRequest, session);
                     case CMD_ADMIN_GET_LOGS -> handleAdminGetLogs(socketRequest, session);
+                    case CMD_ADMIN_GET_ITEMS -> handleAdminGetItems(socketRequest, session);
+                    case CMD_ADMIN_GET_AUCTIONS -> handleAdminGetAuctions(socketRequest, session);
 
-                    // Nhánh xử lý lịch sử phòng đấu giá (Ai cũng xem được)
                     case GET_AUCTION_BID_HISTORY -> handleGetAuctionBidHistory(socketRequest, session);
 
-                    // Nhánh xử lý lịch sử cá nhân (Bảo mật - Rút bidderId từ session ra truyền vào)
                     case GET_MY_BID_HISTORY -> handleGetMyBidHistory(socketRequest, session);
 
                     default -> sendFailure(session, socketRequest, "Action không được hỗ trợ.", "UNSUPPORTED_ACTION");
@@ -151,7 +137,7 @@ public class RequestDispatcher {
     }
 
     private void handleGetMyBidHistory(SocketRequest socketRequest, ClientSession session){
-        String bidderId = session.getUserId(); // An toàn tuyệt đối
+        String bidderId = session.getUserId();
         GetBidderHistoryRequest request = gson.fromJson(socketRequest.getBody(), GetBidderHistoryRequest.class);
         PageDTO<BidTransactionDTO> result = userController.getMyBidHistory(bidderId, request);
         sendSuccess(session, socketRequest, "Tải lịch sử đấu giá cá nhân thành công.", result);
@@ -163,14 +149,8 @@ public class RequestDispatcher {
         sendSuccess(session, socketRequest, "Tải lịch sử đặt giá thành công.", result);
     }
 
-
-
-    // =========================================================================
-    // 🛡️ HANDLERS CHO USERCONTROLLER (Đã đồng bộ tham số sạch)
-    // =========================================================================
-
     private void handleGetUserProfile(SocketRequest socketRequest, ClientSession session) {
-        String userId = session.getUserId(); // Bốc userId an toàn tại tầng mạng
+        String userId = session.getUserId();
 
         UserDTO profile = userController.getUserProfile(userId);
         sendSuccess(session, socketRequest, "Lấy thông tin profile thành công.", profile);
@@ -192,7 +172,6 @@ public class RequestDispatcher {
 
     private void handleDepositMoney(SocketRequest socketRequest, ClientSession session) {
         String userId = session.getUserId();
-        // Tầng mạng lo trọn gói việc dịch gói tin JSON sang DTO
         DepositRequest request = gson.fromJson(socketRequest.getBody(), DepositRequest.class);
 
         UserDTO updatedProfile = userController.depositMoney(userId, request);
@@ -206,8 +185,6 @@ public class RequestDispatcher {
         UserDTO updatedProfile = userController.withdrawMoney(userId, request);
         sendSuccess(session, socketRequest, "Rút tiền từ tài khoản thành công.", updatedProfile);
     }
-
-    //AdminController
 
     private void handleAdminGetUsers(SocketRequest socketRequest, ClientSession session) {
         GetUserDashboardRequest request = gson.fromJson(socketRequest.getBody(), GetUserDashboardRequest.class);
@@ -242,7 +219,18 @@ public class RequestDispatcher {
         sendSuccess(session, socketRequest, "Tải danh sách nhật ký kiểm toán hệ thống thành công.", logs);
     }
 
-    //AuthController
+    private void handleAdminGetItems(SocketRequest socketRequest, ClientSession session) {
+        GetUserDashboardRequest request = gson.fromJson(socketRequest.getBody(), GetUserDashboardRequest.class);
+        PageDTO<ItemSummaryDTO> result = adminController.getItemsDashboard(request);
+        sendSuccess(session, socketRequest, "Tải danh sách vật phẩm thành công.", result);
+    }
+
+    private void handleAdminGetAuctions(SocketRequest socketRequest, ClientSession session) {
+        GetUserDashboardRequest request = gson.fromJson(socketRequest.getBody(), GetUserDashboardRequest.class);
+        PageDTO<AuctionSummaryDTO> result = adminController.getAuctionsDashboard(request);
+        sendSuccess(session, socketRequest, "Tải danh sách phiên đấu giá thành công.", result);
+    }
+
     private void handleLogin(SocketRequest socketRequest, ClientSession session) {
         LoginRequest loginRequest = gson.fromJson(socketRequest.getBody(), LoginRequest.class);
         LoginResultDTO result = authController.login(loginRequest);
@@ -268,12 +256,7 @@ public class RequestDispatcher {
         }
         authController.logout(userId);
         sendSuccess(session, socketRequest, "Đăng xuất thành công.", null);
-        // KHÔNG gọi session.close() ở đây.
-        // Client sẽ nhận phản hồi thành công, sau đó tự gọi ClientNetworkManager.resetConnection()
-        // để đóng socket phía nó. Server sẽ phát hiện kết nối đóng qua ClientHandler.finally
     }
-
-    //ItemController
 
     /**
      * Routes item deletion as a status change instead of letting the client touch persistence.
@@ -303,7 +286,6 @@ public class RequestDispatcher {
         sendSuccess(session, socketRequest, "Lay chi tiet san pham thanh cong.", result);
     }
 
-    //AuctionController
     private void handleGetActiveAuctions(SocketRequest socketRequest, ClientSession session) {
         List<AuctionSummaryDTO> result = auctionController.getActiveAuctions(session.getUserId());
         sendSuccess(session, socketRequest, "Lấy danh sách thành công.", result);
@@ -311,7 +293,7 @@ public class RequestDispatcher {
 
     private void handleGetAuctionDetail(SocketRequest socketRequest, ClientSession session) {
         GetAuctionDetailRequest request = gson.fromJson(socketRequest.getBody(), GetAuctionDetailRequest.class);
-        AuctionDetailDTO result = auctionController.getAuctionDetail(request);
+        AuctionDetailDTO result = auctionController.getAuctionDetail(session.getUserId(), request);
         sendSuccess(session, socketRequest, "Lấy chi tiết thành công.", result);
     }
 
@@ -391,9 +373,6 @@ public class RequestDispatcher {
         sendSuccess(session, socketRequest, "Cập nhật phiên đấu giá thành công.", null);
     }
 
-    // =========================================================================
-    // UTILS METHODS
-    // =========================================================================
     private void sendSuccess(ClientSession session, SocketRequest request, String message, Object body) {
         SocketResponse response = SocketResponse.success(request.getRequestId(), request.getAction(), message, body);
         session.sendMessage(gson.toJson(response));

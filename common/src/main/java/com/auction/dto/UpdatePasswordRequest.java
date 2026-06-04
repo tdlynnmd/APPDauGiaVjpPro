@@ -1,5 +1,8 @@
 package com.auction.dto;
 
+/**
+ * DTO gửi yêu cầu đổi mật khẩu tài khoản.
+ */
 public class UpdatePasswordRequest {
     private String oldPassword;
     private String newPassword;

@@ -1,5 +1,8 @@
 package com.auction.exception;
 
+/**
+ * Lớp biểu diễn thực thể AuthErrorCode trong hệ thống.
+ */
 public enum AuthErrorCode {
     USERNAME_NULL_EMPTY("AUTH_USERNAME_001", "Username must not be empty"),
     USERNAME_TOO_SHORT("AUTH_USERNAME_002", "Username must be at least 5 characters long"),
@@ -28,7 +31,6 @@ public enum AuthErrorCode {
     USER_NOT_ONLINE("AUTH_USER_002", "User is not online"),
     USER_NULL("AUTH_USER_003", "User must not be null"),
 
-    // ===== GENERAL ERRORS =====
     INVALID_CREDENTIALS("AUTH_GEN_001", "Invalid username/email or password"),
     REGISTRATION_FAILED("AUTH_GEN_002", "Register failed");
 

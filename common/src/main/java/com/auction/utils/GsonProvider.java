@@ -8,6 +8,10 @@ import com.google.gson.JsonPrimitive;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Lớp tiện ích cung cấp thực thể Gson dùng chung trong toàn bộ hệ thống.
+ * Cấu hình sẵn Adapter chuyển đổi LocalDateTime sang định dạng ISO_LOCAL_DATE_TIME.
+ */
 public class GsonProvider {
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
@@ -27,6 +31,10 @@ public class GsonProvider {
             })
             .create();
 
+    /**
+     * Lấy thực thể Gson dùng chung đã cấu hình LocalDateTime adapter.
+     * @return thực thể Gson
+     */
     public static Gson getGson() {
         return gson;
     }

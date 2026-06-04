@@ -1,8 +1,7 @@
 package com.auction.dto;
 
 /**
- * Request DTO for loading paginated audit logs in the admin dashboard.
- * Fields are mutable so Gson can deserialize request bodies reliably.
+ * DTO gửi yêu cầu lấy danh sách nhật ký kiểm toán hệ thống kèm phân trang và lọc.
  */
 public class GetAuditLogsRequest {
     private int page;

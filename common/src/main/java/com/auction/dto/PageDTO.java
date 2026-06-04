@@ -3,13 +3,16 @@ package com.auction.dto;
 import java.io.Serializable;
 import java.util.List;
 
+/**
+ * DTO tổng quát hỗ trợ đóng gói dữ liệu phân trang (Pagination) trả về cho Client.
+ */
 public class PageDTO<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private List<T> data;          // Danh sách dữ liệu (Có thể là List<BidTransactionDTO>, List<UserDTO>...)
-    private int currentPage;       // Trang hiện tại
-    private int totalPages;        // Tổng số trang
-    private long totalElements;    // Tổng số dòng dưới DB
+    private List<T> data;
+    private int currentPage;
+    private int totalPages;
+    private long totalElements;
 
     public PageDTO(List<T> data, int currentPage, int totalPages, long totalElements) {
         this.data = data;
@@ -18,9 +21,6 @@ public class PageDTO<T> implements Serializable {
         this.totalElements = totalElements;
     }
 
-    // =========================================================================
-    // GETTERS & SETTERS
-    // =========================================================================
     public List<T> getData() { return data; }
     public void setData(List<T> data) { this.data = data; }
 

@@ -18,9 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * =========================================================================
- * AuctionController - Bộ điều phối chức năng đấu giá phía Server (Đã tối ưu)
- * =========================================================================
+ * Bộ điều khiển tiếp nhận các yêu cầu đấu giá trực tiếp từ mạng.
  */
 public class AuctionController {
     private final AuctionService auctionService = AuctionService.getInstance();
@@ -39,8 +37,25 @@ public class AuctionController {
      * GET_AUCTION_DETAIL
      */
     public AuctionDetailDTO getAuctionDetail(GetAuctionDetailRequest request) {
+        return getAuctionDetail(null, request);
+    }
+
+    public AuctionDetailDTO getAuctionDetail(String userId, GetAuctionDetailRequest request) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
-        return auctionService.getAuctionDetail(request.getAuctionId());
+        AuctionDetailDTO detail = auctionService.getAuctionDetail(request.getAuctionId());
+        if (userId != null) {
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
+                Optional<AutoBid> autoBidOpt = autoBidDAO.findActiveByUserAndAuction(conn, userId, request.getAuctionId());
+                if (autoBidOpt.isPresent() && autoBidOpt.get().isActive()) {
+                    AutoBid autoBid = autoBidOpt.get();
+                    detail.setActiveAutoBidMaxBid(autoBid.getMaxBid());
+                    detail.setActiveAutoBidIncrement(autoBid.getIncrement());
+                }
+            } catch (Exception e) {
+            }
+        }
+        return detail;
     }
 
     /**
@@ -72,21 +87,14 @@ public class AuctionController {
         if (request.getAmount() <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "amount must be greater than 0.");
         }
-        // Truyền thẳng bidderId xuống, để Service tự quyết định việc lấy đối tượng từ RAM/DB
         auctionService.processBid(bidderId, request.getAuctionId(), request.getAmount());
     }
-
-    // =========================================================================
-    // 🌐 NHÓM 1: CÁC TÁC VỤ GIAO DIỆN / MẠNG TRỰC TIẾP (STATELESS LIVE ROOM)
-    // =========================================================================
 
     public AuctionDetailDTO joinLiveRoom(String bidderId, AuctionSubscriptionRequest request, ClientSession session) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
         auctionService.joinLiveRoom(bidderId, request.getAuctionId(), session);
         AuctionDetailDTO detail = auctionService.getAuctionDetail(request.getAuctionId());
 
-        // Trả về cấu hình AutoBid đang hoạt động của bidder nếu có
-        // để Client có thể tự động điền lại form AutoBid khi quay lại phòng
         try (Connection conn = DatabaseConnection.getConnection()) {
             AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
             Optional<AutoBid> autoBidOpt = autoBidDAO.findActiveByUserAndAuction(conn, bidderId, request.getAuctionId());
@@ -96,7 +104,6 @@ public class AuctionController {
                 detail.setActiveAutoBidIncrement(autoBid.getIncrement());
             }
         } catch (Exception e) {
-            // Không nên fail toàn bộ request chỉ vì không đọc được AutoBid
         }
 
         return detail;
@@ -106,10 +113,6 @@ public class AuctionController {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
         auctionService.leaveLiveRoom(bidderId, request.getAuctionId(), session);
     }
-
-    // =========================================================================
-    // 💼 NHÓM 2: CÁC TÁC VỤ NGHIỆP VỤ LƯU TRỮ BỀN VỮNG (STATEFUL BUSINESS STATE)
-    // =========================================================================
 
     public void joinAuction(String bidderId, AuctionSubscriptionRequest request) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
@@ -121,23 +124,17 @@ public class AuctionController {
         auctionService.leaveAuction(bidderId, request.getAuctionId(), session);
     }
 
-    // =========================================================================
-    // 🛡️ NHÓM 3: SELLER TỰ HỦY PHÒNG ĐẤU GIÁ CHÍNH CHỦ
-    // =========================================================================
-
     public void cancelAuctionBySeller(String sellerId, CancelAuctionRequest request) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
         String reason = (request.getReason() == null || request.getReason().trim().isEmpty())
                 ? "Chủ phòng tự nguyện hủy."
                 : request.getReason();
 
-        // Gọi hàm Service dùng chung với vai trò SELLER để kích hoạt hàng rào kiểm tra chính chủ
         auctionService.cancelAuction(request.getAuctionId(), sellerId, UserRole.SELLER, reason);
     }
 
     public PageDTO<BidTransactionDTO> getAuctionBidHistory(GetAuctionBidsRequest request) {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
-        // 1. Kiểm tra tính toàn vẹn dữ liệu ngay tại cửa ngõ Controller
         if (request.getAuctionId() == null || request.getAuctionId().trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "auctionId must not be empty.");
         }
@@ -145,7 +142,6 @@ public class AuctionController {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Page and pageSize must be positive.");
         }
 
-        // 2. Điều phối gọi xuống Service chuyên trách đọc lịch sử phòng
         return bidTransactionService.getAuctionBidsPaged(
                 request.getAuctionId(),
                 request.getPage(),

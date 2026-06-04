@@ -31,12 +31,18 @@ import com.auction.event.AuctionEventBus;
 import com.auction.event.AuctionEventType;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+/**
+ * Dịch vụ xử lý các nghiệp vụ cốt lõi liên quan đến phiên đấu giá (Auction Service).
+ * Quản lý vòng đời đấu giá, xử lý đặt thầu thủ công/tự động, an toàn ví tiền và ghi nhận cơ sở dữ liệu.
+ */
 public class AuctionService {
     private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
     private final AuctionManage auctionManage = AuctionManage.getInstance();
@@ -425,36 +431,81 @@ public class AuctionService {
         if (asyncEnabled) {
             String cleanId = auction.getId().trim();
             if (activeAutoBidAuctions.add(cleanId)) {
-                autoBidExecutor.submit(() -> {
-                    try {
-                        triggerAutoBidsInternal(auction);
-                    } catch (Exception e) {
-                        log.error("[Auto-Bidding] Lỗi trong luồng chạy ngầm auto-bid cho phiên {}: {}", cleanId, e.getMessage(), e);
-                    } finally {
-                        activeAutoBidAuctions.remove(cleanId);
-                    }
-                });
+                submitAutoBidTask(auction);
             }
         } else {
             triggerAutoBidsInternal(auction);
         }
     }
 
-    private void triggerAutoBidsInternal(Auction auction) {
+    private void submitAutoBidTask(Auction auction) {
+        String cleanId = auction.getId().trim();
+        autoBidExecutor.submit(() -> {
+            boolean shouldReschedule = false;
+            try {
+                shouldReschedule = triggerAutoBidsInternal(auction);
+            } catch (Exception e) {
+                log.error("[Auto-Bidding] Lỗi trong luồng chạy ngầm auto-bid cho phiên {}: {}", cleanId, e.getMessage(), e);
+            } finally {
+                activeAutoBidAuctions.remove(cleanId);
+                if (shouldReschedule) {
+                    triggerAutoBids(auction);
+                }
+            }
+        });
+    }
+
+    private void deactivateAutoBid(AutoBid autoBid, String reason, Auction auction) {
+        autoBid.setActive(false);
+        try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+            autoBidDAO.disableAutoBid(conn, autoBid.getId());
+        } catch (SQLException ex) {
+            log.error("[Auto-Bidding] Lỗi khi disable AutoBid trong DB: {}", ex.getMessage(), ex);
+        }
+        auction.removeAutoBidInRam(autoBid.getUserId());
+
+        // Publish event to notify client
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("userId", autoBid.getUserId());
+        payload.put("reason", reason);
+
+        AuctionEvent event = new AuctionEvent(
+                auction.getId(),
+                AuctionEventType.AUTO_BID_DEACTIVATED,
+                payload
+        );
+        AuctionEventBus.getInstance().publish(event);
+        log.info("[Auto-Bidding] 📴 Đã tắt AutoBid của user {} tại phiên {} | Lý do: {}", 
+                autoBid.getUserId(), auction.getId(), reason);
+    }
+
+    private boolean triggerAutoBidsInternal(Auction auction) {
         int loops = 0;
         String lockKey = auction.getId().trim().intern();
-        while (loops < 100) {
+        int maxLoopsPerTask = 200;
+        while (loops < maxLoopsPerTask) {
             boolean hasNextBid = false;
             synchronized (lockKey) {
                 if (auction.getStatus() != AuctionStatus.RUNNING) {
-                    break;
+                    return false;
                 }
                 double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
                 List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
-                AutoBid challenger = selectAutoBidChallenger(activeAutoBids, auction.getHighestBidderId(), minBidRequired);
+
+                // Scan and deactivate expired auto-bids (reached max bid limit)
+                boolean deactivatedAny = false;
+                for (AutoBid ab : activeAutoBids) {
+                    if (!ab.canCover(minBidRequired)) {
+                        deactivateAutoBid(ab, "MAX_BID_REACHED", auction);
+                        deactivatedAny = true;
+                    }
+                }
+
+                List<AutoBid> finalActiveAutoBids = deactivatedAny ? snapshotActiveAutoBids(auction) : activeAutoBids;
+                AutoBid challenger = selectAutoBidChallenger(finalActiveAutoBids, auction.getHighestBidderId(), minBidRequired);
 
                 if (challenger != null) {
-                    AutoBid currentLeaderAutoBid = findAutoBidByUser(activeAutoBids, auction.getHighestBidderId());
+                    AutoBid currentLeaderAutoBid = findAutoBidByUser(finalActiveAutoBids, auction.getHighestBidderId());
                     double bidAmount = calculateAutoBidAmount(auction, challenger, currentLeaderAutoBid, minBidRequired);
                     if (bidAmount >= minBidRequired) {
                         try {
@@ -463,30 +514,41 @@ public class AuctionService {
                             hasNextBid = true;
                         } catch (Exception e) {
                             log.warn("[Auto-Bidding] ❌ Lượt thầu tự động của user {} thất bại: {}", challenger.getUserId(), e.getMessage());
-                            challenger.setActive(false);
-                            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
-                                autoBidDAO.disableAutoBid(conn, challenger.getId());
-                            } catch (SQLException ex) {
-                                log.error("[Auto-Bidding] Lỗi khi disable AutoBid trong DB: {}", ex.getMessage(), ex);
+                            
+                            // Determine the reason for failure
+                            String reason = "SYSTEM_ERROR";
+                            if (e instanceof WalletException) {
+                                WalletException we = (WalletException) e;
+                                if (com.auction.exception.WalletErrorCode.INSUFFICIENT_BALANCE.getCode().equals(we.getErrorCode())) {
+                                    reason = "INSUFFICIENT_BALANCE";
+                                }
+                            } else if (e.getMessage() != null && e.getMessage().contains("INSUFFICIENT_BALANCE")) {
+                                reason = "INSUFFICIENT_BALANCE";
                             }
-                            auction.removeAutoBidInRam(challenger.getUserId());
+                            
+                            deactivateAutoBid(challenger, reason, auction);
                         }
                     }
                 }
             }
 
             if (!hasNextBid) {
-                break;
+                return false;
+            }
+
+            if (loops == maxLoopsPerTask - 1) {
+                return true;
             }
 
             try {
-                Thread.sleep(150);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                break;
+                return false;
             }
             loops++;
         }
+        return false;
     }
 
     private List<AutoBid> snapshotActiveAutoBids(Auction auction) {
@@ -600,12 +662,48 @@ public class AuctionService {
                 conn.setAutoCommit(false);
 
                 if (winnerId != null) {
-                    boolean deductOk = userDAO.deductFrozenMoney(conn, winnerId, finalPrice);
-                    if (deductOk) {
-                        userDAO.addAvailableBalance(conn, sellerId, finalPrice);
-                    } else {
-                        throw new WalletException(WalletErrorCode.DEDUCTION_FAILED);
+                    // Cứu hộ kế toán: Khấu trừ tối đa số dư đóng băng hiện có, phần thiếu trừ vào số dư khả dụng
+                    double currentFrozen = 0;
+                    double currentAvailable = 0;
+                    String checkBalSql = "SELECT available_balance, frozen_balance FROM users WHERE id = UUID_TO_BIN(?, 1) FOR UPDATE";
+                    try (PreparedStatement checkStmt = conn.prepareStatement(checkBalSql)) {
+                        checkStmt.setString(1, winnerId);
+                        try (ResultSet rs = checkStmt.executeQuery()) {
+                            if (rs.next()) {
+                                currentAvailable = rs.getDouble("available_balance");
+                                currentFrozen = rs.getDouble("frozen_balance");
+                            }
+                        }
                     }
+
+                    double deductFromFrozen = Math.min(currentFrozen, finalPrice);
+                    double needFromAvailable = finalPrice - deductFromFrozen;
+
+                    if (needFromAvailable == 0) {
+                        // Standard flow: deduct entirely from frozen balance using DAO
+                        boolean deductOk = userDAO.deductFrozenMoney(conn, winnerId, finalPrice);
+                        if (!deductOk) {
+                            throw new com.auction.exception.WalletException(com.auction.exception.WalletErrorCode.DEDUCTION_FAILED);
+                        }
+                    } else {
+                        // Rescue flow: deduct partial/all from frozen and rest from available
+                        String updateBalSql = "UPDATE users SET frozen_balance = frozen_balance - ?, available_balance = available_balance - ? WHERE id = UUID_TO_BIN(?, 1)";
+                        try (PreparedStatement updateStmt = conn.prepareStatement(updateBalSql)) {
+                            updateStmt.setDouble(1, deductFromFrozen);
+                            updateStmt.setDouble(2, needFromAvailable);
+                            updateStmt.setString(3, winnerId);
+                            updateStmt.executeUpdate();
+                        }
+                    }
+
+                    // Cộng tiền khả dụng cho Seller
+                    userDAO.addAvailableBalance(conn, sellerId, finalPrice);
+
+                    if (needFromAvailable > 0) {
+                        log.warn("[Accounting Rescue] 🚨 Winner {} bị thiếu tiền đóng băng (chỉ có {} nhưng cần {}). Đã khấu trừ bù {} từ ví khả dụng.", 
+                                winnerId, currentFrozen, finalPrice, needFromAvailable);
+                    }
+
                     String winnerName = userDAO.findById(winnerId).map(User::getUsername).orElse(winnerId);
                     statusMessage = "Thông báo: Phiên " + auctionId + " ĐÃ KẾT THÚC. Người thắng: " + winnerName + " với giá: " + finalPrice;
                     itemDAO.updateStatus(conn, auction.getItemId(), com.auction.enums.ItemStatus.SOLD.name());
@@ -733,7 +831,8 @@ public class AuctionService {
             }
         }
         return new AuctionSummaryDTO(
-                auction.getId(), itemName, auction.getCurrentPrice(), statusText, auction.getEndTime()
+                auction.getId(), itemName, auction.getCurrentPrice(), statusText, auction.getEndTime(),
+                auction.getStartTime(), auction.getLiveStepPrice()
         );
     }
 
@@ -772,6 +871,10 @@ public class AuctionService {
                 for (AutoBid autoBid : activeAutoBids) {
                     auction.addOrUpdateAutoBidInRam(autoBid);
                 }
+
+                // Hydrate recent bid history into RAM
+                List<BidTransaction> dbHistory = bidTransactionDAO.findByAuctionIdPaged(auction.getId(), 200, 0);
+                auction.setBidHistoryRam(dbHistory);
                 
                 auctionManage.addAuction(auction);
             }
@@ -793,7 +896,14 @@ public class AuctionService {
             if (item != null) { productManage.addProduct(item); }
         }
 
-        List<BidTransaction> rawBidHistory = bidTransactionDAO.findTopByAuctionId(auctionId, 15);
+        List<BidTransaction> rawBidHistory;
+        if (auction.getStatus() == com.auction.enums.AuctionStatus.OPEN || auction.getStatus() == com.auction.enums.AuctionStatus.RUNNING) {
+            List<BidTransaction> ramHistory = auction.getBidHistoryRam();
+            rawBidHistory = ramHistory.size() > 15 ? ramHistory.subList(0, 15) : ramHistory;
+        } else {
+            rawBidHistory = bidTransactionDAO.findTopByAuctionId(auctionId, 15);
+        }
+
         String sellerName = userDAO.findById(auction.getSellerId())
                 .map(User::getUsername)
                 .orElse("Người bán ẩn danh");
@@ -821,6 +931,11 @@ public class AuctionService {
                             } catch (SQLException e) {
                                 log.warn("[AutoBid] Không thể khôi phục AutoBid từ DB cho phiên {}: {}", auctionId, e.getMessage());
                             }
+                            
+                            // Hydrate recent bid history into RAM
+                            List<BidTransaction> dbHistory = bidTransactionDAO.findByAuctionIdPaged(auction.getId(), 200, 0);
+                            auction.setBidHistoryRam(dbHistory);
+
                             auctionManage.addAuction(auction);
                         }
                     }
@@ -844,6 +959,7 @@ public class AuctionService {
                 auction.getEndTime(), auction.getStatus().name(), itemName, itemDesc, itemImg, sellerName, historyDTOs
         );
         dto.setLiveStepPrice(auction.getLiveStepPrice());
+        dto.setViewerCount(LiveRoomManage.getInstance().getRoomSize(auction.getId()));
         return dto;
     }
 
@@ -1184,6 +1300,12 @@ public class AuctionService {
             }
             if (maxBid < auction.getCurrentPrice() + auction.getLiveStepPrice()) {
                 throw new AuctionException(AuctionErrorCode.BID_AMOUNT_TOO_LOW, "Max bid must be at least the next required bid.");
+            }
+
+            double currentStepPrice = auction.getLiveStepPrice() > 0 ? auction.getLiveStepPrice() : auction.getStepPrice();
+            if (increment < currentStepPrice) {
+                throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER,
+                        String.format("Bước tăng tự động phải lớn hơn hoặc bằng bước giá hiện tại của phiên (%,.0f VNĐ).", currentStepPrice));
             }
 
             AutoBid autoBid = new AutoBid(bidder.getId(), auctionId, maxBid, increment);

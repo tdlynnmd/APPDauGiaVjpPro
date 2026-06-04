@@ -7,32 +7,28 @@ import io.github.cdimascio.dotenv.Dotenv;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+/**
+ * Lớp quản lý kết nối cơ sở dữ liệu MySQL sử dụng HikariCP Connection Pool.
+ */
 public class DatabaseConnection {
-    // Để volatile để bảo đảm tính hiển thị hiển nhiên trong môi trường đa luồng
     private static volatile HikariDataSource dataSource;
 
     private static final String DEFAULT_JDBC_URL = "jdbc:mysql://localhost:3306/vnu_auction_system";
     private static final String DEFAULT_USERNAME = "root";
 
-    // 🔥 SỬA TẠI ĐÂY: Xóa hoàn toàn mật khẩu thật, ép buộc sử dụng chuỗi rỗng mặc định của MySQL local
     private static final String DEFAULT_PASSWORD = "";
     private static final Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 
-    private DatabaseConnection() {} // Anti-instantiation
+    private DatabaseConnection() {}
 
-    /**
-     * 🔥 TỐI ƯU CHUYÊN NGHIỆP: Thay thế khối static bằng hàm khởi tạo tường minh.
-     * Hàm này sẽ được nhạc trưởng hàm main() chủ động kích hoạt khi bắt đầu bật Server.
-     */
     public static synchronized void initialize() {
         if (dataSource != null) {
-            return; // Đảm bảo tính Idempotent - không khởi tạo trùng lặp pool
+            return;
         }
 
         try {
             HikariConfig config = new HikariConfig();
 
-            // 1. Lấy thông tin credentials và URL từ env hoặc default
             String jdbcUrl = resolveJdbcUrl();
             String username = resolveDbUsername();
             String password = resolveDbPassword();
@@ -41,14 +37,11 @@ public class DatabaseConnection {
             config.setUsername(username);
             config.setPassword(password);
 
-            // 2. Cấu hình tối ưu hiệu năng cao cho Connection Pool (MySQL Specific)
             config.addDataSourceProperty("cachePrepStmts", "true");
             config.addDataSourceProperty("prepStmtCacheSize", "250");
             config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
             config.addDataSourceProperty("serverTimezone", "UTC");
 
-            // 🔥 TỐI ƯU THÔNG MINH: Chỉ ép bật SSL REQUIRED nếu chuỗi kết nối hướng lên Cloud Azure.
-            // Nếu chạy dưới localhost, hệ thống tự động tắt đi để tránh lỗi từ chối kết nối vật lý.
             if (jdbcUrl.contains("azure") || "true".equalsIgnoreCase(dotenv.get("DB_USE_SSL"))) {
                 config.addDataSourceProperty("useSSL", "true");
                 config.addDataSourceProperty("sslMode", "REQUIRED");
@@ -60,46 +53,33 @@ public class DatabaseConnection {
                 System.out.println("[DatabaseConnection] 🔓 Kết nối cơ sở dữ liệu ở chế độ Local (Tắt mã hóa SSL).");
             }
 
-            // Cấu hình kích thước Pool an toàn cho hệ thống Socket
             config.setMaximumPoolSize(10);
             config.setMinimumIdle(5);
-            config.setConnectionTimeout(30000); // 30 seconds
-            config.setIdleTimeout(600000); // 10 minutes
-            config.setMaxLifetime(1800000); // 30 minutes
+            config.setConnectionTimeout(30000);
+            config.setIdleTimeout(600000);
+            config.setMaxLifetime(1800000);
 
-            // 3. Khai hỏa thiết lập DataSource duy nhất
             dataSource = new HikariDataSource(config);
 
-            // 4. Tự động xóa ràng buộc UNIQUE uq_item_id trên bảng auctions nếu tồn tại
-            // Ràng buộc này gây lỗi duplicate entry khi tạo nhiều phiên cho cùng 1 item
             try (java.sql.Connection conn = dataSource.getConnection();
                  java.sql.Statement stmt = conn.createStatement()) {
                 stmt.execute("ALTER TABLE auctions DROP INDEX uq_item_id");
                 System.out.println("[DatabaseConnection] ✅ Đã xóa ràng buộc unique uq_item_id khỏi bảng auctions.");
             } catch (java.sql.SQLException ignored) {
-                // Index không tồn tại - bỏ qua lỗi
             }
 
         } catch (Exception e) {
-            // Không nuốt lỗi câm lặng, ném Exception rõ ràng để hàm main dừng khởi động Server
             throw new RuntimeException("Trọng pháo khởi tạo Database Connection Pool bị gãy!", e);
         }
     }
 
-    /**
-     * Lấy kết nối vật lý an toàn từ Pool phục vụ cho tầng DAO
-     */
     public static Connection getConnection() throws SQLException {
         if (dataSource == null) {
-            // Phòng hờ nếu lập trình viên quên gọi initialize() ở hàm main
             initialize();
         }
         return dataSource.getConnection();
     }
 
-    /**
-     * Đóng pool an toàn phục vụ tiến trình Graceful Shutdown khi tắt Server
-     */
     public static void closePool() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
@@ -141,7 +121,6 @@ public class DatabaseConnection {
     }
 
     private static String resolveDbPassword() {
-        // 🔥 SỬA TẠI ĐÂY: Nếu file .env không khai báo, hệ thống lấy DEFAULT_PASSWORD là rỗng ("")
         return firstNonBlank(
                 dotenv.get("AUCTION_DB_PASSWORD"),
                 dotenv.get("DB_PASSWORD"),

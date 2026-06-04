@@ -1,5 +1,8 @@
 package com.auction.dto;
 
+/**
+ * DTO gửi yêu cầu lấy danh sách đặt giá của một phiên đấu giá dưới dạng phân trang.
+ */
 public class GetAuctionBidsRequest {
     private String auctionId;
     private int page;

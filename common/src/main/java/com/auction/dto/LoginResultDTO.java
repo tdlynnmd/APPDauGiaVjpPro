@@ -1,12 +1,7 @@
 package com.auction.dto;
 
 /**
- * LoginResultDTO là dữ liệu trả về khi LOGIN thành công.
-   Do là LOGIN khi thành công cần trả về thêm cả token và user, 2 dữ liệu này đi cùng nhau, nên cần DTO để gom lại
- *
- * Lưu ý:
- * - Class này không chứa success/message/errorCode.
- * - Các thông tin đó thuộc về SocketResponse.
+ * DTO chứa kết quả trả về sau khi đăng nhập thành công bao gồm token/session và thông tin User.
  */
 public class LoginResultDTO {
     private String token;

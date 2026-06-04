@@ -12,18 +12,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 /**
- * ClientBidHistoryApi la lop API phia Client cho chuc nang lich su dat gia.
- *
- * Lien he voi backend:
- * - ActionType.GET_MY_BID_HISTORY duoc Server RequestDispatcher tiep nhan.
- * - Server lay bidderId tu ClientSession phia Server, khong tin bidderId tu Client gui len.
- * - UserController goi BidTransactionService.
- * - BidTransactionService tra ve PageDTO<BidTransactionDTO>.
- *
- * Vai tro cua class nay:
- * - Tao request phan trang cho lich su bid cua user hien tai.
- * - Gui SocketRequest qua ClientSocketService.
- * - Parse SocketResponse.body ve PageDTO<BidTransactionDTO>.
+ * API Client xử lý kết nối truy vấn lịch sử đặt giá thầu.
  */
 public class ClientBidHistoryApi {
     private final Gson gson = GsonProvider.getGson();

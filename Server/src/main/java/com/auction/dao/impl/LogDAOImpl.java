@@ -8,12 +8,11 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Lớp triển khai JDBC truy vấn dữ liệu cho bảng nhật ký audit_logs.
+ */
 public class LogDAOImpl implements LogDAO {
 
-    /**
-     * GHI LOG HÀNH ĐỘNG MỚI CỦA ADMIN
-     * 🔥 SỬA: Nhận Connection từ ngoài truyền vào và ném ngoại lệ lên tầng điều phối (Service)
-     */
     @Override
     public void insertLog(Connection conn, String logId, String adminId, String actionDetail, String targetType, String targetId) throws SQLException {
         String sql = "INSERT INTO action_logs (id, admin_id, action_detail, target_type, target_id) VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, UUID_TO_BIN(?, 1))";
@@ -29,10 +28,6 @@ public class LogDAOImpl implements LogDAO {
         }
     }
 
-    /**
-     * TRUY VẤN DANH SÁCH LOG PHÂN TRANG (PAGINATION)
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public List<ActionLogDTO> findPaginatedLogs(int limit, int offset) {
         String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(admin_id, 1) AS admin_id, action_detail, target_type, BIN_TO_UUID(target_id, 1) AS target_id, created_at " +
@@ -70,10 +65,6 @@ public class LogDAOImpl implements LogDAO {
         return logList;
     }
 
-    /**
-     * Đếm tổng số dòng log trong hệ thống
-     * Hàm ĐỌC (SELECT) độc lập, tự mở connection nên giữ lại try-catch cục bộ an toàn
-     */
     @Override
     public long getTotalLogCount() {
         String sql = "SELECT COUNT(*) FROM action_logs";

@@ -29,7 +29,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.control.TableCell;
 import javafx.application.Platform;
 
-
 import com.auction.service.ClientSocketService;
 import com.auction.service.RealtimeUpdateListener;
 import com.google.gson.JsonObject;
@@ -43,39 +42,23 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * AuctionDetailController là Controller phía Client cho màn hình chi tiết phiên đấu giá.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích AuctionDetailController xử lý giao diện Client JavaFX.
  */
 public class AuctionDetailController implements RealtimeUpdateListener {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
 
-    /*
-     * auctionId là ID phiên đấu giá đang được xem.
-     * Giá trị này không lấy trực tiếp từ FXML.
-     * AuctionListController sẽ truyền sang bằng hàm setAuctionId().
-     */
     private String auctionId;
 
-    /*
-     * Lưu lại dữ liệu chi tiết hiện tại.
-     * Khi đặt giá, controller có thể dùng currentAuctionDetail để kiểm tra nhanh dữ liệu đang hiển thị.
-     */
     private AuctionDetailDTO currentAuctionDetail;
     private boolean liveRoomJoined;
     private boolean listenerRegistered;
 
-    /*
-     * ObservableList là danh sách mà TableView theo dõi.
-     * Khi bidHistoryItems thay đổi, bảng lịch sử bid sẽ cập nhật theo.
-     */
     private final ObservableList<BidTransactionDTO> bidHistoryItems = FXCollections.observableArrayList();
 
-    /*
-     * Format thời gian để hiển thị lên giao diện cho dễ đọc.
-     */
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     @FXML
-    private Parent rootContainer; // Thêm container gốc để hỗ trợ load stylesheet động khi đổi theme
+    private Parent rootContainer;
 
     @FXML
     private VBox loadingOverlay;
@@ -174,10 +157,14 @@ public class AuctionDetailController implements RealtimeUpdateListener {
     private Button openLiveBiddingButton;
 
     @FXML
-    private Button placeBidButton; // ID điều khiển nút đặt giá khi hệ thống đang bận
+    private Button placeBidButton;
 
     @FXML
-    private Button refreshButton; // ID điều khiển nút làm mới khi hệ thống đang bận
+    private Button refreshButton;
+
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
 
     /**
      * initialize() được JavaFX tự động gọi sau khi load auction-detail.fxml.
@@ -189,6 +176,7 @@ public class AuctionDetailController implements RealtimeUpdateListener {
      */
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
         setupBidHistoryTable();
         applyLiveBiddingAccess();
@@ -201,8 +189,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         Parent rootStackPane = rootContainer.getScene().getRoot();
         if (rootStackPane == null) return;
 
-        // Xóa sạch stylesheet cũ ở tầng Root và nạp stylesheet mới
-        // Cơ chế này giúp lớp màn phủ loading ở ngoài BorderPane/VBox nhận diện được CSS mờ nền
         rootStackPane.getStylesheets().clear();
         String css = SceneNavigator.isAppDarkMode ? "/com/auction/client/view/dark.css" : "/com/auction/client/view/light.css";
         try {
@@ -247,12 +233,10 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                 new SimpleStringProperty(safeText(cellData.getValue().getBidderName()))
         );
 
-        // ĐÃ SỬA: Thay thế sang SimpleObjectProperty để tương thích chuẩn với kiểu dữ liệu Column Number, tránh ClassCastException
         bidAmountColumn.setCellValueFactory(cellData ->
                 new SimpleObjectProperty<>(cellData.getValue().getAmount())
         );
 
-        // ĐÃ CẬP NHẬT: Định dạng tiền tệ đẹp (ví dụ: 5,200,000) hiển thị trong cell thay vì số thập phân thô
         bidAmountColumn.setCellFactory(col -> new TableCell<BidTransactionDTO, Number>() {
             @Override
             protected void updateItem(Number item, boolean empty) {
@@ -273,7 +257,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                 new SimpleStringProperty(safeText(cellData.getValue().getStatus()))
         );
 
-        // ĐÃ CẬP NHẬT: Logic gán Class CSS động cho cột Trạng thái dựa vào giá trị thực tế của bản ghi dữ liệu
         bidStatusColumn.setCellFactory(col -> new TableCell<BidTransactionDTO, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -285,7 +268,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                     setText(item);
                     getStyleClass().removeAll("status-accepted", "status-refunded");
 
-                    // SỬA LỖI: Đồng bộ màu sắc động không bị đơn điệu khi cuộn bảng lịch sử
                     if (item.equalsIgnoreCase("ACCEPTED")) {
                         getStyleClass().add("status-accepted");
                     } else if (item.equalsIgnoreCase("REFUNDED")) {
@@ -295,30 +277,25 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             }
         });
 
-        javafx.scene.layout.VBox emptyPlaceholderBox = new javafx.scene.layout.VBox(8); // 8 là khoảng cách (spacing) giữa icon và chữ
+        javafx.scene.layout.VBox emptyPlaceholderBox = new javafx.scene.layout.VBox(8);
         emptyPlaceholderBox.setAlignment(javafx.geometry.Pos.CENTER);
 
-        // 1. Tạo Label làm Icon (Sử dụng biểu tượng emoji Unicode để không lo bị lỗi crash load file ảnh)
         Label iconLabel = new Label();
         iconLabel.getStyleClass().add("table-empty-icon");
 
-        // 2. Tạo Label làm nội dung văn bản
         Label textLabel = new Label();
         textLabel.getStyleClass().add("table-empty-placeholder");
 
-        // Cấu hình nội dung chữ và icon tương ứng theo Light / Dark Mode
         if (com.auction.util.SceneNavigator.isAppDarkMode) {
-            iconLabel.setText("🏴‍☠️🔨"); // Icon biểu đồ giao dịch cho chế độ tối
+            iconLabel.setText("🏴‍☠️🔨");
             textLabel.setText("Hiện tại chưa kiếm được mối giao dịch!");
         } else {
-            iconLabel.setText("📋✨"); // Icon búa đấu giá cho chế độ sáng
+            iconLabel.setText("📋✨");
             textLabel.setText("Hiện tại chưa có người dùng nào đấu giá!");
         }
 
-        // Thêm cả hai thành phần vào VBox (Icon xếp trên, Text xếp dưới)
         emptyPlaceholderBox.getChildren().addAll(iconLabel, textLabel);
 
-        // Gán VBox làm Placeholder cho TableView
         bidHistoryTable.setPlaceholder(emptyPlaceholderBox);
         bidHistoryTable.setItems(bidHistoryItems);
     }
@@ -333,10 +310,9 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
-        setBusy(true); // Khóa các nút điều hướng để tránh xung đột dữ liệu ngầm
+        setBusy(true);
         showMessage("Đang tải chi tiết phiên đấu giá...");
 
-        // ĐÃ SỬA: Đưa luồng mạng của API getAuctionDetail chạy ngầm thông qua Task để không làm treo UI chính
         Task<SocketResponse> task = new Task<>() {
             @Override
             protected SocketResponse call() {
@@ -346,6 +322,12 @@ public class AuctionDetailController implements RealtimeUpdateListener {
 
         task.setOnSucceeded(event -> {
             setBusy(false);
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(false);
+                    loadingOverlay.setManaged(false);
+                });
+            }
             SocketResponse response = task.getValue();
 
             if (response == null) {
@@ -367,20 +349,19 @@ public class AuctionDetailController implements RealtimeUpdateListener {
 
             currentAuctionDetail = detail;
             displayAuctionDetail(detail);
-            applyLiveBiddingAccess(); // Cập nhật lại quyền hiển thị nút live room theo dữ liệu phiên mới nhất
+            applyLiveBiddingAccess();
             showMessage("Đã tải chi tiết phiên đấu giá.");
             enterLiveRoomIfNeeded();
-
-            if (loadingOverlay != null) {
-                Platform.runLater(() -> {
-                    loadingOverlay.setVisible(false);
-                    loadingOverlay.setManaged(false); // Giải phóng vùng click chuột để tương tác với Table/Button
-                });
-            }
         });
 
         task.setOnFailed(event -> {
             setBusy(false);
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(false);
+                    loadingOverlay.setManaged(false);
+                });
+            }
             Throwable error = task.getException();
             showError(error == null ? "Không thể kết nối mạng đến máy chủ." : error.getMessage());
         });
@@ -394,24 +375,18 @@ public class AuctionDetailController implements RealtimeUpdateListener {
      * Đưa dữ liệu từ AuctionDetailDTO lên các control trong FXML.
      */
     private void displayAuctionDetail(AuctionDetailDTO detail) {
-        // Cập nhật tên vật phẩm đấu giá
         setLabelText(itemNameLabel, detail.getItemName());
 
-        // Vấn đề 3: Vì FXML đã có chữ "Người bán: ", ở đây ta chỉ đổ chuỗi tên thuần túy
         setLabelText(sellerLabel, safeText(detail.getSellerUsername()));
 
-        // Vấn đề 3: Vì FXML đã có chữ "Giá hiện tại: " và "Bước giá: ", ta chỉ đổ số tiền định dạng vào
         setLabelText(currentPriceLabel, formatMoney(detail.getCurrentPrice()) + " VNĐ");
         setLabelText(stepPriceLabel, formatMoney(detail.getStepPrice()) + " VNĐ");
 
-        // Vấn đề 3 & 4: "Kết thúc: ..." chỉ đổ chuỗi thời gian, chữ cứng nằm tại FXML
         setLabelText(endTimeLabel, "Kết thúc: " + formatDateTime(detail.getEndTime()));
 
-        // Vấn đề 3: Chỉ hiển thị chuỗi trạng thái thuần túy (Ví dụ: "FINISHED"), bỏ chữ thừa "Trạng thái:"
         String status = detail.getStatus() != null ? detail.getStatus().toUpperCase() : "";
         setLabelText(statusLabel, status);
 
-        // SỬA LỖI: Cập nhật màu sắc trạng thái phiên động chuẩn xác (OPEN -> Xanh dương, RUNNING -> Xanh lá, FINISHED -> Đỏ)
         if (statusLabel != null) {
             statusLabel.getStyleClass().removeAll("ad-info-status", "ad-status-open", "ad-status-running", "ad-status-finished");
             statusLabel.getStyleClass().add("ad-info-status");
@@ -428,7 +403,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             descriptionTextArea.setText(safeText(detail.getItemDescription()));
         }
 
-        // Gọi hàm xử lý ảnh an toàn chống mất ảnh khi dữ liệu trống
         loadItemImage(detail.getImageUrl());
         loadBidHistory(detail.getBidHistory());
     }
@@ -441,26 +415,21 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
-        // Nếu chuỗi imageUrl trả về từ server bị trống hoặc null
         if (isBlank(imageUrl)) {
             try {
-                // Nạp lại ảnh Logo_DHCN mặc định an toàn từ thư mục resources của hệ thống
                 Image defaultImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/image/Logo_DHCN.png")));
                 itemImageView.setImage(defaultImg);
             } catch (Exception e) {
-                // Giữ nguyên hoặc không làm mất ảnh nếu không tìm thấy resource
                 System.err.println("Không thể nạp ảnh mặc định từ classpath: " + e.getMessage());
             }
             return;
         }
 
-        // Nếu có đường dẫn ảnh từ server truyền xuống
         try {
-            Image image = new Image(imageUrl, true); // true để load bất đồng bộ không gây lag UI
+            Image image = new Image(imageUrl, true);
             itemImageView.setImage(image);
         } catch (Exception e) {
             try {
-                // Nếu đường dẫn ảnh bị lỗi, lập tức phòng thủ bằng ảnh logo mặc định
                 Image defaultImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/image/Logo_DHCN.png")));
                 itemImageView.setImage(defaultImg);
             } catch (Exception ex) {
@@ -508,10 +477,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
-        /*
-         * Kiểm tra nhanh ở Client để người dùng biết lỗi sớm.
-         * Server vẫn là nơi kiểm tra thật, vì Client không đáng tin tuyệt đối.
-         */
         if (currentAuctionDetail != null) {
             double minimumAmount = currentAuctionDetail.getCurrentPrice() + currentAuctionDetail.getStepPrice();
 
@@ -524,7 +489,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         setBusy(true);
         showMessage("Đang gửi yêu cầu đặt giá sang Server...");
 
-        // ĐÃ SỬA: Đưa API đặt giá chạy ngầm tránh lag đứng khung hình UI
         Task<SocketResponse> task = new Task<>() {
             @Override
             protected SocketResponse call() {
@@ -551,9 +515,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             }
 
             showInfo(response.getMessage() == null ? "Đặt giá thành công!" : response.getMessage());
-            // BID_UPDATE event sẽ cập nhật giá và bảng lịch sử realtime.
-            // Không gọi loadAuctionDetail() ở đây vì DB async chưa ghi xong
-            // → setAll() sẽ ghi đè dữ liệu đúng mà BID_UPDATE vừa thêm vào bảng.
         });
 
         task.setOnFailed(event -> {
@@ -588,8 +549,8 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
-        cleanupLiveRoom();
-        SceneNavigator.showLiveBidding(auctionId);
+        cleanupLiveRoom(true);
+        com.auction.util.SceneNavigator.showLiveBidding(auctionId, currentAuctionDetail, true);
     }
 
     private void applyLiveBiddingAccess() {
@@ -621,7 +582,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         }
 
         try {
-            // Tối ưu hóa: dọn khoảng trắng và định dạng dấu phẩy tự động trước khi parse dữ liệu số
             String rawAmount = bidAmountField.getText().trim()
                     .replace(" ", "")
                     .replace(",", "");
@@ -811,7 +771,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                         boolean exists = bidHistoryItems.stream()
                                 .anyMatch(b -> b.getBidId() != null && b.getBidId().equals(newBid.getBidId()));
                         if (!exists) {
-                            // Cập nhật trạng thái các bid cũ thành REFUNDED
                             for (BidTransactionDTO oldBid : bidHistoryItems) {
                                 oldBid.setStatus("REFUNDED");
                             }
@@ -819,7 +778,6 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                             if (bidHistoryItems.size() > 15) {
                                 bidHistoryItems.remove(15);
                             }
-                            // Yêu cầu TableView vẽ lại để hiển thị trạng thái mới lập tức
                             if (bidHistoryTable != null) {
                                 bidHistoryTable.refresh();
                             }
@@ -862,10 +820,8 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         Platform.runLater(() -> {
             if (!isBlank(status)) {
                 String upperStatus = status.toUpperCase();
-                // ĐÃ SỬA: Đồng bộ lược bỏ chữ thừa khi cập nhật qua socket realtime
                 setLabelText(statusLabel, upperStatus);
 
-                // SỬA LỖI: Đồng bộ màu sắc động khi cập nhật trạng thái phiên qua Realtime socket
                 if (statusLabel != null) {
                     statusLabel.getStyleClass().removeAll("ad-info-status", "ad-status-open", "ad-status-running", "ad-status-finished");
                     statusLabel.getStyleClass().add("ad-info-status");
@@ -937,8 +893,8 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         listenerRegistered = false;
     }
 
-    private void cleanupLiveRoom() {
-        if (liveRoomJoined && !isBlank(auctionId)) {
+    private void cleanupLiveRoom(boolean navigateToLiveRoomOfSameAuction) {
+        if (!navigateToLiveRoomOfSameAuction && liveRoomJoined && !isBlank(auctionId)) {
             String targetId = this.auctionId;
             liveRoomJoined = false;
             Thread exitWorker = new Thread(() -> {
@@ -950,8 +906,14 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             }, "detail-exit-worker");
             exitWorker.setDaemon(true);
             exitWorker.start();
+        } else if (navigateToLiveRoomOfSameAuction) {
+            liveRoomJoined = false;
         }
         unregisterRealtimeListener();
+    }
+
+    private void cleanupLiveRoom() {
+        cleanupLiveRoom(false);
     }
 
     private String getActionName(SocketResponse event) {

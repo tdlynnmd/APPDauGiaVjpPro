@@ -13,9 +13,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Lớp triển khai JDBC truy vấn dữ liệu cho bảng auctions.
+ */
 public class AuctionDAOImpl implements AuctionDAO {
 
-    // 🔥 SỬA: Thêm throws SQLException, dọn bỏ hoàn toàn khối try-catch nuốt lỗi
     @Override
     public boolean insertAuction(Connection conn, Auction auction) throws SQLException {
         String sql = "INSERT INTO auctions (id, item_id, seller_id, current_price, step_price, start_time, end_time, status) " +
@@ -36,7 +38,6 @@ public class AuctionDAOImpl implements AuctionDAO {
         }
     }
 
-    // 🔥 SỬA: Thêm throws SQLException, bóc gỡ try-catch để lộ lỗi phục vụ rollback ở Service
     @Override
     public boolean updatePriceAndWinner(Connection conn, String auctionId, double newPrice, String newWinnerId, String winningBidId, LocalDateTime endTime, double liveStepPrice) throws SQLException {
         String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = UUID_TO_BIN(?, 1), " +
@@ -101,7 +102,7 @@ public class AuctionDAOImpl implements AuctionDAO {
     @Override
     public List<Auction> findRunningAuctionsPastEndTime() {
         List<Auction> expiredAuctions = new ArrayList<>();
-        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE status = 'RUNNING' AND end_time <= NOW()";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, current_price, step_price, start_time, end_time, status, created_at, updated_at FROM auctions WHERE status IN ('RUNNING', 'OPEN') AND end_time <= NOW()";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -116,7 +117,6 @@ public class AuctionDAOImpl implements AuctionDAO {
         return expiredAuctions;
     }
 
-    // 🔥 SỬA: Hàm ghi dữ liệu tham gia chốt phiên bắt buộc phải ném SQLException ra ngoài
     @Override
     public void updateStatus(Connection conn, String auctionId, String status) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = UUID_TO_BIN(?, 1)";
@@ -141,10 +141,6 @@ public class AuctionDAOImpl implements AuctionDAO {
         }
     }
 
-    /**
-     * Helper Method: Chuyển đổi dòng dữ liệu (ResultSet) thành Object Auction
-     * Hàm này vốn dĩ đã throws SQLException sẵn nên cấu trúc giữ nguyên rất sạch sẽ
-     */
     private Auction mapResultSetToAuction(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
         String itemId = rs.getString("item_id");
@@ -176,7 +172,6 @@ public class AuctionDAOImpl implements AuctionDAO {
         );
     }
 
-    // 🔥 Hàm phục vụ nạp RAM và hiển thị trang chủ, giữ nguyên ném ngoại lệ lên Service
     @Override
     public List<Auction> findByStatuses(Connection conn, List<AuctionStatus> statuses) throws SQLException {
         List<Auction> auctions = new ArrayList<>();
@@ -228,7 +223,6 @@ public class AuctionDAOImpl implements AuctionDAO {
         return auctions;
     }
 
-    // 🔥 SỬA: Hàm ép đồng bộ định kỳ lúc tắt Server, ném thẳng lỗi SQLException lên luồng chính xử lý
     @Override
     public boolean updateAuctionStatusAndBidding(Auction auction) throws SQLException {
         String sql = "UPDATE auctions SET current_price = ?, highest_bidder_id = UUID_TO_BIN(?, 1), " +
@@ -245,5 +239,43 @@ public class AuctionDAOImpl implements AuctionDAO {
 
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    @Override
+    public List<Auction> findAllPaginated(int limit, int offset) {
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, BIN_TO_UUID(item_id, 1) AS item_id, " +
+                "BIN_TO_UUID(seller_id, 1) AS seller_id, BIN_TO_UUID(highest_bidder_id, 1) AS highest_bidder_id, " +
+                "BIN_TO_UUID(current_winning_bid_id, 1) AS current_winning_bid_id, " +
+                "current_price, step_price, start_time, end_time, status, created_at, updated_at " +
+                "FROM auctions ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        List<Auction> result = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            stmt.setInt(2, offset);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapResultSetToAuction(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi findAllPaginated (Admin Auctions): " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public long countAllAuctions() {
+        String sql = "SELECT COUNT(*) FROM auctions";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi countAllAuctions (Admin): " + e.getMessage());
+        }
+        return 0;
     }
 }

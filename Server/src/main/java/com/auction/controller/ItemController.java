@@ -19,11 +19,7 @@ import com.auction.utils.GsonProvider;
 import java.util.List;
 
 /**
- * Server-side controller for item management requests.
- *
- * This class is the boundary between socket DTOs and ItemService business logic:
- * it parses request bodies, trusts sellerId only from ClientSession, and checks
- * ownership before mutating item data.
+ * Bộ điều khiển tiếp nhận các yêu cầu liên quan đến quản lý sản phẩm đấu giá.
  */
 public class ItemController {
     private final com.google.gson.Gson gson = GsonProvider.getGson();

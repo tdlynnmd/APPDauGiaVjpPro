@@ -2,6 +2,9 @@ package com.auction.dto;
 
 import java.io.Serializable;
 
+/**
+ * DTO gửi yêu cầu thiết lập hoặc thay đổi cấu hình tự động đặt giá (AutoBid).
+ */
 public class SetupAutoBidRequest implements Serializable {
     private String auctionId;
     private double maxBid;

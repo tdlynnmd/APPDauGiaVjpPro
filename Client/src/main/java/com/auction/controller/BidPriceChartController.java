@@ -24,18 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Vai tro:
- * - Controller rieng cho bieu do tang gia cua mot phien dau gia.
- *
- * Chuc nang chinh:
- * - Nhan auctionId tu LiveBiddingController.
- * - Goi backend lay lich su bid cua dung phien.
- * - Ve duong gia tang theo tung luot dat gia.
- * - Lang nghe BID_UPDATE realtime de them diem moi vao chart.
- *
- * Luu y:
- * - Controller nay chi xu ly UI chart va dieu phoi API client.
- * - Backend van la noi quyet dinh bid hop le, gia hien tai va trang thai phien.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích BidPriceChartController xử lý giao diện Client JavaFX.
  */
 public class BidPriceChartController implements RealtimeUpdateListener {
     private static final int CHART_PAGE = 1;
@@ -45,23 +34,10 @@ public class BidPriceChartController implements RealtimeUpdateListener {
     private final ClientBidHistoryApi bidHistoryApi = new ClientBidHistoryApi();
     private final ClientSocketService socketService = ClientSocketService.getInstance();
 
-    /*
-     * Format ngan gon cho nhan truc X.
-     * Chart khong can ngay-thang-day-du vi man live chi quan tam dien bien theo thoi gian gan.
-     */
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    /*
-     * Series la tap hop cac diem du lieu tren LineChart.
-     * Moi diem tuong ung voi mot luot bid hop le cua phien.
-     */
     private final XYChart.Series<String, Number> priceSeries = new XYChart.Series<>();
 
-    /*
-     * Dung de tranh ve trung mot bid khi:
-     * - Bid da co trong lich su ban dau.
-     * - Sau do server lai day BID_UPDATE realtime cung bid.
-     */
     private final Set<String> plottedBidKeys = new HashSet<>();
 
     private String auctionId;
@@ -157,10 +133,7 @@ public class BidPriceChartController implements RealtimeUpdateListener {
         };
 
         task.setOnSucceeded(event -> {
-            /*
-             * Neu nguoi dung da chuyen sang phien khac trong luc request dang chay,
-             * khong ve du lieu cu len chart moi.
-             */
+            
             if (targetAuctionId.equals(this.auctionId)) {
                 renderChart(task.getValue());
             }
@@ -325,6 +298,9 @@ public class BidPriceChartController implements RealtimeUpdateListener {
     private void clearChart() {
         plottedBidKeys.clear();
         priceSeries.getData().clear();
+        if (bidTimeAxis != null) {
+            bidTimeAxis.getCategories().clear();
+        }
     }
 
     /**

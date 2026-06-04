@@ -13,18 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * ClientAuctionApi giờ sẽ tạo request còn việc ửi đi và nhận sẽ la của ClientSocketService
- *
- * Vai trò:
- * - Tạo Request DTO đúng với từng action đấu giá.
- * - Bọc Request DTO vào SocketRequest.
- * - Cung cấp helper để parse response.body thành DTO cụ thể.
- *
- * Lưu ý:
- * - Class này không xử lý giao diện.
- * - Class này không kiểm tra phân quyền.
- * - Class này không xử lý nghiệp vụ đấu giá.
- * - Server mới là nơi kiểm tra quyền và xử lý nghiệp vụ thật.
+ * API Client xử lý các kết nối nghiệp vụ liên quan đến đấu giá phía Client.
  */
 public class ClientAuctionApi {
     private final Gson gson = GsonProvider.getGson();
@@ -143,12 +132,10 @@ public class ClientAuctionApi {
      * - DTO khác sau này
      */
     public <T> T parseBody(SocketResponse response, Class<T> bodyType) {
-        // Nếu Server trả body null, Client không cố parse để tránh NullPointerException.
         if (response == null || response.getBody() == null || response.getBody().isJsonNull()) {
             return null;
         }
 
-        // Gson chuyển JsonElement trong response.body thành class cụ thể mà Controller cần dùng.
         return gson.fromJson(response.getBody(), bodyType);
     }
 
@@ -159,15 +146,12 @@ public class ClientAuctionApi {
      * Do đó cần TypeToken<List<AuctionSummaryDTO>>.
      */
     public List<AuctionSummaryDTO> parseAuctionSummaryList(SocketResponse response) {
-        // Nếu response không có body, trả danh sách rỗng để UI vẫn xử lý an toàn.
         if (response == null || response.getBody() == null || response.getBody().isJsonNull()) {
             return List.of();
         }
 
-        // TypeToken giúp Gson biết đây là List<AuctionSummaryDTO>, không phải List<Object>.
         Type listType = new TypeToken<List<AuctionSummaryDTO>>() {}.getType();
 
-        // Parse JsonElement body thành List<AuctionSummaryDTO>.
         return gson.fromJson(response.getBody(), listType);
     }
 
@@ -177,8 +161,6 @@ public class ClientAuctionApi {
     public AuctionDetailDTO parseAuctionDetail(SocketResponse response) {
         return parseBody(response, AuctionDetailDTO.class);
     }
-
-
 
     /**
      * Ham gui request chung cho moi action dau gia.
@@ -190,45 +172,21 @@ public class ClientAuctionApi {
      * - nhan dung RESPONSE co requestId trung voi request vua gui
      */
     private SocketResponse sendRequest(ActionType actionType, Object requestBody) {
-        /*
-         * socketRequest duoc khai bao ngoai try de neu xay ra exception,
-         * catch van lay duoc requestId va action tra ve trong SocketResponse.failure.
-         */
+        
         SocketRequest socketRequest = null;
 
         try {
-            /*
-             * requestBody co the la DTO nhu PlaceBidRequest, CreateAuctionRequest,
-             * hoac JsonObject rong voi action khong can body.
-             * toJsonObject() chuan hoa tat ca thanh JsonObject.
-             */
+            
             JsonObject body = toJsonObject(requestBody);
 
-            /*
-             * SocketRequest la phong bi chung Client gui len Server.
-             * actionType.name() tao action chuan theo enum, vi du "PLACE_BID".
-             * body la du lieu chi tiet cua action do.
-             */
             socketRequest = new SocketRequest(ActionType.valueOf(actionType.name()), body);
 
-            /*
-             * Khong doc socket truc tiep trong API nua.
-             * ClientSocketService la noi duy nhat doc message tu Server,
-             * nen no co the tach RESPONSE cho request va EVENT realtime cho UI.
-             */
             return ClientSocketService.getInstance().sendRequest(socketRequest);
 
         } catch (Exception e) {
-            /*
-             * Neu loi ket noi, loi parse JSON, hoac loi socket bat ky,
-             * khong throw len UI ma doi thanh SocketResponse.failure.
-             */
+            
             e.printStackTrace();
 
-            /*
-             * Neu loi xay ra truoc khi tao SocketRequest, requestId se la null.
-             * Neu da tao duoc SocketRequest, giu requestId de de debug.
-             */
             String requestId = socketRequest == null ? null : socketRequest.getRequestId();
 
             return SocketResponse.failure(

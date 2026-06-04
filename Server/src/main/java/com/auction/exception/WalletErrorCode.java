@@ -1,7 +1,9 @@
 package com.auction.exception;
 
+/**
+ * Lớp biểu diễn thực thể WalletErrorCode trong hệ thống.
+ */
 public enum WalletErrorCode {
-    // ===== WALLET & FINANCIAL ERRORS =====
     INSUFFICIENT_BALANCE("WAL_ACC_001", "Your available balance is insufficient to place this bid"),
     WALLET_LOCKED("WAL_ACC_002", "Financial wallet is currently locked for audit or transaction dispute"),
     FREEZE_MONEY_FAILED("WAL_ACC_003", "System failed to hold/freeze the bidding amount securely"),

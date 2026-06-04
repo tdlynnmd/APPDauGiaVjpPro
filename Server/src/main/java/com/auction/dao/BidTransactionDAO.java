@@ -6,6 +6,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * Interface định nghĩa các thao tác truy vấn cơ sở dữ liệu đối với bảng bid_transactions.
+ */
 public interface BidTransactionDAO {
 
     boolean insertBid(Connection conn, BidTransaction bid) throws SQLException;
@@ -22,7 +25,6 @@ public interface BidTransactionDAO {
 
     long getTotalBidCountByBidder(String bidderId);
 
-    // Thêm hàm này vào BidTransactionDAOImpl để chuyển trạng thái bid cũ
     void updateStatusToRefunded(Connection conn, String auctionId, String bidderId) throws SQLException;
 
     void updateStatusByBidId(Connection conn, String bidId, String status) throws SQLException;

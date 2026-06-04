@@ -4,14 +4,14 @@ import com.auction.enums.UserStatus;
 import java.io.Serializable;
 
 /**
- * Request DTO để khóa tài khoản user (chỉ Admin)
+ * DTO gửi yêu cầu cưỡng chế khóa hoặc mở khóa tài khoản người dùng từ Admin.
  */
 public class LockUserAccountRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String userId;          // ID người dùng cần khóa
-    private UserStatus targetStatus; // Trạng thái đích (BANNED)
-    private String reason;           // Lý do khóa
+    private String userId;
+    private UserStatus targetStatus;
+    private String reason;
 
     public LockUserAccountRequest() {
     }

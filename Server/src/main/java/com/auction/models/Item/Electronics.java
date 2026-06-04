@@ -4,24 +4,23 @@ import com.auction.enums.ItemStatus;
 import com.auction.enums.ItemType;
 import java.time.LocalDateTime;
 
+/**
+ * Lớp biểu diễn thực thể Electronics trong hệ thống.
+ */
 public class Electronics extends Item {
     private String brand;
     private int warrantyMonths;
 
-    // Constructor 1: Tạo mới
     public Electronics(String name, double startingPrice, String description, int yearCreated,
                        String sellerId, String imageUrl, String brand, int warrantyMonths) {
-        // Tự động truyền ItemType.ELECTRONICS
         super(name, startingPrice, description, yearCreated, sellerId, ItemType.ELECTRONICS, imageUrl);
         this.brand = brand;
         this.warrantyMonths = warrantyMonths;
     }
 
-    // Constructor 2: Load từ Database
     public Electronics(String id, String name, double startingPrice, String description,
                        int yearCreated, String sellerId, String imageUrl, ItemStatus status,
                        LocalDateTime createdAt, String brand, int warrantyMonths) {
-        // Tự động truyền ItemType.ELECTRONICS
         super(id, name, startingPrice, description, yearCreated, sellerId, ItemType.ELECTRONICS, imageUrl, status, createdAt);
         this.brand = brand;
         this.warrantyMonths = warrantyMonths;

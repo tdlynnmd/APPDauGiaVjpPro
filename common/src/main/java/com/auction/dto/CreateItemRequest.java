@@ -5,8 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Request DTO used when Seller/Admin creates a new item.
- * The server still takes sellerId from ClientSession, not from the client body.
+ * DTO gửi yêu cầu tạo mới sản phẩm/vật phẩm đấu giá với các trường đa hình tương ứng.
  */
 public class CreateItemRequest implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -49,9 +48,6 @@ public class CreateItemRequest implements Serializable {
         this.kmAge = kmAge;
     }
 
-    /**
-     * Converts the DTO into the Map payload expected by the existing ItemFactory layer.
-     */
     public Map<String, Object> toItemDataMap(String sellerId) {
         Map<String, Object> data = new HashMap<>();
         putIfPresent(data, "sellerId", sellerId);

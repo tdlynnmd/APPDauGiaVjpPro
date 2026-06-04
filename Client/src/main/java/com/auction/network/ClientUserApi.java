@@ -14,17 +14,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 /**
- * ClientWalletApi là lớp API phía Client cho nhóm chức năng ví.
- *
- * Vai trò chính:
- * - Tạo đúng request DTO cho các action ví.
- * - Gửi request qua ClientSocketService.
- * - Parse response.body từ Server về UserDTO.
- *
- * Lưu ý kiến trúc:
- * - Client KHÔNG gửi userId khi nạp/rút/xem ví.
- * - Server tự lấy userId từ ClientSession phía Server.
- * - Server AuthorizationService hiện chỉ cho BIDDER gọi DEPOSIT_MONEY và WITHDRAW_MONEY.
+ * API Client xử lý các kết nối nghiệp vụ liên quan đến tài khoản người dùng và ví tiền.
  */
 public class ClientUserApi {
     private final Gson gson = GsonProvider.getGson();

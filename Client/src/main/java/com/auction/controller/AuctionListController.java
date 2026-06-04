@@ -23,34 +23,18 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * AuctionListController là Controller phía Client cho màn hình danh sách đấu giá.
- *
- * Vai trò:
- * - Gọi ClientAuctionApi để gửi request GET_ACTIVE_AUCTIONS sang Server.
- * - Nhận SocketResponse từ Server.
- * * - Parse response.body thành List<AuctionSummaryDTO>.
- * * - Hiển thị danh sách phiên đấu giá lên TableView.
- *
- * Lưu ý:
- * - Controller chỉ xử lý giao diện và gọi API phía Client.
- * - Controller không tự làm việc trực tiếp với Socket.
- * - Controller không xử lý nghiệp vụ đấu giá.
- * - Server mới là nơi kiểm tra quyền và lấy dữ liệu thật.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích AuctionListController xử lý giao diện Client JavaFX.
  */
 public class AuctionListController {
     private final ClientAuctionApi auctionApi = new ClientAuctionApi();
     private Timeline autoRefreshTimeline;
 
-    /*
-     * ObservableList là danh sách dữ liệu mà TableView theo dõi.
-     * Khi auctionItems thay đổi, TableView có thể cập nhật lại giao diện.
-     */
     private final ObservableList<AuctionSummaryDTO> allServerAuctions = FXCollections.observableArrayList();
     private final ObservableList<AuctionSummaryDTO> paginatedAuctions = FXCollections.observableArrayList();
     private FilteredList<AuctionSummaryDTO> filteredAuctions;
 
     private int currentAuctionPage = 1;
-    private int auctionPageSize = 10; // Giá trị khởi tạo mặc định ban đầu
+    private int auctionPageSize = 10;
 
     @FXML private javafx.scene.layout.StackPane rootPane;
     @FXML private TableView<AuctionSummaryDTO> auctionTable;
@@ -58,16 +42,23 @@ public class AuctionListController {
     @FXML private TableColumn<AuctionSummaryDTO, Number> currentPriceColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> statusColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> endTimeColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> startTimeColumn;
     @FXML private Label messageLabel;
 
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
+
     @FXML private TextField searchAuctionField;
-    @FXML private TextField pageSizeField; // Ô tự điền kích thước trang cạnh nút Làm mới
+    @FXML private TextField pageSizeField;
     @FXML private Button prevPageButton;
     @FXML private Button nextPageButton;
     @FXML private Label pageInfoLabel;
 
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
+
         if (rootPane != null) {
             rootPane.getStylesheets().clear();
             String initialPath = SceneNavigator.isAppDarkMode
@@ -85,26 +76,23 @@ public class AuctionListController {
         setupTableColumns();
         auctionTable.setItems(paginatedAuctions);
 
-        // Lắp bộ lắng nghe thay đổi số lượng dòng/trang thời gian thực
         if (pageSizeField != null) {
             pageSizeField.textProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal == null || newVal.trim().isEmpty()) {
-                    return; // Người dùng đang xóa để gõ số mới, không xử lý ngay tránh chia cho 0
+                    return;
                 }
                 try {
                     int parsedSize = Integer.parseInt(newVal.trim());
                     if (parsedSize > 0) {
                         this.auctionPageSize = parsedSize;
-                        this.currentAuctionPage = 1; // Đổi cấu hình thì ép về trang đầu
+                        this.currentAuctionPage = 1;
                         applySearchFilterAndPagination();
                     }
                 } catch (NumberFormatException e) {
-                    // Ký tự lỗi thì bỏ qua
                 }
             });
         }
 
-        // Lắp bộ lắng nghe tìm kiếm thời gian thực
         if (searchAuctionField != null) {
             searchAuctionField.textProperty().addListener((obs, oldVal, newVal) -> {
                 currentAuctionPage = 1;
@@ -115,7 +103,6 @@ public class AuctionListController {
         loadActiveAuctions();
         updateTablePlaceholder(SceneNavigator.isAppDarkMode);
 
-        // Khởi động Timeline refresh tự động sau mỗi 4 giây
         autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(4), event -> {
             if (auctionTable.getScene() == null || auctionTable.getScene().getWindow() == null) {
                 autoRefreshTimeline.stop();
@@ -133,14 +120,12 @@ public class AuctionListController {
     private void applySearchFilterAndPagination() {
         if (filteredAuctions == null) return;
 
-        // Xóa trạng thái chọn dòng cũ để TableView nạp trang mới mượt mà
         if (auctionTable != null) {
             auctionTable.getSelectionModel().clearSelection();
         }
 
         String keyword = (searchAuctionField != null) ? searchAuctionField.getText().trim().toLowerCase() : "";
 
-        // Lọc dữ liệu theo từ khóa
         filteredAuctions.setPredicate(auction -> {
             if (keyword.isEmpty()) return true;
             boolean matchesName = auction.getItemName() != null && auction.getItemName().toLowerCase().contains(keyword);
@@ -227,10 +212,8 @@ public class AuctionListController {
         showMessage("Đã lọc danh sách theo từ khóa tìm kiếm.");
     }
 
-    // NÚT LÀM MỚI CHUẨN ĐÚNG Ý BẠN: ĐÓNG VAI TRÒ "RELOAD BẢNG"
     @FXML
     private void handleRefresh() {
-        // Cập nhật lại số lượng dòng từ ô nhập text hiện tại (nếu hợp lệ), giữ nguyên cấu hình người dùng gõ
         if (pageSizeField != null && !pageSizeField.getText().trim().isEmpty()) {
             try {
                 int parsedSize = Integer.parseInt(pageSizeField.getText().trim());
@@ -238,11 +221,9 @@ public class AuctionListController {
                     this.auctionPageSize = parsedSize;
                 }
             } catch (NumberFormatException e) {
-                // Giữ nguyên kích thước cũ nếu trong ô có ký tự lạ
             }
         }
 
-        // Kéo lại mảng dữ liệu mới từ Server mà không phá hủy bộ lọc tìm kiếm hiện tại
         loadActiveAuctions();
     }
 
@@ -258,7 +239,6 @@ public class AuctionListController {
         List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
         allServerAuctions.setAll(auctions);
 
-        // Chạy lại hàm bóc tách để cập nhật lên giao diện bảng tức thì
         applySearchFilterAndPagination();
 
         if (allServerAuctions.isEmpty()) {
@@ -362,6 +342,24 @@ public class AuctionListController {
                 }
             }
         });
+
+        if (startTimeColumn != null) {
+            startTimeColumn.setCellValueFactory(cellData -> {
+                if (cellData.getValue().getStartTime() == null) return new SimpleStringProperty("");
+                return new SimpleStringProperty(cellData.getValue().getStartTime().format(vnFormatter));
+            });
+            startTimeColumn.setCellFactory(column -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) setText(null);
+                    else {
+                        setText(item);
+                        setStyle("-fx-alignment: center;");
+                    }
+                }
+            });
+        }
     }
 
     @FXML

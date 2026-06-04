@@ -733,7 +733,15 @@ class AuctionServiceTest {
         @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
         @Override public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
         @Override public java.sql.Statement createStatement() throws SQLException { return null; }
-        @Override public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException {
+            java.sql.PreparedStatement stmt = mock(java.sql.PreparedStatement.class);
+            java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
+            when(rs.next()).thenReturn(true, false);
+            when(rs.getDouble("frozen_balance")).thenReturn(99999999.0);
+            when(rs.getDouble("available_balance")).thenReturn(99999999.0);
+            when(stmt.executeQuery()).thenReturn(rs);
+            return stmt;
+        }
         @Override public java.sql.CallableStatement prepareCall(String sql) throws SQLException { return null; }
         @Override public String nativeSQL(String sql) throws SQLException { return null; }
         @Override public java.sql.DatabaseMetaData getMetaData() throws SQLException { return null; }

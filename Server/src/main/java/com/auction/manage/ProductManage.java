@@ -11,17 +11,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Bộ quản lý danh mục sản phẩm/vật phẩm đấu giá trên bộ đệm RAM.
+ */
 public class ProductManage {
     private static final Logger log = LoggerFactory.getLogger(ProductManage.class);
     private static volatile ProductManage instance;
 
-    // 1. CHUYỂN ĐỔI: Sử dụng ConcurrentHashMap để an toàn đa luồng tối đa, không khóa chết cả class
     private final Map<String, Item> items = new ConcurrentHashMap<>();
 
-    // 🔥 THÊM MỚI: Bộ quản lý thời gian tương tác để phục vụ trục xuất sản phẩm rác khỏi RAM
     private final Map<String, LocalDateTime> lastAccessedTime = new ConcurrentHashMap<>();
 
-    // Cấu hình: Sau 15 phút không ai xem hoặc tương tác, sản phẩm tự động bị xóa khỏi RAM
     private static final long MAX_IDLE_MINUTES = 15;
 
     private ProductManage(){}
@@ -39,14 +39,12 @@ public class ProductManage {
         return temp;
     }
 
-    // Gỡ bỏ synchronized hàm vì ConcurrentHashMap đã lo giải pháp thread-safe nội bộ
     public void addProduct(Item item) {
         if (item == null) {
             log.warn("Lỗi: Sản phẩm không được null");
             return;
         }
 
-        // Chống race condition ghi đè bằng hàm nguyên thủy của ConcurrentHashMap
         Item existing = items.putIfAbsent(item.getId(), item);
         if (existing != null) {
             log.warn("Lỗi: Sản phẩm với ID '{}' đã tồn tại", item.getId());
@@ -64,7 +62,6 @@ public class ProductManage {
 
         Item item = items.get(productId);
         if (item != null) {
-            // 🔥 THÊM MỚI: Đánh dấu user vừa truy cập, gia hạn thời gian sống trên RAM cho sản phẩm
             lastAccessedTime.put(productId, LocalDateTime.now());
         }
         return item;
@@ -80,7 +77,7 @@ public class ProductManage {
 
         updatedItem.setId(productId);
         items.put(productId, updatedItem);
-        lastAccessedTime.put(productId, LocalDateTime.now()); // Gia hạn thời gian sống
+        lastAccessedTime.put(productId, LocalDateTime.now());
         return true;
     }
 
@@ -89,7 +86,7 @@ public class ProductManage {
 
         Item removed = items.remove(productId);
         if (removed != null) {
-            lastAccessedTime.remove(productId); // Xóa vết thời gian
+            lastAccessedTime.remove(productId);
             log.debug("Xóa sản phẩm thành công khỏi RAM: {}", productId);
             return true;
         }
@@ -97,7 +94,6 @@ public class ProductManage {
     }
 
     public List<Item> getAllProducts() {
-        // Trả về bản sao an toàn tại thời điểm gọi, không lo ConcurrentModificationException
         return new ArrayList<>(items.values());
     }
 
@@ -117,7 +113,6 @@ public class ProductManage {
             if (lastAccess != null) {
                 long idleMinutes = Duration.between(lastAccess, now).toMinutes();
 
-                // Nếu sản phẩm nằm im lìm trên RAM quá 15 phút không ai ngó ngàng
                 if (idleMinutes >= MAX_IDLE_MINUTES) {
                     log.debug("[Cache Item] 🧹 Trục xuất sản phẩm idle khỏi RAM để giải phóng bộ nhớ: {}", productId);
                     items.remove(productId);

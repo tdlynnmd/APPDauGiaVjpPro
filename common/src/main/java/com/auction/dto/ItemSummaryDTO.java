@@ -1,12 +1,14 @@
 package com.auction.dto;
 
-//Dành cho hiển thị list Item mà Seller bán
+/**
+ * DTO tóm tắt thông tin cơ bản của một sản phẩm.
+ */
 public class ItemSummaryDTO {
     private String itemId;
     private String itemName;
     private double startingPrice;
-    private String itemType; // "ART", "ELECTRONICS", "VEHICLE"
-    private String status;   // "ACTIVE", "SOLD", "REMOVED"
+    private String itemType;
+    private String status;
 
     public ItemSummaryDTO(String itemId, String itemName, double startingPrice, String itemType, String status) {
         this.itemId = itemId;
@@ -16,7 +18,6 @@ public class ItemSummaryDTO {
         this.status = status;
     }
 
-    // Các Getters...
     public String getItemId() { return itemId; }
     public String getItemName() { return itemName; }
     public double getStartingPrice() { return startingPrice; }

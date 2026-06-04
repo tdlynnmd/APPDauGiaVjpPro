@@ -25,16 +25,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * AccountController là controller cho màn xem thông tin tài khoản hiện tại.
- *
- * Liên hệ logic có sẵn:
- * - Client gọi ClientUserApi.getUserProfile().
- * - ClientUserApi gửi action GET_USER_PROFILE qua socket.
- * - Server RequestDispatcher lấy userId từ ClientSession phía server.
- * - UserController/UserService trả về UserDTO theo đúng role hiện tại.
- *
- * Controller này KHÔNG tự xử lý nghiệp vụ account.
- * Server vẫn là nơi xác thực session, phân quyền và lấy dữ liệu thật.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích AccountController xử lý giao diện Client JavaFX.
  */
 public class AccountController {
     private final ClientUserApi userApi = new ClientUserApi();
@@ -42,12 +33,6 @@ public class AccountController {
 
     private final NumberFormat moneyFormat =
             NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-
-    // =========================================================================
-    // FXML CONTRACT
-    // Bạn làm FXML cần gắn các fx:id này nếu muốn hiển thị đủ dữ liệu.
-    // Field nào chưa có trong FXML thì controller bỏ qua, không làm crash màn hình.
-    // =========================================================================
 
     @FXML private Parent rootContainer;
 
@@ -59,21 +44,21 @@ public class AccountController {
     @FXML private Label roleLabel;
     @FXML private Label statusLabel;
 
-    // Khu vực ví dùng cho BIDDER/SELLER. ADMIN sẽ bị ẩn.
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
+
     @FXML private Node walletSection;
     @FXML private Label availableBalanceLabel;
     @FXML private Label frozenBalanceLabel;
     @FXML private Label totalBalanceLabel;
 
-    // Khu vực riêng của BIDDER.
     @FXML private Node bidderSection;
     @FXML private Label joinedAuctionCountLabel;
 
-    // Khu vực riêng của SELLER.
     @FXML private Node sellerSection;
     @FXML private Label ratingLabel;
 
-    // Khu vực riêng của ADMIN.
     @FXML private Node adminSection;
 
     @FXML private Button refreshButton;
@@ -89,6 +74,7 @@ public class AccountController {
      */
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
 
         if (!ClientSession.isLoggedIn()) {

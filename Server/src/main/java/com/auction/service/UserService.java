@@ -35,9 +35,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Dịch vụ quản lý thông tin tài khoản người dùng và thực thi các giao dịch ví điện tử.
+ */
 public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    private final UserDAO userDAO = new UserDAOImpl(); // Đổi sang Interface UserDAO cho chuẩn Loose Coupling
+    private final UserDAO userDAO = new UserDAOImpl();
     private final LogDAO logDAO = new LogDAOImpl();
     private final UserManage userManage = UserManage.getInstance();
     private final ConnectionManage connectionManage = ConnectionManage.getInstance();
@@ -49,13 +52,6 @@ public class UserService {
                 return thread;
             });
 
-    // =========================================================================
-    // 1. PHÂN HỆ NGHIỆP VỤ TÀI CHÍNH (ĐỒNG BỘ RAM & DATABASE TUYỆT ĐỐI)
-    // =========================================================================
-
-    /**
-     * NẠP TIỀN VÀO TÀI KHOẢN
-     */
     public void depositMoney(String bidderId, double amount) {
         if (bidderId == null || bidderId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Target identification handle is required.");
@@ -83,9 +79,6 @@ public class UserService {
         }
     }
 
-    /**
-     * RÚT TIỀN TỪ TÀI KHOẢN
-     */
     public void withdrawMoney(String bidderId, double amount) {
         if (bidderId == null || bidderId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Target identity handle is required.");
@@ -111,10 +104,9 @@ public class UserService {
                 }
             }
 
-            // 🔥 SỬA: Mở kết nối try-with-resources chủ động ở tầng Service và truyền conn vào DAO
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
 
-                boolean isDeductDB = userDAO.withdrawAvailableBalance(conn, bidderId, amount); // Truyền conn đã mở
+                boolean isDeductDB = userDAO.withdrawAvailableBalance(conn, bidderId, amount);
                 if (!isDeductDB) {
                     throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Balance debit extraction logic rejected at atomic transaction scope.");
                 }
@@ -129,20 +121,12 @@ public class UserService {
         }
     }
 
-    // =========================================================================
-    // 2. PHÂN HỆ QUẢN LÝ CỦA ADMIN
-    // =========================================================================
-
-    /**
-     * TÍNH NĂNG MÀN HÌNH QUẢN LÝ CỦA ADMIN
-     */
     public PageDTO<UserDTO> getAdminUserDashboard(int page, int pageSize) {
         if (page <= 0 || pageSize <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Frame page metrics parameters must be positive.");
         }
 
         int offset = (page - 1) * pageSize;
-        // Luồng đọc danh sách (SELECT) độc lập, giữ nguyên cấu trúc gọi an toàn
         List<User> dbUsers = userDAO.findPaginated(pageSize, offset);
         List<UserDTO> dtoDashboardList = new ArrayList<>();
 
@@ -154,16 +138,12 @@ public class UserService {
                 dtoDashboardList.add(dto);
             }
         }
-        // Đưa logic tính toán phân trang từ Controller về đây
         long totalUsers = userDAO.countTotalUsers();
         int totalPages = (int) Math.ceil((double) totalUsers / pageSize);
 
         return new PageDTO<>(dtoDashboardList, page, totalPages, totalUsers);
     }
 
-    /**
-     * LẤY THÔNG TIN PROFILE DƯỚI DẠNG DTO ĐA HÌNH
-     */
     public UserDTO getUserProfile(String userId) {
         User user = getOrLoadUser(userId);
         if (user == null) {
@@ -193,9 +173,6 @@ public class UserService {
         };
     }
 
-    /**
-     * TÍNH NĂNG KHÓA TÀI KHOẢN TỨC THÌ CỦA ADMIN (Đã tối ưu Polite Close)
-     */
     public void lockUserAccount(String adminId, String userId, UserStatus targetStatus) {
         lockUserAccount(adminId, userId, targetStatus, null);
     }
@@ -213,7 +190,6 @@ public class UserService {
         final String cleanReason = normalizeAdminReason(reason);
 
         synchronized (cleanUserId.intern()) {
-            // [ĐOẠN CODE TRANSACTION DATABASE - GIỮ NGUYÊN HOÀN TOÀN CỦA BẠN]
             Connection conn = null;
             try {
                 conn = com.auction.config.DatabaseConnection.getConnection();
@@ -254,40 +230,30 @@ public class UserService {
                 }
             }
 
-            // 3. Đồng bộ hóa lên đối tượng trạng thái RAM live sau khi Transaction DB hạ cánh an toàn
             User ramUser = userManage.getUser(cleanUserId);
             if (ramUser != null) {
                 ramUser.setStatus(targetStatus);
             }
 
-            // =========================================================================
-            // 🔥 TỐI ƯU THEO CÁCH 2: PHỐI HỢP CLIENT - SERVER (POLITE CLOSE)
-            // =========================================================================
             if (connectionManage.isUserOnline(cleanUserId)) {
 
-                // Bước 1: Gửi thông điệp cảnh báo cho Client biết.
-                // Client nhận được chuỗi này phải hiện Dialog thông báo lập tức và tự đóng socket phía nó.
                 connectionManage.sendMessageToUser(cleanUserId,
                         buildForceLogoutMessage(cleanUserId, cleanReason, targetStatus));
 
-                // Bước 2: Tạo một luồng chạy ẩn, hoãn lại 300ms để bọc hậu (Chốt chặn tối cao)
-                // Việc hoãn ẩn này giúp hàm thoát ra ngay lập tức, Admin không bị treo màn hình đợi.
                 FORCE_LOGOUT_SCHEDULER.schedule(() -> {
                     try {
-                        // Nếu sau 300ms mà Client vẫn chưa tự ngắt kết nối (hoặc cố tình lỳ ra)
                         if (connectionManage.isUserOnline(cleanUserId)) {
                             log.warn("[Security Guard] 🚨 Client không tự đóng, tiến hành cưỡng chế rút phích cắm: {}", cleanUserId);
                             connectionManage.forceDisconnectUser(cleanUserId);
                         }
 
-                        // Dọn dẹp dứt điểm bộ nhớ RAM Cache của User này
                         userManage.deleteUser(cleanUserId);
                         log.info("[Security Guard] 🎯 Đã dọn dẹp sạch sẽ session và bộ nhớ của user bị ban: {}", cleanUserId);
 
                     } catch (Exception e) {
                         log.error("[Security Guard] Lỗi khi thực thi bọc hậu ngắt socket: {}", e.getMessage(), e);
                     }
-                }, 300, TimeUnit.MILLISECONDS); // 300ms là quá đủ cho gói tin TCP truyền đi thành công
+                }, 300, TimeUnit.MILLISECONDS);
             }
         }
     }
@@ -313,9 +279,6 @@ public class UserService {
         return gson.toJson(response);
     }
 
-    /**
-     * Quản lý cơ chế nạp bộ đệm (Cache-Aside Pattern) cho User
-     */
     private User getOrLoadUser(String userId) {
         User user = userManage.getUser(userId);
         if (user == null) {
@@ -327,9 +290,6 @@ public class UserService {
         return user;
     }
 
-    /**
-     * Cập nhật thông tin Profile cá nhân (username, email)
-     */
     public UserDTO updateProfile(String userId, UpdateProfileRequest request) {
         if (request == null) {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Request content must not be null.");
@@ -344,7 +304,6 @@ public class UserService {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Email cannot be empty.");
         }
 
-        // Ràng buộc tính duy nhất (Uniqueness constraints)
         Optional<User> existingByUsername = userDAO.findByUsername(username);
         if (existingByUsername.isPresent() && !existingByUsername.get().getId().equals(userId)) {
             throw new AuthenticationException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
@@ -360,7 +319,6 @@ public class UserService {
             throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        // Khóa đồng bộ mịn trên chính ID của User để an toàn đa luồng trên RAM
         synchronized (userId.intern()) {
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                 conn.setAutoCommit(false);
@@ -373,7 +331,6 @@ public class UserService {
                 throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database transaction failed at updateProfile: " + e.getMessage());
             }
 
-            // Đồng bộ RAM
             user.setUsername(username);
             user.setEmail(email);
 
@@ -389,9 +346,6 @@ public class UserService {
         return getUserProfile(userId);
     }
 
-    /**
-     * Cập nhật mật khẩu an toàn và hủy bỏ các kết nối socket khác
-     */
     public void updatePassword(String userId, UpdatePasswordRequest request, ClientSession currentSession) {
         if (request == null) {
             throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Request content must not be null.");
@@ -409,17 +363,14 @@ public class UserService {
         }
 
         synchronized (userId.intern()) {
-            // Xác thực mật khẩu cũ
             if (!user.checkPassword(oldPassword)) {
                 throw new AuthenticationException(AuthErrorCode.OLD_PASSWORD_INCORRECT);
             }
 
-            // Kiểm tra độ dài mật khẩu mới
             if (newPassword.length() < 8) {
                 throw new AuthenticationException(AuthErrorCode.PASSWORD_TOO_SHORT);
             }
 
-            // Mã hóa mật khẩu mới
             String hashedPassword = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, newPassword.toCharArray());
 
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
@@ -433,7 +384,6 @@ public class UserService {
                 throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database transaction failed at updatePassword: " + e.getMessage());
             }
 
-            // Đồng bộ RAM
             user.setPassword(hashedPassword);
             User ramUser = userManage.getUser(userId);
             if (ramUser != null) {
@@ -442,7 +392,6 @@ public class UserService {
                 }
             }
 
-            // Cưỡng chế đăng xuất tất cả thiết bị khác của người dùng này ngoại trừ thiết bị hiện tại
             ConnectionManage.getInstance().forceDisconnectOtherDevices(userId, currentSession);
         }
     }

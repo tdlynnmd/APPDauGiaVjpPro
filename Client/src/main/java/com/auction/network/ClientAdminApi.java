@@ -1,10 +1,12 @@
 package com.auction.network;
 
 import com.auction.dto.ActionLogDTO;
+import com.auction.dto.AuctionSummaryDTO;
 import com.auction.dto.CancelAuctionRequest;
 import com.auction.dto.DeleteItemRequest;
 import com.auction.dto.GetAuditLogsRequest;
 import com.auction.dto.GetUserDashboardRequest;
+import com.auction.dto.ItemSummaryDTO;
 import com.auction.dto.LockUserAccountRequest;
 import com.auction.dto.PageDTO;
 import com.auction.dto.SocketRequest;
@@ -22,18 +24,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 /**
- * ClientAdminApi la lop API phia Client cho nhom chuc nang Admin.
- *
- * Vai tro chinh:
- * - Tao dung request DTO cho cac action quan tri.
- * - Dong goi DTO vao SocketRequest.
- * - Gui request qua ClientSocketService, khong doc socket truc tiep.
- * - Parse SocketResponse.body thanh PageDTO<UserDTO> hoac PageDTO<ActionLogDTO>.
- *
- * Luu y:
- * - Class nay khong xu ly UI.
- * - Class nay khong tu kiem tra quyen Admin.
- * - Server AuthorizationService moi la noi quyet dinh user hien tai co phai Admin hay khong.
+ * API Client xử lý các lệnh điều hành, kiểm duyệt dành cho Quản trị viên (Admin).
  */
 public class ClientAdminApi {
     private final Gson gson = GsonProvider.getGson();
@@ -75,6 +66,30 @@ public class ClientAdminApi {
     public SocketResponse getLogs(int page, int pageSize) {
         GetAuditLogsRequest request = new GetAuditLogsRequest(page, pageSize);
         return sendRequest(ActionType.CMD_ADMIN_GET_LOGS, request);
+    }
+
+    /**
+     * CMD_ADMIN_GET_ITEMS
+     *
+     * Lay danh sach toan bo items cho Admin Dashboard.
+     * Server tra ve SocketResponse.body = PageDTO<ItemSummaryDTO>.
+     * Tai su dung GetUserDashboardRequest vi chi co page + pageSize.
+     */
+    public SocketResponse getItems(int page, int pageSize) {
+        GetUserDashboardRequest request = new GetUserDashboardRequest(page, pageSize);
+        return sendRequest(ActionType.CMD_ADMIN_GET_ITEMS, request);
+    }
+
+    /**
+     * CMD_ADMIN_GET_AUCTIONS
+     *
+     * Lay danh sach toan bo auctions cho Admin Dashboard.
+     * Server tra ve SocketResponse.body = PageDTO<AuctionSummaryDTO>.
+     * Tai su dung GetUserDashboardRequest vi chi co page + pageSize.
+     */
+    public SocketResponse getAuctions(int page, int pageSize) {
+        GetUserDashboardRequest request = new GetUserDashboardRequest(page, pageSize);
+        return sendRequest(ActionType.CMD_ADMIN_GET_AUCTIONS, request);
     }
 
     /**
@@ -135,6 +150,35 @@ public class ClientAdminApi {
         }
 
         Type pageType = new TypeToken<PageDTO<ActionLogDTO>>() {}.getType();
+        return gson.fromJson(response.getBody(), pageType);
+    }
+
+    /**
+     * Parse response.body cua CMD_ADMIN_GET_ITEMS.
+     *
+     * Bam sat y het parseUserPage nhung dung TypeToken<PageDTO<ItemSummaryDTO>>.
+     */
+    public PageDTO<ItemSummaryDTO> parseItemPage(SocketResponse response) {
+        if (hasNoUsableBody(response)) {
+            return new PageDTO<>(List.of(), 1, 0, 0);
+        }
+
+        Type pageType = new TypeToken<PageDTO<ItemSummaryDTO>>() {}.getType();
+        return gson.fromJson(response.getBody(), pageType);
+    }
+
+    /**
+     * Parse response.body cua CMD_ADMIN_GET_AUCTIONS.
+     *
+     * Bam sat y het parseLogPage nhung dung TypeToken<PageDTO<AuctionSummaryDTO>>.
+     * AuctionSummaryDTO co LocalDateTime, nen dung GsonProvider de parse dung.
+     */
+    public PageDTO<AuctionSummaryDTO> parseAuctionPage(SocketResponse response) {
+        if (hasNoUsableBody(response)) {
+            return new PageDTO<>(List.of(), 1, 0, 0);
+        }
+
+        Type pageType = new TypeToken<PageDTO<AuctionSummaryDTO>>() {}.getType();
         return gson.fromJson(response.getBody(), pageType);
     }
 

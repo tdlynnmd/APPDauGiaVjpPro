@@ -5,17 +5,7 @@ import com.auction.utils.GsonProvider;
 import com.google.gson.JsonElement;
 
 /**
- * SocketResponse là phong bì chung cho mọi message Server gửi về Client.
- *
- * Có 2 loại:
- * - RESPONSE: phản hồi trực tiếp cho một SocketRequest.
- * - EVENT: message realtime do Server tự đẩy, ví dụ BID_UPDATED, AUCTION_ENDED.
- *
- * body là dữ liệu thật sự của từng action.
- * Ví dụ:
- * - LOGIN thành công: body là LoginResultDTO hoặc sau này là LoginResultDTO.
- * - GET_AUCTION_DETAIL: body là AuctionDetailDTO.
- * - LOGOUT: body có thể null.
+ * DTO giao thức mạng bọc dữ liệu phản hồi (Response) hoặc sự kiện (Event) truyền từ Server về Client.
  */
 public class SocketResponse {
     public static final String TYPE_RESPONSE = "RESPONSE";
@@ -31,9 +21,6 @@ public class SocketResponse {
 
     private static final com.google.gson.Gson gson = GsonProvider.getGson();
 
-    /**
-     * Constructor rỗng cần cho Gson.
-     */
     public SocketResponse() {
     }
 
@@ -49,9 +36,6 @@ public class SocketResponse {
         this.body = body;
     }
 
-    /**
-     * Tạo response thành công cho một request cụ thể.
-     */
     public static SocketResponse success(String requestId, ActionType action, String message, Object body) {
         return new SocketResponse(
                 requestId,
@@ -64,9 +48,6 @@ public class SocketResponse {
         );
     }
 
-    /**
-     * Tạo response thất bại cho một request cụ thể.
-     */
     public static SocketResponse failure(String requestId, ActionType action, String message, String errorCode) {
         return new SocketResponse(
                 requestId,
@@ -79,10 +60,6 @@ public class SocketResponse {
         );
     }
 
-    /**
-     * Tạo realtime event do Server tự gửi.
-     * Event không thuộc request cụ thể nào nên requestId = null.
-     */
     public static SocketResponse event(ActionType action, String message, Object body) {
         return new SocketResponse(
                 null,

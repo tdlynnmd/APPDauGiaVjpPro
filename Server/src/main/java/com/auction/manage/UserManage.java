@@ -11,10 +11,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+/**
+ * Bộ quản lý thông tin tài khoản người dùng trên bộ đệm RAM để tối ưu hóa truy xuất.
+ */
 public class UserManage {
     private static volatile UserManage instance;
 
-    // 🔥 SỬA ĐỒNG BỘ: Khởi tạo đúng ConcurrentHashMap để an toàn đa luồng tối đa cho mọi luồng đọc/ghi
     private final Map<String, User> users = new ConcurrentHashMap<>();
     private final Map<String, String> usernameToIdMap = new ConcurrentHashMap<>();
     private final Map<String, String> emailToIdMap = new ConcurrentHashMap<>();
@@ -45,13 +47,11 @@ public class UserManage {
             throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        // Kiểm tra trùng lặp thông tin an toàn qua các map phụ
         this.isUsernameExists(user.getUsername());
         this.isEmailExists(user.getEmail());
 
         String id = user.getId();
 
-        // Cất vào kho RAM đồng bộ
         users.put(id, user);
         usernameToIdMap.put(user.getUsername(), id);
         emailToIdMap.put(user.getEmail(), id);
@@ -69,7 +69,6 @@ public class UserManage {
 
         this.isUserIdInvalid(userId);
 
-        // 🔥 TỐI ƯU ĐA LUỒNG: Khóa intern ID để tránh nghẽn luồng toàn hệ thống, ai sửa người nấy xếp hàng
         synchronized (userId.intern()) {
             User oldUser = users.get(userId);
 
@@ -78,7 +77,6 @@ public class UserManage {
             String newUsername = updatedUser.getUsername();
             String newEmail = updatedUser.getEmail();
 
-            // Validate trùng lặp nếu có sự thay đổi thông tin định danh
             if (!newUsername.equals(oldUsername)) {
                 this.isUsernameExists(newUsername);
             }
@@ -86,7 +84,6 @@ public class UserManage {
                 this.isEmailExists(newEmail);
             }
 
-            // 🔥 BẢO VỆ AN TOÀN MAPS: Chỉ cập nhật các map ánh xạ khi toàn bộ quá trình validate đã lọt qua an toàn
             if (!newUsername.equals(oldUsername)) {
                 usernameToIdMap.remove(oldUsername);
                 usernameToIdMap.put(newUsername, userId);
@@ -96,12 +93,9 @@ public class UserManage {
                 emailToIdMap.put(newEmail, userId);
             }
 
-            // 🔥 SỬA LỖI THAM CHIẾU: Không dùng lệnh users.put(userId, updatedUser) tạo Object mới gây lệch RAM.
-            // Ta cập nhật trực tiếp thông tin lên chính Object 'oldUser' đang sống.
             oldUser.setUsername(newUsername);
             oldUser.setEmail(newEmail);
-            oldUser.setPassword(updatedUser.getPassword()); // Cập nhật mật khẩu nếu có
-            // Nếu có các trường ví tiền, thông tin cá nhân khác, gọi Setter ở đây...
+            oldUser.setPassword(updatedUser.getPassword());
 
             System.out.println("[UserManage] 🔄 Cập nhật thông tin người dùng thành công: " + newUsername);
             return true;
@@ -121,7 +115,6 @@ public class UserManage {
             String username = user.getUsername();
             String email = user.getEmail();
 
-            // Trục xuất sạch sẽ khỏi cả 3 map để giải phóng bộ nhớ RAM triệt để
             users.remove(userId);
             usernameToIdMap.remove(username);
             emailToIdMap.remove(email);
@@ -130,8 +123,6 @@ public class UserManage {
             return true;
         }
     }
-
-    // --- Các hàm đọc không sửa đổi: Tận dụng cơ chế đọc siêu tốc, không block luồng của ConcurrentHashMap ---
 
     public User getUser(String userId) {
         return userId != null ? users.get(userId) : null;
@@ -160,7 +151,7 @@ public class UserManage {
     public List<User> getUsersByRole(UserRole role) {
         if (role == null) return new ArrayList<>();
         return users.values().stream()
-                .filter(user -> role.name().equals(user.getRole())) // Đồng bộ so sánh theo tên enum
+                .filter(user -> role.name().equals(user.getRole()))
                 .collect(Collectors.toList());
     }
 

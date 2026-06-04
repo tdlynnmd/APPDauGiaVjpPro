@@ -1,16 +1,12 @@
 package com.auction.dto;
 
 /**
- * Chua du lieu Client gui len khi Seller/Admin muon tao phien dau gia
+ * DTO gửi yêu cầu tạo mới một phiên đấu giá.
  */
 public class CreateAuctionRequest {
-    /**
-     Ko nen de Client gui sellerId
-     Server se lay sellerId tu ClientSession sau khi login
-     Nhu vay nguoi dung ko the gia mao Id cua nguoi khac
-     */
+    
     private String itemId;
-    private double stepPrice;       // Buoc gia toi thieu moi lan Bid
+    private double stepPrice;
     private String startTime;
     private String endTime;
     public CreateAuctionRequest(){};

@@ -6,14 +6,16 @@ import com.auction.models.User.User;
 
 import java.time.LocalDateTime;
 
+/**
+ * Lớp biểu diễn thực thể BidTransaction trong hệ thống.
+ */
 public class BidTransaction extends Entity {
-    private String bidderId;        // ← Foreign Key
-    private String auctionId;       // ← Foreign Key (hiện tại thiếu)
+    private String bidderId;
+    private String auctionId;
     private double amount;
     private LocalDateTime time;
-    private BidStatus status;       // NEW: ACCEPTED, REJECTED, REFUNDED
+    private BidStatus status;
 
-    // ✅ Constructor có ID để load từ DB
     public BidTransaction(String id, String bidderId, String auctionId,
                           double amount, LocalDateTime time, BidStatus status) {
         super(id);

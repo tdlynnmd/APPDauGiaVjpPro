@@ -23,18 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * ClientSocketService la tang doc/ghi socket trung tam cua Client.
- *
- * Nhiem vu chinh:
- * - Gui SocketRequest sang Server.
- * - Chay mot thread rieng de doc moi message Server gui ve.
- * - Phan biet SocketResponse type = RESPONSE va type = EVENT.
- * - RESPONSE: tra ve dung request dang cho thong qua requestId.
- * - EVENT: gui cho cac RealtimeUpdateListener dang dang ky.
- *
- * Ly do can class nay:
- * - Neu ClientAuthApi/ClientAuctionApi tu reader.readLine(), realtime EVENT co the bi doc nham.
- * - Khi gom doc socket ve mot noi, Client co the xu ly request-response va realtime cung luc.
+ * Dịch vụ xử lý đọc/ghi Socket TCP trung tâm, định tuyến gói tin phản hồi (Response) và sự kiện thời gian thực (Event) phía Client.
  */
 public class ClientSocketService {
     private static final int REQUEST_TIMEOUT_SECONDS = 15;
@@ -45,24 +34,8 @@ public class ClientSocketService {
     private final PrintWriter writer;
     private final BufferedReader reader;
 
-    /*
-     * Luu cac request da gui nhung chua nhan response.
-     *
-     * Key:
-     * - requestId cua SocketRequest.
-     *
-     * Value:
-     * - PendingRequest chua action va CompletableFuture dang cho response.
-     */
     private final Map<String, PendingRequest> pendingResponses = new ConcurrentHashMap<>();
 
-    /*
-     * Danh sach cac man hinh/class muon nhan realtime event.
-     *
-     * CopyOnWriteArrayList an toan khi:
-     * - Thread doc socket dang duyet danh sach listener.
-     * - JavaFX Controller cung luc add/remove listener.
-     */
     private final CopyOnWriteArrayList<RealtimeUpdateListener> realtimeListeners = new CopyOnWriteArrayList<>();
 
     private volatile boolean running = true;
@@ -113,9 +86,6 @@ public class ClientSocketService {
         if (instance == null) {
             instance = new ClientSocketService();
         }
-        // === CẬP NHẬT MỚI ===
-        // Neu service cu da tung bi dung (do bam nút logout), ta phai tao moi lai hoan toan
-        // de kich hoat lai luong Thread doc socket moi cho phien dang nhap moi.
         else if (!instance.running) {
             System.out.println("[Service] ClientSocketService cu da dung. Dang tai tao phien dich vu moi...");
             instance = new ClientSocketService();
@@ -153,21 +123,12 @@ public class ClientSocketService {
         pendingResponses.put(requestId, pendingRequest);
 
         try {
-            /*
-             * Dua request sang JSON roi gui qua socket.
-             *
-             * synchronized(writer) giup tranh truong hop nhieu thread cung gui request
-             * lam noi dung ghi ra socket bi xen ke.
-             */
+            
             synchronized (writer) {
                 writer.println(gson.toJson(socketRequest));
                 writer.flush();
             }
 
-            /*
-             * Response khong duoc doc truc tiep o day.
-             * No se duoc listenToServer() doc, sau do complete future nay.
-             */
             return pendingRequest.future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         } catch (TimeoutException e) {
@@ -287,10 +248,7 @@ public class ClientSocketService {
                 break;
 
             } catch (Exception e) {
-                /*
-                 * Mot so broadcast cu co the van la chuoi thuong, chua phai JSON SocketResponse.
-                 * Khi parse loi, bo qua message do de thread doc socket khong bi chet.
-                 */
+                
                 System.err.println("[ClientSocketService] Khong parse duoc message tu Server: " + e.getMessage());
             }
         }
@@ -307,7 +265,6 @@ public class ClientSocketService {
             return;
         }
 
-        // Bỏ qua phản hồi PING/PONG để tránh in cảnh báo thiếu RequestId
         if (ActionType.PING.name().equals(response.getAction())) {
             return;
         }
@@ -330,10 +287,6 @@ public class ClientSocketService {
             return;
         }
 
-        /*
-         * Du phong:
-         * Neu response cu chua co type nhung co requestId, van co tra ve cho request dang cho.
-         */
         if (response.getRequestId() != null && !response.getRequestId().trim().isEmpty()) {
             completePendingResponse(response);
         }
@@ -485,7 +438,6 @@ public class ClientSocketService {
                 "CONNECTION_CLOSED"
         );
 
-        // Chuyển hướng người dùng về màn đăng nhập khi phát hiện mất kết nối vật lý với Server
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Mat ket noi");
@@ -531,7 +483,6 @@ public class ClientSocketService {
         try {
             pingScheduler.shutdownNow();
         } catch (Exception e) {
-            // bỏ qua
         }
 
         completeAllPendingResponses(
@@ -540,12 +491,10 @@ public class ClientSocketService {
         );
     }
 
-    // === CẬP NHẬT MỚI ===
-    // Ham don dep triet de, dung luong doc ngam va giai phong thuc the Singleton tren RAM
     public static synchronized void reset() {
         if (instance != null) {
-            instance.stop(); // Goi ham stop co san cua ban de tat flag running va lam sach pending request
-            instance = null; // Ep thuc the cu ve null de xoa khoi bo nho
+            instance.stop();
+            instance = null;
             System.out.println("[Service] Da don dep sach thuc the ClientSocketService.");
         }
     }

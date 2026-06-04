@@ -3,7 +3,7 @@ package com.auction.dto;
 import java.io.Serializable;
 
 /**
- * Request DTO cho thao tác nạp tiền vào tài khoản
+ * DTO gửi yêu cầu nạp tiền vào ví khả dụng.
  */
 public class DepositRequest implements Serializable {
     private static final long serialVersionUID = 1L;

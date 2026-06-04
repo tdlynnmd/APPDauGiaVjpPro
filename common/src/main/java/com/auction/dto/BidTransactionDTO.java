@@ -3,10 +3,13 @@ package com.auction.dto;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * DTO chứa thông tin về một giao dịch đặt giá (bid) của người dùng.
+ */
 public class BidTransactionDTO implements Serializable {
     private String bidId;
     private String auctionId;
-    private String bidderName; // Chứa Tên hoặc Username thay vì ID ẩn danh
+    private String bidderName;
     private double amount;
     private LocalDateTime time;
     private String status;
@@ -72,4 +75,4 @@ public class BidTransactionDTO implements Serializable {
     public double getLiveStepPrice() {
         return liveStepPrice;
     }
-}
+}

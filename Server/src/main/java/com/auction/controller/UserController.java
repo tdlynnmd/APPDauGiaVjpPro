@@ -8,17 +8,11 @@ import com.auction.service.BidTransactionService;
 import com.auction.service.UserService;
 
 /**
- * =========================================================================
- * UserController - Bộ điều phối quản lý người dùng phía Server (Đã tối ưu)
- * =========================================================================
- * Vai trò:
- * - Tiếp nhận DTO sạch và định danh an toàn từ tầng mạng (RequestDispatcher).
- * - Kiểm tra tính hợp lệ cơ bản của dữ liệu đầu vào.
- * - Điều phối xử lý xuống tầng UserService và trả về DTO nguyên bản.
+ * Bộ điều khiển tiếp nhận các yêu cầu liên quan đến tài khoản người dùng và giao dịch ví tiền.
  */
 public class UserController {
-    private final UserService userService = new UserService(); // Chỉ tương tác duy nhất với Service
-    private final BidTransactionService bidTransactionService = new BidTransactionService(); // Dành cho các chức năng liên quan đến giao dịch đấu giá
+    private final UserService userService = new UserService();
+    private final BidTransactionService bidTransactionService = new BidTransactionService();
     /**
      * Lấy thông tin profile của người dùng hiện tại
      */
@@ -62,12 +56,10 @@ public class UserController {
      * Bảo mật: Truyền bidderId sạch đã bốc từ ClientSession ở RequestDispatcher
      */
     public PageDTO<BidTransactionDTO> getMyBidHistory(String bidderId, GetBidderHistoryRequest request) {
-        // 1. Kiểm tra tham số phân trang cơ bản
         if (request.getPage() <= 0 || request.getPageSize() <= 0) {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Page and pageSize must be positive.");
         }
 
-        // 2. Điều phối xuống Service chuyên trách đọc lịch sử cá nhân
         return bidTransactionService.getBidderHistoryPaged(
                 bidderId,
                 request.getPage(),

@@ -3,7 +3,7 @@ package com.auction.dto;
 import java.io.Serializable;
 
 /**
- * Request DTO cho thao tác rút tiền từ tài khoản
+ * DTO gửi yêu cầu rút tiền từ ví điện tử về tài khoản ngân hàng.
  */
 public class WithdrawRequest implements Serializable {
     private static final long serialVersionUID = 1L;

@@ -1,11 +1,4 @@
 package com.auction.network;
-/*
- SocketServer mở cổng Server để Client kết nối vào.
- - Mở cổng server, ví dụ port 5555
- - Chờ client kết nối
- - Mỗi khi có client mới, tạo một ClientHandler riêng
- - Chạy ClientHandler bằng Thread riêng
- */
 
 import com.auction.manage.ConnectionManage;
 
@@ -15,22 +8,22 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Mở cổng Socket TCP để lắng nghe và kết nối các thực thể Client mới vào hệ thống.
+ */
 public class SocketServer {
     private static final int PORT = 5555;
-    private static final int MAX_CLIENTS = 300; // Trần cứng khống chế quy mô hệ thống
+    private static final int MAX_CLIENTS = 300;
 
-    // Sử dụng Virtual Threads (luồng ảo) của Java để xử lý số lượng client không giới hạn, tránh nghẽn thread pool
     private final ExecutorService threadPool = Executors.newVirtualThreadPerTaskExecutor();
     public void start() {
         System.out.println("[Server] Đang chạy tại port " + PORT);
 
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {      // Mở ServerSocket tại port 5555.
-            while (true) {                                              // Từ lúc này, Server sẵn sàng nhận kết nối.
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            while (true) {
                 Socket clientSocket = serverSocket.accept();
 
-                // Kiểm tra nếu số lượng kết nối live hiện tại vượt quá 100
                 if (ConnectionManage.getInstance().getOnlineCount() >= MAX_CLIENTS) {
-                    // Từ chối khéo, đóng socket ngay lập tức để bảo vệ tài nguyên Server
                     clientSocket.close();
                     continue;
                 }
@@ -40,7 +33,6 @@ public class SocketServer {
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
 
-                // Quăng việc cho ThreadPool lo, không tự new Thread nữa
                 threadPool.execute(clientHandler);
             }
         } catch (IOException e) {

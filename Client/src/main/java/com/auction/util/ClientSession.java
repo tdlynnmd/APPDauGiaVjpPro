@@ -1,15 +1,9 @@
 package com.auction.util;
 
-import com.auction.dto.UserDTO;     // Sau khi login thành công, Server trả về thông tin user an toàn dưới dạng UserDTO.
+import com.auction.dto.UserDTO;
 
 /**
- * Lưu trạng thái đăng nhập ở phiá Client
- Sau khi login thành công, Client cần nhớ: token, user hiện tại
- Sau khi LoginController chuyển sang Dashboard, DashboardController cần biết:
- - username là gì
- - role là gì
- - người dùng đã login chưa
- Nếu không có ClientSession, Dashboard không biết ai vừa đăng nhập.
+ * Lớp lưu trữ thông tin trạng thái đăng nhập và các bộ lắng nghe số dư ví phía Client.
  */
 public class ClientSession {
     private static String token;
@@ -18,7 +12,7 @@ public class ClientSession {
     private ClientSession() {
     }
 
-    public static void saveLoginSession(String newToken, UserDTO user) {    //Gọi hàm này khi login thành công.
+    public static void saveLoginSession(String newToken, UserDTO user) {
         token = newToken;
         currentUser = user;
     }
@@ -31,11 +25,11 @@ public class ClientSession {
         return currentUser;
     }
 
-    public static boolean isLoggedIn() {                //Kiểm tra Client đã đăng nhập hay chưa.
+    public static boolean isLoggedIn() {
         return token != null && currentUser != null;
     }
 
-    public static void clear() {            // xóa session
+    public static void clear() {
         token = null;
         currentUser = null;
     }
@@ -44,19 +38,42 @@ public class ClientSession {
         void onBalanceUpdated(double availableBalance, double frozenBalance);
     }
 
-    private static BalanceListener balanceListener;
+    private static final java.util.List<BalanceListener> balanceListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
-    public static synchronized void setBalanceListener(BalanceListener listener) {
-        balanceListener = listener;
+    public static void addBalanceListener(BalanceListener listener) {
+        if (listener != null) {
+            balanceListeners.add(listener);
+        }
     }
 
-    public static synchronized void triggerBalanceUpdate(double available, double frozen) {
+    public static void removeBalanceListener(BalanceListener listener) {
+        if (listener != null) {
+            balanceListeners.remove(listener);
+        }
+    }
+
+    public static void clearBalanceListeners() {
+        balanceListeners.clear();
+    }
+
+    public static synchronized void setBalanceListener(BalanceListener listener) {
+        balanceListeners.clear();
+        if (listener != null) {
+            balanceListeners.add(listener);
+        }
+    }
+
+    public static void triggerBalanceUpdate(double available, double frozen) {
         if (currentUser != null) {
             currentUser.setAvailableBalance(available);
             currentUser.setFrozenBalance(frozen);
         }
-        if (balanceListener != null) {
-            balanceListener.onBalanceUpdated(available, frozen);
+        for (BalanceListener listener : balanceListeners) {
+            try {
+                listener.onBalanceUpdated(available, frozen);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

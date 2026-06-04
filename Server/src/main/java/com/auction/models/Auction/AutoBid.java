@@ -4,6 +4,9 @@ import com.auction.models.Entity.Entity;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * Lớp biểu diễn thực thể AutoBid trong hệ thống.
+ */
 public class AutoBid extends Entity implements Serializable {
     private String userId;
     private String auctionId;
@@ -12,9 +15,6 @@ public class AutoBid extends Entity implements Serializable {
     private boolean isActive;
     private LocalDateTime createdAt;
 
-    /**
-     * Constructor for creating a new AutoBid
-     */
     public AutoBid(String userId, String auctionId, double maxBid, double increment) {
         super();
         this.userId = userId;
@@ -25,9 +25,6 @@ public class AutoBid extends Entity implements Serializable {
         this.createdAt = LocalDateTime.now();
     }
 
-    /**
-     * Constructor for loading from DB (hydration)
-     */
     public AutoBid(String id, String userId, String auctionId, double maxBid, double increment, boolean isActive, LocalDateTime createdAt) {
         super(id);
         this.userId = userId;

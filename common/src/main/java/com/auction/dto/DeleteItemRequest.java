@@ -3,15 +3,14 @@ package com.auction.dto;
 import java.io.Serializable;
 
 /**
- * Request DTO phục vụ luồng cưỡng chế gỡ bỏ/hạ tải vật phẩm vi phạm.
- * Sử dụng linh hoạt cho cả Seller (tự ẩn sản phẩm) và Admin (cưỡng chế xóa).
+ * DTO gửi yêu cầu xóa sản phẩm từ người bán hoặc quản trị viên.
  */
 public class DeleteItemRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String itemId;
     private String reason;
-    private String userId; // 🔥 BỔ SUNG: Định danh người thực hiện hành vi (Admin hoặc Seller)
+    private String userId;
 
     public DeleteItemRequest() {
     }
@@ -28,6 +27,6 @@ public class DeleteItemRequest implements Serializable {
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
 
-    public String getUserId() { return userId; } // 🔥 BỔ SUNG: Getter/Setter để AdminController bốc dữ liệu mạng
+    public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
 }

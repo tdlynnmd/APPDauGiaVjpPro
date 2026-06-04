@@ -1,19 +1,21 @@
 package com.auction.dto;
 
 import com.auction.enums.UserRole;
-import com.auction.enums.UserStatus; // Bổ sung Status
+import com.auction.enums.UserStatus;
 
 import java.io.Serializable;
 
+/**
+ * DTO cơ sở đại diện cho thông tin tài khoản người dùng chung trong hệ thống.
+ */
 public class UserDTO implements Serializable {
-    private static final long serialVersionUID = 1L; // Đảm bảo an toàn khi truyền qua mạng
+    private static final long serialVersionUID = 1L;
 
     private String id;
     private String username;
     private String email;
     private UserRole role;
     private UserStatus status;
-    // Thêm 2 trường này
     private double availableBalance;
     private double frozenBalance;
 
@@ -27,7 +29,6 @@ public class UserDTO implements Serializable {
         this.frozenBalance = frozenBalance;
     }
 
-    // Getters
     public double getAvailableBalance() { return availableBalance; }
     public double getFrozenBalance() { return frozenBalance; }
     public String getId() { return id; }
@@ -36,7 +37,6 @@ public class UserDTO implements Serializable {
     public UserRole getRole() { return role; }
     public UserStatus getStatus() { return status; }
 
-    // Setters
     public void setUsername(String username) { this.username = username; }
     public void setEmail(String email) { this.email = email; }
     public void setRole(UserRole role) { this.role = role; }

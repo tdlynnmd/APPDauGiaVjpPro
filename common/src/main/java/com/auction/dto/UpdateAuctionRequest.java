@@ -2,6 +2,9 @@ package com.auction.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO gửi yêu cầu cập nhật thông tin phiên đấu giá.
+ */
 public class UpdateAuctionRequest {
     private String auctionId;
     private double stepPrice;

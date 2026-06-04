@@ -20,19 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * ClientItemApi la lop API phia Client cho nhom chuc nang quan ly item cua Seller/Admin.
- *
- * Vai tro:
- * - Tao dung request DTO da chot trong common.
- * - Dong goi request vao SocketRequest voi ActionType tuong ung.
- * - Gui request qua ClientSocketService, khong doc socket truc tiep.
- * - Parse SocketResponse.body ve ItemDetailDTO hoac List<ItemSummaryDTO> cho JavaFX Controller dung.
- *
- * Luu y:
- * - Class nay khong xu ly UI.
- * - Class nay khong kiem tra phan quyen.
- * - Class nay khong xu ly nghiep vu item.
- * - Server ItemController/ItemService moi la noi validate va xu ly nghiep vu that.
+ * API Client xử lý kết nối quản lý vật phẩm đấu giá.
  */
 public class ClientItemApi {
     private final Gson gson = GsonProvider.getGson();

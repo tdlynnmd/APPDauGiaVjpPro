@@ -1,7 +1,8 @@
 package com.auction.dto;
 
-
-
+/**
+ * DTO gửi yêu cầu đăng nhập tài khoản.
+ */
 public class LoginRequest{
 
     private String usernameOrEmail;

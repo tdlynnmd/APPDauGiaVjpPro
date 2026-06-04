@@ -8,19 +8,8 @@ import com.auction.service.AuthService;
 import java.util.UUID;
 
 /**
-  AuthController là Controller phía Server cho nhóm chức năng xác thực
- *
- Nhận request đã được RequestDispatcher parse.
- Gọi AuthService để xử lý nghiệp vụ.
- Bọc kết quả thành Response DTO.
- Lỗi nghiệp vụ để RequestDispatcher bắt và bọc vào SocketResponse
-
- Luồng:
- Controller nhận RequestDTO, gọi AuthService, rồi trả dữ liệu thành công
- Controller ko tạo SocketResponse
- RequestDispatcher là nơi chuẩn hóa Response gửi qua socket
+ * Bộ điều khiển tiếp nhận các yêu cầu đăng nhập, đăng ký và xác thực tài khoản.
  */
-
 public class AuthController {
     private final AuthService authService;
     public AuthController(){
@@ -42,11 +31,8 @@ public class AuthController {
     public LoginResultDTO login(LoginRequest request) throws AuthenticationException {
         if (request == null) throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Yêu cầu không hợp lệ.");
 
-        // Gọi service để kiểm tra tên đăng nhập, mật khẩu
         UserDTO user = authService.login(request.getUsernameOrEmail(), request.getPassword());
 
-        // Tạo token tạm thời cho phiên đăng nhập.
-        // Sau này nếu làm bảo mật kỹ hơn có thể tạo TokenService riêng.
         String token = UUID.randomUUID().toString();
         return new LoginResultDTO(token, user);
     }
@@ -73,7 +59,6 @@ public class AuthController {
                 request.getRole()
         );
     }
-
 
     /**
      Xử lý đăng xuất phía Server.

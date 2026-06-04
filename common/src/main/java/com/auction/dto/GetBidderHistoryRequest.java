@@ -1,5 +1,8 @@
 package com.auction.dto;
 
+/**
+ * DTO gửi yêu cầu lấy lịch sử đấu giá cá nhân dưới dạng phân trang.
+ */
 public class GetBidderHistoryRequest {
     private int page;
     private int pageSize;

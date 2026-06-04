@@ -28,23 +28,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * MyBidsController la controller phia Client cho man hinh "My Bids".
- *
- * Chuc nang:
- * - Hien thi lich su cac lan dat gia cua Bidder dang dang nhap.
- * - Ho tro phan trang.
- * - Chi cho BIDDER vao man hinh nay.
- *
- * Lien he voi backend:
- * - Controller goi ClientBidHistoryApi.
- * - ClientBidHistoryApi gui action GET_MY_BID_HISTORY.
- * - Server RequestDispatcher lay bidderId tu ClientSession phia Server.
- * - UserController va BidTransactionService tra ve PageDTO<BidTransactionDTO>.
- *
- * Luu y hien tai:
- * - BidTransactionDTO chua co auctionId/itemName.
- * - Vi vay man hinh nay hien thi duoc amount, time, status.
- * - Neu sau nay muon bam vao dong bid de mo auction detail, can mo rong DTO backend.
+ * Bộ điều khiển (Controller) hoặc lớp tiện ích MyBidsController xử lý giao diện Client JavaFX.
  */
 public class MyBidsController {
     private static final int DEFAULT_PAGE_SIZE = 10;
@@ -64,7 +48,11 @@ public class MyBidsController {
     @FXML private Label messageLabel;
     @FXML private Label totalBidsLabel;
 
-    @FXML private TextField pageSizeField; // Ô tự điền số lượng dòng tối đa/trang
+    @FXML private Label headerAvailableBalance;
+    @FXML private Label headerFrozenBalance;
+    @FXML private Label headerTotalBalance;
+
+    @FXML private TextField pageSizeField;
 
     @FXML private TableView<BidTransactionDTO> myBidsTable;
     @FXML private TableColumn<BidTransactionDTO, String> amountColumn;
@@ -78,9 +66,9 @@ public class MyBidsController {
 
     @FXML
     public void initialize() {
+        com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         applyTheme();
 
-        // Bảo vệ màn hình phía Client tránh sai quyền truy cập
         if (!isBidderSession()) {
             showMessage("Chỉ tài khoản Bidder mới được xem lịch sử đặt giá.");
             SceneNavigator.showDashboard();
@@ -90,27 +78,23 @@ public class MyBidsController {
         initializeDefaults();
         initializeTable();
 
-        // KHẮC PHỤC SỐ 2: Lắp bộ lắng nghe thay đổi số lượng dòng thời gian thực chuẩn SIM
         if (pageSizeField != null) {
             pageSizeField.textProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal == null || newVal.trim().isEmpty()) {
-                    return; // Người dùng đang xóa trắng để gõ, tạm thời bỏ qua chờ gõ xong
+                    return;
                 }
                 try {
                     int parsedSize = Integer.parseInt(newVal.trim());
                     if (parsedSize > 0) {
-                        // Khi đổi số lượng dòng hiển thị, ép hệ thống quay về trang đầu tiên
                         currentPage = 1;
                         loadPage(currentPage);
                     }
                 } catch (NumberFormatException e) {
-                    // Nếu gõ chữ bừa bãi, không xử lý để tránh lỗi hệ thống
                 }
             });
         }
 
         updateTablePlaceholder(SceneNavigator.isAppDarkMode);
-        // Tải trang đầu tiên khi vừa mở màn hình
         loadPage(1);
     }
 
@@ -157,7 +141,7 @@ public class MyBidsController {
                         setText(null);
                     } else {
                         setText(item);
-                        setStyle("-fx-alignment: center-right; -fx-font-weight: bold;"); // Căn phải, chữ đậm
+                        setStyle("-fx-alignment: center-right; -fx-font-weight: bold;");
                     }
                 }
             });
@@ -172,16 +156,15 @@ public class MyBidsController {
                         setText(null);
                     } else {
                         setText(item);
-                        setStyle("-fx-alignment: center; -fx-font-weight: bold;"); // Căn giữa
+                        setStyle("-fx-alignment: center; -fx-font-weight: bold;");
 
-                        // Xóa các class màu cũ tránh ăn nhầm khi cuộn bảng
                         getStyleClass().removeAll("status-running", "status-open", "status-finished");
                         if ("SUCCESS".equalsIgnoreCase(item)) {
-                            setStyle(getStyle() + "-fx-text-fill: #10B981;"); // Màu xanh lá nếu bid thành công
+                            setStyle(getStyle() + "-fx-text-fill: #10B981;");
                         } else if ("FAILED".equalsIgnoreCase(item)) {
-                            setStyle(getStyle() + "-fx-text-fill: #EF4444;"); // Màu đỏ nếu bid thất bại
+                            setStyle(getStyle() + "-fx-text-fill: #EF4444;");
                         } else {
-                            setStyle(getStyle() + "-fx-text-fill: #F59E0B;"); // Màu cam cho các trạng thái khác (Pending...)
+                            setStyle(getStyle() + "-fx-text-fill: #F59E0B;");
                         }
                     }
                 }
@@ -197,7 +180,7 @@ public class MyBidsController {
                         setText(null);
                     } else {
                         setText(item);
-                        setStyle("-fx-alignment: center; -fx-text-fill: -fx-secondary-text-color;"); // Căn giữa, màu chữ phụ dịu mắt
+                        setStyle("-fx-alignment: center; -fx-text-fill: -fx-secondary-text-color;");
                     }
                 }
             });
@@ -209,9 +192,8 @@ public class MyBidsController {
      */
     @FXML
     private void handleRefresh() {
-        int pageSize = readPageSize(); // Đọc giá trị an toàn hiện hành đang gõ trong ô nhập
+        int pageSize = readPageSize();
 
-        // Giữ nguyên trang hiện tại để người dùng không bị văng về trang 1 một cách vô lý
         loadPage(currentPage);
     }
 
@@ -269,7 +251,6 @@ public class MyBidsController {
      * Nhận và xử lý gói tin SocketResponse trả về từ Server phân trang
      */
     private void handlePageResponse(SocketResponse response, int requestedPage) {
-        // KHẮC PHỤC SỐ 1: Xóa sạch bộ nhớ chọn dòng cũ của TableView để tránh lỗi đứng trang hiển thị
         if (myBidsTable != null) {
             myBidsTable.getSelectionModel().clearSelection();
         }
@@ -288,18 +269,16 @@ public class MyBidsController {
 
         PageDTO<BidTransactionDTO> pageData = bidHistoryApi.parseMyBidHistoryPage(response);
 
-        // Đồng bộ các thông số phân trang từ gói tin Server trả về
         currentPage = requestedPage;
         totalPages = pageData.getTotalPages();
         totalElements = pageData.getTotalElements();
 
-        // Đảm bảo an toàn biên số trang hiện tại phòng hờ dữ liệu biến động
         if (currentPage > totalPages && totalPages > 0) {
             currentPage = totalPages;
         }
 
         List<BidTransactionDTO> data = pageData.getData() == null ? List.of() : pageData.getData();
-        bids.setAll(data); // Nạp mảng dữ liệu trang mới vào TableView
+        bids.setAll(data);
 
         updatePaginationLabels();
         updateNavigationButtons(false);
@@ -320,7 +299,6 @@ public class MyBidsController {
         }
         try {
             int value = Integer.parseInt(pageSizeField.getText().trim());
-            // Phòng vệ tuyệt đối: Tránh số âm và số 0 gây crash chia cho 0 bên Server
             return value <= 0 ? DEFAULT_PAGE_SIZE : value;
         } catch (NumberFormatException e) {
             return DEFAULT_PAGE_SIZE;
@@ -338,14 +316,12 @@ public class MyBidsController {
     }
 
     private void updateNavigationButtons(boolean busy) {
-        // Vô hiệu hóa và tự động thay đổi độ mờ (Opacity) trực quan cho nút lùi (◀) chuẩn phong cách SIM
         if (previousPageButton != null) {
             boolean disablePrev = busy || currentPage <= 1;
             previousPageButton.setDisable(disablePrev);
             previousPageButton.setStyle(disablePrev ? "-fx-opacity: 0.35;" : "-fx-opacity: 1.0; -fx-cursor: hand;");
         }
 
-        // Vô hiệu hóa và tự động thay đổi độ mờ (Opacity) trực quan cho nút tiến (▶) chuẩn phong cách SIM
         if (nextPageButton != null) {
             boolean disableNext = busy || totalPages <= 0 || currentPage >= totalPages;
             nextPageButton.setDisable(disableNext);
@@ -395,7 +371,6 @@ public class MyBidsController {
     private void updateTablePlaceholder(boolean isDarkMode) {
         if (myBidsTable == null) return;
 
-        // Tạo một khung VBox nhỏ để căn chỉnh chữ nằm chính giữa bảng gọn gàng
         VBox emptyBox = new VBox(10);
         emptyBox.setStyle("-fx-alignment: center; -fx-padding: 40;");
 
@@ -403,27 +378,22 @@ public class MyBidsController {
         Label msgLabel = new Label();
 
         if (isDarkMode) {
-            // --- CHẾ ĐỘ TỐI (DARK MODE) ---
-            iconLabel.setText("🚫🔒"); // Biểu tượng đặc vụ / bảo mật
+            iconLabel.setText("🚫🔒");
             iconLabel.setStyle("-fx-font-size: 36px; -fx-opacity: 0.8;");
 
             msgLabel.setText("Thông tin mật vẫn chưa được lộ ra...");
-            // Sử dụng màu vàng hổ phách/cam nhạt (#E5B869) đồng bộ với màu Header cột tối của bạn
             msgLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-font-style: italic; -fx-text-fill: #E5B869;");
         } else {
-            // --- CHẾ ĐỘ SÁNG (LIGHT MODE) ---
-            iconLabel.setText("📋✨"); // Biểu tượng lịch sử sạch sẽ
+            iconLabel.setText("📋✨");
             iconLabel.setStyle("-fx-font-size: 32px; -fx-opacity: 0.6;");
 
             String cleanMessage = "Chưa có dữ liệu lịch sử đặt giá nào được ghi nhận.";
             msgLabel.setText(cleanMessage);
-            // Sử dụng màu xám tối thanh lịch (#4B5563) phối hợp hài hòa trên nền bảng trắng
             msgLabel.setStyle("-fx-font-size: 13.5px; -fx-font-style: italic; -fx-text-fill: #4B5563;");
         }
 
         emptyBox.getChildren().addAll(iconLabel, msgLabel);
 
-        // Đẩy toàn bộ cụm giao diện trống này vào TableView
         myBidsTable.setPlaceholder(emptyBox);
     }
 }

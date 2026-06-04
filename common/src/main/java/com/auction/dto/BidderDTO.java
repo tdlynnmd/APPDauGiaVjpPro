@@ -6,6 +6,9 @@ import com.auction.enums.UserStatus;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DTO đại diện cho thông tin tài khoản người tham gia đấu giá (Bidder).
+ */
 public class BidderDTO extends UserDTO {
     private static final long serialVersionUID = 1L;
 
@@ -13,7 +16,6 @@ public class BidderDTO extends UserDTO {
 
     public BidderDTO(String id, String username, String email, UserRole role, UserStatus status,
                      double availableBalance, double frozenBalance, List<String> joinedAuctionIds) {
-        // Truyền 2 trường số dư lên lớp cha UserDTO
         super(id, username, email, role, status, availableBalance, frozenBalance);
         this.joinedAuctionIds = joinedAuctionIds != null ? new ArrayList<>(joinedAuctionIds) : new ArrayList<>();
     }

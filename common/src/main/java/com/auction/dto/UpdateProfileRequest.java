@@ -1,5 +1,8 @@
 package com.auction.dto;
 
+/**
+ * DTO gửi yêu cầu cập nhật thông tin hồ sơ cá nhân.
+ */
 public class UpdateProfileRequest {
     private String username;
     private String email;

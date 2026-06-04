@@ -5,8 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Request DTO used when Seller/Admin updates editable item fields.
- * itemType is kept for contract validation, but the server does not allow changing it.
+ * DTO gửi yêu cầu cập nhật thông tin chi tiết của sản phẩm.
  */
 public class UpdateItemRequest implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -51,9 +50,6 @@ public class UpdateItemRequest implements Serializable {
         this.kmAge = kmAge;
     }
 
-    /**
-     * Converts only present values into the update payload used by ItemService.
-     */
     public Map<String, Object> toUpdateDataMap() {
         Map<String, Object> data = new HashMap<>();
         putIfPresent(data, "name", name);

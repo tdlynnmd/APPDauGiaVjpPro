@@ -1,25 +1,12 @@
 package com.auction.dto;
 
 /**
- * DTO chứa dữ liệu Client gửi lên khi Bidder đặt giá.
-
- * Luồng:
-  Bidder nhập số tiền muốn đặt
-  -> Client gửi action PLACE_BID
-  -> body chứa auctionId và amount
-  -> Server kiểm tra quyền BIDDER
-  -> AuctionService xử lý đặt giá
+ * DTO gửi yêu cầu thực hiện lượt đặt giá mới thủ công.
  */
 public class PlaceBidRequest {
 
-    /**
-     ID phiên đấu giá mà Bidder muốn đặt giá.
-     */
     private String auctionId;
 
-    /**
-     * Số tiền Bidder muốn đặt.
-     */
     private double amount;
 
     public PlaceBidRequest() {
