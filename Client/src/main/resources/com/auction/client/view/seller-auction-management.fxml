@@ -132,7 +132,7 @@
                                                     <children>
                                                         <Button onAction="#handleResetToDefaultData" styleClass="sim-btn-danger-outline" text="🔄 XOÁ FORM" />
                                                         <Pane HBox.hgrow="ALWAYS" />
-                                                        <Button fx:id="updateAuctionButton" styleClass="sim-btn-submit" text="💾 XÁC NHẬN" />
+                                                        <Button fx:id="updateAuctionButton" onAction="#handleUpdateAuction" styleClass="sim-btn-submit" text="💾 XÁC NHẬN" />
                                                     </children>
                                                 </HBox>
                                             </children>
