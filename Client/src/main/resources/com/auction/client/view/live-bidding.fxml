@@ -9,6 +9,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
@@ -23,12 +24,41 @@
                     </padding>
                     <children>
                         <Button fx:id="backButton" onAction="#handleBack" styleClass="lb-btn-back" text="← Quay lại" />
-                        <VBox HBox.hgrow="ALWAYS" styleClass="lb-header-title-box">
+
+                        <VBox styleClass="lb-header-title-box">
                             <children>
                                 <Label fx:id="itemNameLabel" styleClass="lb-header-title" text="Tên vật phẩm đấu giá" />
                                 <Label fx:id="sellerLabel" styleClass="lb-header-subtitle" text="Người bán: --" />
                             </children>
                         </VBox>
+
+                        <Region HBox.hgrow="ALWAYS" />
+
+                        <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="header-balance-container">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="ava-balance">
+                                    <children>
+                                        <Label text="Khả dụng:" />
+                                        <Label fx:id="headerAvailableBalance" text="0 VNĐ" styleClass="ava-balance-value" />
+                                    </children>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="fro-balance">
+                                    <children>
+                                        <Label text="Đóng băng:" />
+                                        <Label fx:id="headerFrozenBalance" text="0 VNĐ" styleClass="fro-balance-value" />
+                                    </children>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="tot-balance">
+                                    <children>
+                                        <Label text="Tổng số dư:" />
+                                        <Label fx:id="headerTotalBalance" text="0 VNĐ" styleClass="tot-balance-value" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </HBox>
+
+                        <Region HBox.hgrow="ALWAYS" />
+
                         <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="lb-btn-refresh" text="Làm mới ↻" />
                     </children>
                 </HBox>

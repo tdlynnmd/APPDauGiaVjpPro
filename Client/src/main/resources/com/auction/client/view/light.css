@@ -1834,3 +1834,278 @@
     -fx-font-weight: bold;
     -fx-text-fill: #1877F2;     /* Màu chữ Xanh Dương theo Light giao diện */
 }
+
+/* ========================================================================= */
+/* CẤU HÌNH CSS CLEAN UI - VIẾT RIÊNG CHO MÀN HÌNH ADMIN (LIGHT MODE)        */
+/* Cô lập hoàn toàn trong .ap-root, kế thừa từ biến màu hệ thống của bạn     */
+/* ========================================================================= */
+
+.ap-root {
+    /* Áp dụng nền xám nhạt từ biến -fx-bg-main của bạn */
+    -fx-background-color: -fx-bg-main;
+
+    /* Định nghĩa các biến phụ trợ cục bộ cho bản Light */
+    -fx-ap-border: #e9ecef;
+    -fx-ap-table-header-bg: #f1f2f6;
+    -fx-ap-danger: #ff4d4d;
+    -fx-ap-danger-hover: #e03131;
+    -fx-ap-warning: #e67e22;
+    -fx-ap-success: #2ed573;
+}
+
+/* --- Khung Đầu App & Menu Điều Hướng Phẳng --- */
+.ap-top-container {
+    -fx-background-color: -fx-bg-card; /* Trắng tinh */
+    -fx-border-color: transparent transparent -fx-ap-border transparent;
+    -fx-border-width: 1px;
+}
+
+.ap-header-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-main; /* Chữ đen tương phản */
+}
+
+.ap-btn-back {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-text-fill: -fx-text-main;
+    -fx-cursor: hand;
+}
+.ap-btn-back:hover {
+    -fx-background-color: #f1f2f6;
+}
+
+.ap-btn-clear {
+    -fx-background-color: transparent;
+    -fx-text-fill: #7f8c8d;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+.ap-btn-clear:hover {
+    -fx-text-fill: -fx-primary-color; /* Xanh dương */
+    -fx-border-color: -fx-primary-color;
+}
+
+/* Các nút Tab chuyển đổi dạng phẳng (Clean UI) */
+.ap-btn-nav {
+    -fx-background-color: transparent;
+    -fx-text-fill: #747d8c;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-cursor: hand;
+}
+.ap-btn-nav:hover {
+    -fx-background-color: #eef2f7;
+    -fx-text-fill: -fx-primary-color; /* Xanh dương */
+    -fx-background-radius: 4px;
+}
+/* Trạng thái khi Tab đang được Controller chọn tập trung */
+.ap-btn-nav:focused {
+    -fx-border-color: transparent transparent -fx-primary-color transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-text-fill: -fx-primary-color;
+}
+
+/* --- Khu vực Workspace & SplitPane --- */
+.ap-split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.ap-split-pane .split-pane-divider {
+    -fx-background-color: -fx-ap-border;
+    -fx-padding: 0 1;
+}
+.ap-workspace-pane {
+    -fx-background-color: -fx-bg-card; /* Nền bảng trắng sạch */
+}
+.ap-table-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-main;
+}
+
+/* ==========================================================================
+   ĐỊNH DẠNG TABLEVIEW SẠCH (CLEAN UI) & ĐẢM BẢO TƯƠNG PHẢN CHỮ MÀU SÁNG
+   ========================================================================== */
+.ap-table {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+}
+/* Thanh tiêu đề bảng */
+.ap-table .column-header-background {
+    -fx-background-color: -fx-ap-table-header-bg;
+}
+.ap-table .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 35px;
+    -fx-border-color: transparent -fx-ap-border transparent transparent;
+}
+.ap-table .column-header .label {
+    -fx-text-fill: -fx-text-main; /* Đen đậm */
+    -fx-font-weight: bold;
+}
+/* Các hàng dữ liệu bên trong bảng */
+.ap-table .table-row-cell {
+    -fx-cell-size: 38px;
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent transparent -fx-ap-border transparent;
+}
+/* Đảm bảo màu chữ hiển thị rõ trong ô */
+.ap-table .table-cell {
+    -fx-text-fill: -fx-text-main; /* Đen tương phản cực tốt trên nền trắng */
+}
+/* Khi click chọn một hàng: Đổi sang tone màu Xanh Dương nhạt nhã nhặn */
+.ap-table .table-row-cell:filled:selected {
+    -fx-background-color: #e3f2fd;
+}
+.ap-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: -fx-primary-color; /* Chữ chuyển thành màu xanh dương đậm */
+    -fx-font-weight: bold;
+}
+
+/* Các thành phần phụ trợ phân trang */
+.ap-text-sm {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-size: 12px;
+}
+.ap-input-sm {
+    -fx-background-color: -fx-bg-main;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-text-fill: -fx-text-main;
+}
+.ap-btn-refresh, .ap-btn-page {
+    -fx-background-color: -fx-bg-main;
+    -fx-text-fill: -fx-text-main;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+.ap-btn-refresh:hover, .ap-btn-page:hover {
+    -fx-background-color: -fx-primary-color;
+    -fx-text-fill: white;
+}
+.ap-page-indicator {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: bold;
+}
+
+/* --- Khung Tác Vụ Bên Phải (Action Panel Light) --- */
+.ap-action-pane {
+    -fx-background-color: -fx-bg-main;
+    -fx-border-color: transparent transparent transparent -fx-ap-border;
+    -fx-border-width: 1px;
+}
+.ap-action-header-user { -fx-font-weight: bold; -fx-text-fill: -fx-ap-danger; -fx-font-size: 14px; }
+.ap-action-header-item { -fx-font-weight: bold; -fx-text-fill: -fx-ap-warning; -fx-font-size: 14px; }
+.ap-action-header-auction { -fx-font-weight: bold; -fx-text-fill: -fx-primary-color; -fx-font-size: 14px; }
+
+.ap-card-action-user {
+    -fx-background-color: #fff5f5;
+    -fx-border-color: #fab1a0;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+.ap-card-action-item {
+    -fx-background-color: #fff9f1;
+    -fx-border-color: #ffeaa7;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+.ap-card-action-auction {
+    -fx-background-color: #f2f9ff;
+    -fx-border-color: #74b9ff;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+
+.ap-card-title { -fx-font-weight: bold; -fx-text-fill: -fx-text-main; }
+.ap-input-label { -fx-font-size: 11px; -fx-text-fill: -fx-text-main; }
+
+.ap-input-field {
+    -fx-background-color: white;
+    -fx-border-color: -fx-ap-border;
+    -fx-border-radius: 4px;
+    -fx-padding: 6 10;
+    -fx-text-fill: -fx-text-main;
+}
+
+.ap-btn-action-user { -fx-background-color: -fx-ap-danger; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+.ap-btn-action-user:hover { -fx-background-color: -fx-ap-danger-hover; }
+
+.ap-btn-action-item { -fx-background-color: -fx-ap-warning; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+.ap-btn-action-auction { -fx-background-color: -fx-primary-color; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-cursor: hand; }
+
+.ap-action-container-log { -fx-alignment: center; -fx-spacing: 10px; }
+.ap-log-info-main { -fx-font-style: italic; -fx-text-fill: #95a5a6; }
+.ap-log-info-sub { -fx-text-fill: #95a5a6; -fx-font-size: 11px; }
+
+/* --- Thanh trạng thái chân trang --- */
+.ap-footer-bar {
+    -fx-background-color: #dfe6e9;
+    -fx-border-color: -fx-ap-border transparent transparent transparent;
+    -fx-border-width: 1px;
+}
+.ap-status-text {
+    -fx-font-style: italic;
+    -fx-text-fill: #636e72;
+}
+/* --- ĐỔ MÀU BADGE TRẠNG THÁI CHO LIGHT MODE (NỀN SÁNG CHỮ ĐẬM) --- */
+.status-cell {
+    -fx-alignment: center;
+    -fx-font-weight: bold;
+}
+/* Chỉ định đổi màu chữ trơn cho ô TableCell khi có class tương ứng */
+.table-cell.badge-green {
+    -fx-text-fill: #137333 !important;
+}
+.table-cell.badge-red {
+    -fx-text-fill: #c5221f !important;
+}
+.table-cell.badge-blue {
+    -fx-text-fill: #1a73e8 !important;
+}
+.table-cell.badge-orange {
+    -fx-text-fill: #b06000 !important;
+}
+/* ==========================================================================
+   CỤM SỐ DƯ TÀI KHOẢN (HEADER BALANCE) - CHẾ ĐỘ SÁNG
+   ========================================================================== */
+
+/* Khung bọc tổng thể chứa 3 ô số dư */
+.header-balance-container {
+    -fx-alignment: center-left;
+}
+
+/* Định dạng chung cho phần chữ nhãn (Khả dụng:, Đóng băng:, Tổng số dư:) */
+.header-balance-container .label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #5f6368; /* Màu xám trung tính, nhã nhặn */
+}
+
+/* --- ĐỔI MÀU CHỮ SỐ TIỀN TRƠN (Không nền, không in đậm) --- */
+
+/* 1. Số dư Khả dụng (Màu xanh lá đậm) */
+.header-balance-container .ava-balance .ava-balance-value {
+    -fx-text-fill: #137333;
+}
+
+/* 2. Số dư Đóng băng (Màu đỏ đậm) */
+.header-balance-container .fro-balance .fro-balance-value {
+    -fx-text-fill: #c5221f;
+}
+
+/* 3. Tổng số dư (Màu xanh dương đậm) */
+.header-balance-container .tot-balance .tot-balance-value {
+    -fx-text-fill: #1a73e8;
+}
