@@ -59,11 +59,11 @@ public class ServerBootstrap {
             // Bước 5: Hydrate RAM (Nạp dữ liệu sống từ MySQL lên RAM)
             hydrateMemoryCache();
 
-            // Bước 7: KÍCH HOẠT SCHEDULER: Cho phép bộ máy quét thời gian thực trên RAM vào guồng chạy
+            // Bước 6: KÍCH HOẠT SCHEDULER: Cho phép bộ máy quét thời gian thực trên RAM vào guồng chạy
             log.info("[Bootstrap] 7. Kích hoạt bộ quét vòng đời tự động trên RAM (Every 1 Second)...");
             AuctionManage.getInstance().startLifecycleMonitor();
 
-            // Bước 8: Đăng ký khiên bảo vệ tối cao Graceful Shutdown Hook với cấu trúc giải phóng triệt để
+            // Bước 7: Đăng ký khiên bảo vệ tối cao Graceful Shutdown Hook với cấu trúc giải phóng triệt để
             registerGracefulShutdownHook();
 
             log.info("[Bootstrap] 🎉 HẠ TẦNG SẴN SÀNG 100%! Server có thể mở cổng đón Socket kết nối.");

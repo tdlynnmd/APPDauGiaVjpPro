@@ -127,7 +127,6 @@ public class AuctionService {
 
     /**
      * LUỒNG GHI NGẦM MYSQL: Thực thi tuần tự các câu lệnh ghi DB không block luồng thầu realtime.
-     *
      * FIX RACE CONDITION: inProgressBids.add() được gọi NGAY SAU dbQueue.poll() và TRƯỚC khi
      * persistBidToDatabaseInternal() chạy. Điều này đóng hoàn toàn cửa sổ race giữa
      * hasPendingBidsForAuction() và finalizeAuction().
