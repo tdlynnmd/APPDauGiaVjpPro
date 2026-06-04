@@ -14,7 +14,6 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
 <StackPane fx:id="rootContainer" prefHeight="750.0" prefWidth="1200.0" styleClass="sim-container" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.SellerItemController">
     <children>
@@ -61,7 +60,7 @@
                                         <Button onAction="#handleClearSearch" styleClass="sim-btn-secondary" text="Xóa bộ lọc" />
                                         <Pane HBox.hgrow="ALWAYS" />
                                         <Label text="Kích thước trang:" />
-                                        <TextField fx:id="pageSizeField" prefWidth="50.0" text="10" styleClass="sim-input" />
+                                        <TextField fx:id="pageSizeField" prefWidth="50.0" styleClass="sim-input" text="10" />
                                         <Button fx:id="refreshButton" onAction="#handleLoadSellerItems" styleClass="sim-btn-secondary" text="🔄 Làm mới" />
                                     </children>
                                     <padding>
@@ -87,9 +86,9 @@
 
                                 <HBox alignment="CENTER" spacing="15.0">
                                     <children>
-                                        <Button fx:id="previousPageButton" onAction="#handlePreviousPage" styleClass="sim-btn-secondary" text="◀ Trang trước" />
+                                        <Button fx:id="previousPageButton" onAction="#handlePreviousPage" styleClass="sim-btn-action" text="◀ Trang trước" />
                                         <Label fx:id="pageLabel" style="-fx-font-weight: bold;" text="Trang 1 / --" />
-                                        <Button fx:id="nextPageButton" onAction="#handleNextPage" styleClass="sim-btn-secondary" text="Trang sau ▶" />
+                                        <Button fx:id="nextPageButton" onAction="#handleNextPage" styleClass="sim-btn-action" text="Trang sau ▶" />
                                     </children>
                                     <padding>
                                         <Insets top="5.0" />

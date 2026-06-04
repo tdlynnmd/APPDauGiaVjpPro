@@ -422,9 +422,9 @@
 }
 
 .sim-screen-title {
-    -fx-text-fill: #FFFFFF;
-    -fx-font-size: 18px;
+    -fx-font-size: 22px;
     -fx-font-weight: bold;
+    -fx-text-fill: #F59E0B;
     -fx-font-family: "Segoe UI", sans-serif;
 }
 
@@ -612,14 +612,14 @@
 }
 
 .sim-btn-secondary {
-    -fx-background-color: #4E4E4E;
-    -fx-text-fill: #FFFFFF;
-    -fx-background-radius: 6px;
+    -fx-background-color: rgba(245, 158, 11, 0.15);
+    -fx-text-fill: #F59E0B;
+    -fx-background-radius: 8;
+    -fx-font-weight: bold;
     -fx-cursor: hand;
-    -fx-padding: 8px 14px;
 }
 .sim-btn-secondary:hover {
-    -fx-background-color: #606060;
+    -fx-background-color: rgba(245, 158, 11, 0.3);
     -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.1), 8, 0, 0, 0);
 }
 
@@ -1778,4 +1778,63 @@
 .account-status-text {
     -fx-text-fill: #ff9f43; /* */
     -fx-font-size: 12px;
+}
+
+.sam-table {
+    -fx-background-color: #242526;
+    -fx-background-radius: 8;
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8;
+}
+
+/* TIÊU ĐỀ CỘT: Giữ nền đen xám như cũ, CHỮ ĐỔI SANG MÀU VÀNG CAM */
+.sam-table .column-header {
+    -fx-background-color: #18191A; /* Nền đen tối nguyên bản */
+    -fx-size: 42px;
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 0 1px 1px 0;
+}
+.sam-table .column-header .label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #F59E0B; /* Chữ màu Vàng Cam theo giao diện */
+}
+
+/* Hàng dữ liệu nới rộng vừa phải ban đêm */
+.sam-table .table-row-cell {
+    -fx-cell-size: 42px;
+    -fx-background-color: #242526;
+    -fx-border-color: #3A3B3C;
+    -fx-border-width: 0 0 1px 0;
+}
+.sam-table .table-row-cell:hover {
+    -fx-background-color: #2D2E2F;
+}
+
+/* Chi tiết ô chữ trong bảng */
+.sam-table .table-cell {
+    -fx-font-size: 13.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #E4E6EB;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0 12px 0 12px;
+}
+
+/* Khi chọn dòng ban đêm */
+.sam-table .table-row-cell:selected {
+    -fx-background-color: #3E2B08 !important;
+    -fx-background-insets: 0;
+}
+.sam-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #F59E0B !important;
+}
+.sam-table-placeholder .placeholder-icon {
+    -fx-font-size: 28px;
+}
+.sam-table-placeholder .placeholder-text {
+    -fx-font-size: 14px;
+    -fx-font-style: italic;     /* Chữ in nghiêng */
+    -fx-font-weight: bold;
+    -fx-text-fill: #F59E0B;     /* Màu chữ Vàng Cam theo Dark giao diện */
 }

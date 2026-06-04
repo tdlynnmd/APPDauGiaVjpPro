@@ -417,9 +417,9 @@
 }
 
 .sim-screen-title {
-    -fx-text-fill: #1C1E21;
-    -fx-font-size: 18px;
+    -fx-font-size: 22px;
     -fx-font-weight: bold;
+    -fx-text-fill: #1877F2;
     -fx-font-family: "Segoe UI", sans-serif;
 }
 
@@ -604,14 +604,14 @@
 }
 
 .sim-btn-secondary {
-    -fx-background-color: #E4E6EB;
-    -fx-text-fill: #1C1E21;
-    -fx-background-radius: 6px;
+    -fx-background-color: #EBF5FF;
+    -fx-text-fill: #1877F2;
+    -fx-background-radius: 8;
+    -fx-font-weight: bold;
     -fx-cursor: hand;
-    -fx-padding: 8px 14px;
 }
 .sim-btn-secondary:hover {
-    -fx-background-color: #D8DADF;
+    -fx-background-color: #D4E9FF;
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 6, 0, 0, 0);
 }
 
@@ -1770,4 +1770,63 @@
 .account-status-text {
     -fx-text-fill: #0d6efd; /* */
     -fx-font-size: 12px;
+}
+
+.sam-table {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8;
+    -fx-border-color: #E4E6EB;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8;
+}
+
+/* TIÊU ĐỀ CỘT: Giữ nền xám nhạt như cũ, CHỮ ĐỔI SANG MÀU XANH DƯƠNG */
+.sam-table .column-header {
+    -fx-background-color: #F0F2F5; /* Nền xám nhạt nguyên bản */
+    -fx-size: 42px;
+    -fx-border-color: #E4E6EB;
+    -fx-border-width: 0 1px 1px 0;
+}
+.sam-table .column-header .label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1877F2; /* Chữ màu Xanh Dương theo giao diện */
+}
+
+/* Hàng dữ liệu nới rộng vừa phải */
+.sam-table .table-row-cell {
+    -fx-cell-size: 42px;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #F0F2F5;
+    -fx-border-width: 0 0 1px 0;
+}
+.sam-table .table-row-cell:hover {
+    -fx-background-color: #F2F8FF;
+}
+
+/* Chi tiết ô chữ trong bảng: To vừa tầm và in đậm rõ nét */
+.sam-table .table-cell {
+    -fx-font-size: 13.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1C1E21;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0 12px 0 12px;
+}
+
+/* Khi chọn dòng */
+.sam-table .table-row-cell:selected {
+    -fx-background-color: #E2EFFF !important;
+    -fx-background-insets: 0;
+}
+.sam-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #1877F2 !important;
+}
+.sam-table-placeholder .placeholder-icon {
+    -fx-font-size: 28px;
+}
+.sam-table-placeholder .placeholder-text {
+    -fx-font-size: 14px;
+    -fx-font-style: italic;     /* Chữ in nghiêng */
+    -fx-font-weight: bold;
+    -fx-text-fill: #1877F2;     /* Màu chữ Xanh Dương theo Light giao diện */
 }
