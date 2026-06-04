@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.*?>
-<?import javafx.scene.text.*?>
-<?import org.controlsfx.control.textfield.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
 
-<StackPane fx:id="rootContainer" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.DashboardController">
+<StackPane fx:id="rootContainer" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.DashboardController">
    <children>
       <BorderPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" StackPane.alignment="CENTER">
          <top>
@@ -23,11 +29,19 @@
                         <Insets left="20.0" />
                      </HBox.margin>
                   </ImageView>
-                  <CustomTextField fx:id="searchField" maxWidth="1.7976931348623157E308" minWidth="200.0" prefHeight="36.0" prefWidth="400.0" promptText="Search Bar" HBox.hgrow="ALWAYS">
+
+                  <VBox alignment="CENTER_LEFT" spacing="5.0" styleClass="top-bar-welcome-box" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS">
                      <HBox.margin>
-                        <Insets left="40.0" right="40.0" />
+                        <Insets left="40.0" right="20.0" />
                      </HBox.margin>
-                  </CustomTextField>
+                     <children>
+                        <Label maxWidth="1.7976931348623157E308" styleClass="sim-screen-title" text="App Đấu Giá Vjp Pro AUCTIONVZ by Tùng Tiến Linh Sơn  😎✌" />
+                        <Label maxWidth="1.7976931348623157E308" styleClass="wallet-mini-balance" text="Come My Way - Sơn Tùng MTP 🙉😎🎶🎶 " />
+                     </children>
+                  </VBox>
+
+                  <Region prefHeight="114.0" HBox.hgrow="SOMETIMES" />
+
                   <VBox alignment="CENTER" prefHeight="103.0" prefWidth="238.0">
                      <children>
                         <StackPane prefHeight="62.0" prefWidth="75.0">
@@ -170,7 +184,15 @@
          <center>
             <ScrollPane fx:id="mainScrollPane" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" BorderPane.alignment="CENTER">
                <content>
-                  <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" styleClass="vbox" />
+                  <StackPane styleClass="center-image-container">
+                     <children>
+                        <ImageView fitHeight="400.0" fitWidth="600.0" pickOnBounds="true" preserveRatio="true" styleClass="dashboard-center-logo">
+                           <image>
+                              <Image url="@/image/Logo_DHCN.png" />
+                           </image>
+                        </ImageView>
+                     </children>
+                  </StackPane>
                </content>
             </ScrollPane>
          </center>
