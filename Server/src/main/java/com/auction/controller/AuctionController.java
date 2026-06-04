@@ -23,7 +23,7 @@ import java.util.Optional;
  * =========================================================================
  */
 public class AuctionController {
-    private final AuctionService auctionService = new AuctionService();
+    private final AuctionService auctionService = AuctionService.getInstance();
     private final BidTransactionService bidTransactionService = new BidTransactionService();
 
     /**

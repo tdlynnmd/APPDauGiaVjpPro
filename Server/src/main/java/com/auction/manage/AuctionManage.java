@@ -30,7 +30,6 @@ public class AuctionManage {
     private static final long MAX_IDLE_MINUTES = 10;
     private final Map<String, Auction> activeAuctions = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private AuctionService auctionService;
 
     private AuctionManage(){}
     public static AuctionManage getInstance(){
@@ -46,13 +45,6 @@ public class AuctionManage {
         return temp;
     }
 
-    // Hàm gọi lười AuctionService
-    private AuctionService getAuctionService() {
-        if (auctionService == null) {
-            auctionService = new AuctionService();
-        }
-        return auctionService;
-    }
 
     public void addAuction(Auction auction){
         activeAuctions.put(auction.getId(),auction);
@@ -81,7 +73,7 @@ public class AuctionManage {
     private void finishAuction(String auctionId) {
         Auction auction = activeAuctions.get(auctionId);
         if (auction != null) {
-            synchronized (auction) {
+            synchronized (auctionId.trim().intern()) {
                 // DOUBLE-CHECK: Lỡ có ai vừa vặn đặt giá và gia hạn thêm 60s khi ta đang đứng đợi khóa thì sao?
                 auction.refreshStatus(LocalDateTime.now());
                 if (auction.getStatus() != FINISHED) {
@@ -89,7 +81,7 @@ public class AuctionManage {
                 }
 
                 // 1. Gọi Service Kế toán để trừ/cộng tiền trong Database
-                getAuctionService().finalizeAuction(auctionId);
+                AuctionService.getInstance().finalizeAuction(auctionId);
 
                 // Xóa khỏi danh sách "đang hoạt động" để giải phóng bộ nhớ RAM
                 activeAuctions.remove(auctionId);
@@ -141,8 +133,8 @@ public class AuctionManage {
                         // Kích hoạt AutoBid ngay khi phiên chuyển sang RUNNING
                         // đảm bảo các lệnh autobid đặt trước không bị bỏ qua giây đầu tiên
                         try {
-                            synchronized (auction) {
-                                getAuctionService().triggerAutoBids(auction);
+                            synchronized (auction.getId().trim().intern()) {
+                                AuctionService.getInstance().triggerAutoBids(auction);
                             }
                         } catch (Exception ex) {
                             System.err.println("[AuctionManage] ⚠️ Lỗi trigger AutoBid khi phiên khai hỏa: " + ex.getMessage());

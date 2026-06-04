@@ -17,7 +17,7 @@ import com.auction.service.LogService;
 public class AdminController {
 
     private final UserService userService = new UserService();
-    private final AuctionService auctionService = new AuctionService();
+    private final AuctionService auctionService = AuctionService.getInstance();
     private final ItemService itemService = new ItemService();
     private final LogService logService = new LogService();
 

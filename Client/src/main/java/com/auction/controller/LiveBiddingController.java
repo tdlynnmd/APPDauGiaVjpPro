@@ -625,12 +625,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
             }
 
             showMessage(response.getMessage() == null ? "Đặt giá thành công!" : response.getMessage());
-
-            /*
-             * BID_UPDATE event se cap nhat gia realtime.
-             * Refresh them chi tiet de bang lich su bid hien thi day du hon.
-             */
-            loadAuctionDetail();
+            // BID_UPDATE event sẽ cập nhật giá và bảng lịch sử realtime.
+            // Không gọi loadAuctionDetail() ở đây vì DB async chưa ghi xong
+            // → setAll() sẽ ghi đè dữ liệu đúng mà BID_UPDATE vừa thêm vào bảng.
         });
 
         task.setOnFailed(event -> {
@@ -874,11 +871,19 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                         boolean exists = bidHistoryItems.stream()
                                 .anyMatch(b -> b.getBidId() != null && b.getBidId().equals(newBid.getBidId()));
                         if (!exists) {
+                            // Cập nhật trạng thái các bid cũ thành REFUNDED
+                            for (BidTransactionDTO oldBid : bidHistoryItems) {
+                                oldBid.setStatus("REFUNDED");
+                            }
                             // Thêm vào đầu bảng vì danh sách hiển thị DESC
                             bidHistoryItems.add(0, newBid);
                             // Capped tối đa 15 dòng lịch sử như server
                             if (bidHistoryItems.size() > 15) {
                                 bidHistoryItems.remove(15);
+                            }
+                            // Yêu cầu TableView vẽ lại để hiển thị trạng thái mới lập tức
+                            if (bidHistoryTable != null) {
+                                bidHistoryTable.refresh();
                             }
                         }
                     });

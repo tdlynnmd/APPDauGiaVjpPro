@@ -51,8 +51,12 @@ public class AuctionService {
     private final AutoBidDAO autoBidDAO = new AutoBidDAOImpl();
 
     // 🔥 HẠ TẦNG HÀNG ĐỢI BẤT ĐỒNG BỘ ĐỂ GIẢM TẢI DATABASE
-    private final Queue<BidTask> dbQueue = new ConcurrentLinkedQueue<>();
-    private final ExecutorService dbWriterExecutor = Executors.newSingleThreadExecutor();
+    private static final Queue<BidTask> dbQueue = new ConcurrentLinkedQueue<>();
+    private static final ExecutorService dbWriterExecutor = Executors.newSingleThreadExecutor();
+    private static final Set<String> inProgressBids = ConcurrentHashMap.newKeySet();
+    private static final ExecutorService autoBidExecutor = Executors.newCachedThreadPool();
+    private static final Set<String> activeAutoBidAuctions = ConcurrentHashMap.newKeySet();
+    private static volatile AuctionService instance;
     private static boolean asyncEnabled = true;
 
     public static void setAsyncEnabled(boolean enabled) {
@@ -91,77 +95,119 @@ public class AuctionService {
     }
 
     /**
-     * CONSTRUCTOR: Khởi chạy luồng ngầm chuyên tiêu thụ task từ hàng đợi để lưu xuống MySQL tuần tự
+     * SINGLETON: Chỉ tạo duy nhất 1 instance, đảm bảo dbQueue và dbWriterExecutor nhất quán tuyệt đối.
      */
-    public AuctionService() {
+    public static AuctionService getInstance() {
+        AuctionService temp = instance;
+        if (temp == null) {
+            synchronized (AuctionService.class) {
+                temp = instance;
+                if (temp == null) {
+                    temp = instance = new AuctionService();
+                }
+            }
+        }
+        return temp;
+    }
+
+    /**
+     * CONSTRUCTOR protected: Chỉ được gọi từ getInstance() hoặc các lớp Unit Test.
+     * Khởi chạy luồng ghi DB ngầm tại đây để đảm bảo chỉ start 1 lần duy nhất.
+     */
+    protected AuctionService() {
+        startDbWriter();
+    }
+
+    /**
+     * LUỒNG GHI NGẦM MYSQL: Thực thi tuần tự các câu lệnh ghi DB không block luồng thầu realtime.
+     *
+     * FIX RACE CONDITION: inProgressBids.add() được gọi NGAY SAU dbQueue.poll() và TRƯỚC khi
+     * persistBidToDatabaseInternal() chạy. Điều này đóng hoàn toàn cửa sổ race giữa
+     * hasPendingBidsForAuction() và finalizeAuction().
+     */
+    private static void startDbWriter() {
         dbWriterExecutor.submit(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     BidTask task = dbQueue.poll();
                     if (task != null) {
-                        persistBidToDatabase(task);
+                        // ✅ FIX: Đánh dấu đang xử lý NGAY SAU poll, TRƯỚC khi ghi DB
+                        // hasPendingBidsForAuction() sẽ thấy entry này và trả về true
+                        // cho đến khi commit xong, ngăn finalizeAuction chạy non-farm
+                        String cleanId = task.auctionId.trim();
+                        inProgressBids.add(cleanId);
+                        try {
+                            getInstance().persistBidToDatabaseInternal(task);
+                        } catch (Exception e) {
+                            log.error("❌ [Async DB Writer] Thất bại khi đồng bộ lệnh thầu user {} phiên {}: {}",
+                                    task.bidderId, task.auctionId, e.getMessage());
+                        } finally {
+                            // ✅ Chỉ xóa SAU KHI commit DB xong (bên trong persistBidToDatabaseInternal)
+                            inProgressBids.remove(cleanId);
+                        }
                     } else {
                         Thread.sleep(10); // Tránh chiếm dụng CPU khi hàng đợi rỗng
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
-                    log.error("❌ Lỗi ngầm khi thực thi lưu dữ liệu từ Queue xuống Database: {}", e.getMessage(), e);
+                    log.error("❌ Lỗi ngoài dự kiến trong luồng ghi DB ngầm: {}", e.getMessage(), e);
                 }
             }
         });
     }
 
     /**
-     * LUỒNG GHI NGẦM MYSQL: Thực thi tuần tự các câu lệnh ghi DB mà không block các luồng thầu realtime
+     * GHI BID VÀO DB (ASYNC WORKER).
+     * ✅ Freeze/unfreeze tiền đã được thực hiện SYNC trong executeBidInternal.
+     * Task này chỉ còn: updatePriceAndWinner + insertBid + updateStatusRefunded + addJoinedAuction.
      */
-    private void persistBidToDatabase(BidTask task) {
-        try {
-            persistBidToDatabaseInternal(task);
-        } catch (Exception e) {
-            log.error("❌ [Async DB Writer] Thất bại khi đồng bộ dữ liệu lệnh thầu của user {} xuống MySQL: {}", task.bidderId, e.getMessage());
-        }
-    }
-
     private void persistBidToDatabaseInternal(BidTask task) throws Exception {
         Connection conn = null;
         try {
             conn = com.auction.config.DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. Đóng băng tiền của người đặt giá mới
-            boolean freezeSuccess = userDAO.freezeMoney(conn, task.bidderId, task.amount);
-            if (!freezeSuccess) {
-                throw new WalletException(WalletErrorCode.DEDUCTION_FAILED);
+            // 0. Thực hiện freeze/unfreeze tiền dưới DB
+            // Nếu tự đè giá chính mình: giải tỏa cọc cũ trước
+            if (task.oldHighestBidderId != null && task.oldHighestBidderId.equals(task.bidderId)) {
+                userDAO.unfreezeMoney(conn, task.oldHighestBidderId, task.oldPrice);
+            }
+            // Đóng băng tiền mới
+            boolean freezeOk = userDAO.freezeMoney(conn, task.bidderId, task.amount);
+            if (!freezeOk) {
+                throw new SQLException("Insufficient balance in DB for bidder " + task.bidderId);
+            }
+            // Hoàn tiền cho người bị vượt giá (nếu là người khác)
+            if (task.oldHighestBidderId != null && !task.oldHighestBidderId.equals(task.bidderId)) {
+                userDAO.unfreezeMoney(conn, task.oldHighestBidderId, task.oldPrice);
             }
 
-            // 2. Đồng bộ giá và winner mới lên bảng đấu giá dưới DB
+            // 1. Đồng bộ giá và winner mới lên bảng đấu giá dưới DB
             boolean updateAuctionDB = auctionDAO.updatePriceAndWinner(
                     conn, task.auctionId, task.amount, task.bidderId, task.newBidId, task.endTime, task.liveStepPrice
             );
             if (!updateAuctionDB) {
-                throw new SQLException("Sync price to database failed.");
+                throw new SQLException("Sync price to database failed for auction " + task.auctionId);
             }
 
-            // 3. Ghi lịch sử giao dịch thầu mới thành công vào bảng logs giao dịch
-            BidTransaction resultBid = new BidTransaction(task.newBidId, task.auctionId, task.bidderId, task.amount, task.time, com.auction.enums.BidStatus.ACCEPTED);
+            // 2. Ghi lịch sử giao dịch thầu mới thành công
+            BidTransaction resultBid = new BidTransaction(task.newBidId, task.bidderId, task.auctionId, task.amount, task.time, com.auction.enums.BidStatus.ACCEPTED);
             boolean insertedBid = bidTransactionDAO.insertBid(conn, resultBid);
             if (!insertedBid) {
-                throw new SQLException("Failed to persist bid transaction.");
+                throw new SQLException("Failed to persist bid transaction for bidder " + task.bidderId);
             }
 
-            // 4. Giải tỏa tiền đóng băng và hoàn trả cọc cho người giữ giá cũ dưới DB
-            if (task.oldHighestBidderId != null) {
-                userDAO.unfreezeMoney(conn, task.oldHighestBidderId, task.oldPrice);
-                if (task.oldWinningBidId != null) {
-                    bidTransactionDAO.updateStatusByBidId(conn, task.oldWinningBidId, com.auction.enums.BidStatus.REFUNDED.name());
-                }
+            // 3. Cập nhật trạng thái bid cũ thành REFUNDED (nếu có người bị vượt giá trước đó)
+            if (task.oldHighestBidderId != null && task.oldWinningBidId != null) {
+                bidTransactionDAO.updateStatusByBidId(conn, task.oldWinningBidId, com.auction.enums.BidStatus.REFUNDED.name());
             }
 
-            // 5. Lưu liên kết phòng đã tham gia
+            // 4. Lưu liên kết phòng đã tham gia
             userDAO.addJoinedAuction(conn, task.bidderId, task.auctionId);
 
             conn.commit();
+            log.info("[Async DB Writer] ✅ bid={} auction={} amount={}", task.newBidId, task.auctionId, task.amount);
         } catch (Exception e) {
             if (conn != null) {
                 try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
@@ -286,16 +332,15 @@ public class AuctionService {
             throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 1. ĐỒNG BỘ DÒNG TIỀN TRÊN RAM CHO NGƯỜI ĐẶT GIÁ HIỆN TẠI
+        // BƯỚC 1: CẬP NHẬT RAM (Thay vì đồng bộ DB trước, ta chỉ làm việc trên RAM để tối ưu tốc độ và tránh kiệt quệ connection pool)
         synchronized (bidder.getId().intern()) {
             if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
-                bidder.unfreeze(oldPrice); // Tự đè giá chính mình: giải phóng cọc cũ trên RAM ra trước
+                bidder.unfreeze(oldPrice);
             }
             bidder.freeze(amount);
             bidder.addJoinedAuction(auction.getId());
         }
 
-        // 2. ĐỒNG BỘ DÒNG TIỀN TRÊN RAM CHO NGƯỜI BỊ VƯỢT GIÁ CŨ (NẾU LÀ NGƯỜI KHÁC)
         if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
             User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
             if (oldRamUser instanceof Bidder oldBidderLive) {
@@ -307,10 +352,11 @@ public class AuctionService {
             }
         }
 
-        // 3. CẬP NHẬT TRẠNG THÁI PHÒNG LIVE TRÊN RAM ĐỂ PHỤC VỤ LƯỢT TIẾP THEO
+        // BƯỚC 3: CẬP NHẬT TRẠNG THÁI PHÒNG LIVE TRÊN RAM
         BidTransaction resultBid = auction.placeBid(bidder, amount, newBidId);
 
-        // 4. 🔥 CHÍ MẠNG: Đẩy tác vụ ngầm vào hàng đợi hoặc thực thi đồng bộ tùy thuộc vào cờ asyncEnabled
+        // BƯỚC 4: ĐƯA VÀO QUEUE ASYNC CHỈ CÒN: insertBid + updateAuction + updateRefunded + addJoined
+        // Không còn freeze/unfreeze ở đây – đã được thực hiện sync ở Bước 1
         BidTask task = new BidTask(
                 bidder.getId(), auction.getId(), amount, newBidId,
                 oldHighestBidderId, oldWinningBidId, oldPrice,
@@ -323,19 +369,13 @@ public class AuctionService {
             try {
                 persistBidToDatabaseInternal(task);
             } catch (Exception e) {
-                // Revert RAM updates
-                // 1. Rollback bid in RAM
                 auction.rollbackBidInRam(oldHighestBidderId, oldPrice, oldEndTime);
-
-                // 2. Rollback bidder balance
                 synchronized (bidder.getId().intern()) {
                     bidder.unfreeze(amount);
                     if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
                         bidder.freeze(oldPrice);
                     }
                 }
-
-                // 3. Rollback old highest bidder balance (if it was a different user)
                 if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
                     User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
                     if (oldRamUser instanceof Bidder oldBidderLive) {
@@ -345,7 +385,6 @@ public class AuctionService {
                         }
                     }
                 }
-
                 if (e instanceof com.auction.exception.BaseException) {
                     throw (com.auction.exception.BaseException) e;
                 }
@@ -353,7 +392,7 @@ public class AuctionService {
             }
         }
 
-        // 5. GỬI CẬP NHẬT TRẠNG THÁI VÍ QUA SOCKET REALTIME SỬ DỤNG SỐ LIỆU RAM (KHÔNG ĐỌC DB)
+        // BƯỚC 5: GỬI CẬP NHẬT TRẠNG THÁI VÍ QUA SOCKET REALTIME SỬ DỤNG SỐ LIỆU RAM
         try {
             connectionManage.sendBalanceUpdate(bidder.getId(), bidder.getAvailableBalance(), bidder.getFrozenBalance());
             if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
@@ -366,7 +405,7 @@ public class AuctionService {
             System.err.println("[WebSocket Error] Lỗi đẩy cập nhật số dư ví: " + ex.getMessage());
         }
 
-        // 6. Đóng gói payload chứa thông tin Anti-sniping phát sự kiện toàn mạng
+        // BƯỚC 6: ĐÓNG GÓI PAYLOAD VÀ PHÁT SỰ KIỆN BID_UPDATE TOÀN MẠNG
         BidTransactionDTO bidData = new BidTransactionDTO(
                 bidder.getUsername(), amount, resultBid.getTime(), com.auction.enums.BidStatus.ACCEPTED.name(),
                 auction.getEndTime(), auction.getLiveStepPrice()
@@ -382,39 +421,69 @@ public class AuctionService {
      * KÍCH HOẠT CHUỖI ĐẤU GIÁ TỰ ĐỘNG
      */
     public void triggerAutoBids(Auction auction) {
-        int loops = 0;
-        while (loops < 100) {
-            double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
-            List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
-            AutoBid challenger = selectAutoBidChallenger(activeAutoBids, auction.getHighestBidderId(), minBidRequired);
+        if (auction == null) return;
+        if (asyncEnabled) {
+            String cleanId = auction.getId().trim();
+            if (activeAutoBidAuctions.add(cleanId)) {
+                autoBidExecutor.submit(() -> {
+                    try {
+                        triggerAutoBidsInternal(auction);
+                    } catch (Exception e) {
+                        log.error("[Auto-Bidding] Lỗi trong luồng chạy ngầm auto-bid cho phiên {}: {}", cleanId, e.getMessage(), e);
+                    } finally {
+                        activeAutoBidAuctions.remove(cleanId);
+                    }
+                });
+            }
+        } else {
+            triggerAutoBidsInternal(auction);
+        }
+    }
 
-            if (challenger == null) {
-                break;
+    private void triggerAutoBidsInternal(Auction auction) {
+        int loops = 0;
+        String lockKey = auction.getId().trim().intern();
+        while (loops < 100) {
+            boolean hasNextBid = false;
+            synchronized (lockKey) {
+                if (auction.getStatus() != AuctionStatus.RUNNING) {
+                    break;
+                }
+                double minBidRequired = auction.getCurrentPrice() + auction.getLiveStepPrice();
+                List<AutoBid> activeAutoBids = snapshotActiveAutoBids(auction);
+                AutoBid challenger = selectAutoBidChallenger(activeAutoBids, auction.getHighestBidderId(), minBidRequired);
+
+                if (challenger != null) {
+                    AutoBid currentLeaderAutoBid = findAutoBidByUser(activeAutoBids, auction.getHighestBidderId());
+                    double bidAmount = calculateAutoBidAmount(auction, challenger, currentLeaderAutoBid, minBidRequired);
+                    if (bidAmount >= minBidRequired) {
+                        try {
+                            Bidder challengerBidder = getBidderContext(challenger.getUserId());
+                            executeBidInternal(challengerBidder, auction, bidAmount);
+                            hasNextBid = true;
+                        } catch (Exception e) {
+                            log.warn("[Auto-Bidding] ❌ Lượt thầu tự động của user {} thất bại: {}", challenger.getUserId(), e.getMessage());
+                            challenger.setActive(false);
+                            try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+                                autoBidDAO.disableAutoBid(conn, challenger.getId());
+                            } catch (SQLException ex) {
+                                log.error("[Auto-Bidding] Lỗi khi disable AutoBid trong DB: {}", ex.getMessage(), ex);
+                            }
+                            auction.removeAutoBidInRam(challenger.getUserId());
+                        }
+                    }
+                }
             }
 
-            AutoBid currentLeaderAutoBid = findAutoBidByUser(activeAutoBids, auction.getHighestBidderId());
-            double bidAmount = calculateAutoBidAmount(auction, challenger, currentLeaderAutoBid, minBidRequired);
-            if (bidAmount < minBidRequired) {
+            if (!hasNextBid) {
                 break;
             }
 
             try {
-                Bidder challengerBidder = getBidderContext(challenger.getUserId());
-                
-                // Thực thi luồng xử lý thầu tự động qua RAM và đẩy tác vụ ngầm vào hàng đợi tương tự Manual Bid
-                executeBidInternal(challengerBidder, auction, bidAmount);
-
-                // Giả lập độ trễ (150ms) giúp Frontend hiển thị hiệu ứng tăng giá từ từ đều đặn kích thích thị giác
                 Thread.sleep(150);
-            } catch (Exception e) {
-                log.warn("[Auto-Bidding] ❌ Lượt thầu tự động của user {} thất bại: {}", challenger.getUserId(), e.getMessage());
-                challenger.setActive(false);
-                try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
-                    autoBidDAO.disableAutoBid(conn, challenger.getId());
-                } catch (SQLException ex) {
-                    log.error("[Auto-Bidding] Lỗi khi disable AutoBid trong DB: {}", ex.getMessage(), ex);
-                }
-                auction.removeAutoBidInRam(challenger.getUserId());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
             loops++;
         }
@@ -474,9 +543,33 @@ public class AuctionService {
     /**
      * ĐÓNG PHÒNG ĐẦU GIÁ KHI HẾT GIỜ (Đã đồng bộ tài chính RAM cho Winner và Seller)
      */
+    private static boolean hasPendingBidsForAuction(String auctionId) {
+        if (auctionId == null) return false;
+        String cleanId = auctionId.trim();
+        for (BidTask task : dbQueue) {
+            if (task != null && task.auctionId != null && task.auctionId.trim().equals(cleanId)) {
+                return true;
+            }
+        }
+        return inProgressBids.contains(cleanId);
+    }
+
     public void finalizeAuction(String auctionId) {
         if (auctionId == null || auctionId.trim().isEmpty()) {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID is required for finalization.");
+        }
+
+        // Đợi cho đến khi toàn bộ bid trong queue của phiên này được ghi xuống DB xong xuôi
+        int maxWaitAttempts = 1000; // Tránh loop vô hạn (tối đa 10 giây)
+        int attempts = 0;
+        while (hasPendingBidsForAuction(auctionId) && attempts < maxWaitAttempts) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            attempts++;
         }
 
         synchronized (auctionId.trim().intern()) {
@@ -777,9 +870,8 @@ public class AuctionService {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "A valid reason must be provided.");
         }
 
-        Auction auction = getAuctionContext(auctionId);
-
-        synchronized (auction) {
+        synchronized (auctionId.trim().intern()) {
+            Auction auction = getAuctionContext(auctionId);
             if (auction.getStatus() == AuctionStatus.FINISHED || auction.getStatus() == AuctionStatus.CANCELED) {
                 throw new AuctionException(AuctionErrorCode.AUCTION_CLOSED);
             }
@@ -1082,9 +1174,8 @@ public class AuctionService {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Max bid and increment must be greater than zero.");
         }
 
-        Auction auction = getAuctionContext(auctionId);
-
-        synchronized (auction) {
+        synchronized (auctionId.trim().intern()) {
+            Auction auction = getAuctionContext(auctionId);
             if (auction.getStatus() != AuctionStatus.OPEN && auction.getStatus() != AuctionStatus.RUNNING) {
                 throw new AuctionException(AuctionErrorCode.AUCTION_NOT_RUNNING);
             }
@@ -1144,9 +1235,8 @@ public class AuctionService {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Auction ID cannot be empty.");
         }
 
-        Auction auction = getAuctionContext(auctionId);
-
-        synchronized (auction) {
+        synchronized (auctionId.trim().intern()) {
+            Auction auction = getAuctionContext(auctionId);
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
                 conn.setAutoCommit(false);
                 Optional<AutoBid> opt = autoBidDAO.findActiveByUserAndAuction(conn, bidder.getId(), auctionId);
@@ -1236,10 +1326,8 @@ public class AuctionService {
             throw new ValidationException(ValidationErrorCode.INVALID_PARAMETER, "Start time must be in the future.");
         }
 
-        Auction auction = getAuctionContext(auctionId);
-
-        // Bảo vệ đa luồng: Lock đối tượng auction khi thực hiện thay đổi
-        synchronized (auction) {
+        synchronized (auctionId.trim().intern()) {
+            Auction auction = getAuctionContext(auctionId);
             // Kiểm tra sở hữu
             if (!auction.getSellerId().equals(sellerId)) {
                 throw new AuthorizationException(AuthorizationErrorCode.RESOURCE_OWNERSHIP_VIOLATION, "Access denied: You do not own this auction room.");

@@ -132,7 +132,7 @@ public class ServerBootstrap {
         log.warn("[Bootstrap]    🚨 Phát hiện {} phiên bị treo trạng thái RUNNING do sập nguồn!", expiredAuctions.size());
 
         // Gọi Service nghiệp vụ xử lý tổng kết, chuyển khoản tiền cọc và ăn chia tài sản trực tiếp dưới DB
-        AuctionService auctionService = new AuctionService();
+        AuctionService auctionService = AuctionService.getInstance();
         int cleanupCount = 0;
 
         for (Auction auction : expiredAuctions) {
@@ -152,8 +152,7 @@ public class ServerBootstrap {
     }
 
     private void hydrateMemoryCache() {
-       AuctionService auctionService = new AuctionService();
-       auctionService.loadAuctionsToRAM();
+       AuctionService.getInstance().loadAuctionsToRAM();
     }
 
     private void registerGracefulShutdownHook() {

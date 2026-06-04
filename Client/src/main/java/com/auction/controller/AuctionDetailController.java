@@ -533,16 +533,15 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         };
 
         task.setOnSucceeded(event -> {
+            setBusy(false);
             SocketResponse response = task.getValue();
 
             if (response == null) {
-                setBusy(false);
                 showError("Server không trả về phản hồi hợp lệ.");
                 return;
             }
 
             if (!response.isSuccess()) {
-                setBusy(false);
                 showError(response.getMessage());
                 return;
             }
@@ -552,9 +551,9 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             }
 
             showInfo(response.getMessage() == null ? "Đặt giá thành công!" : response.getMessage());
-
-            // Tải lại chi tiết phiên đấu giá để lấy cập nhật bảng lịch sử
-            loadAuctionDetail();
+            // BID_UPDATE event sẽ cập nhật giá và bảng lịch sử realtime.
+            // Không gọi loadAuctionDetail() ở đây vì DB async chưa ghi xong
+            // → setAll() sẽ ghi đè dữ liệu đúng mà BID_UPDATE vừa thêm vào bảng.
         });
 
         task.setOnFailed(event -> {
@@ -589,6 +588,7 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return;
         }
 
+        cleanupLiveRoom();
         SceneNavigator.showLiveBidding(auctionId);
     }
 
@@ -811,9 +811,17 @@ public class AuctionDetailController implements RealtimeUpdateListener {
                         boolean exists = bidHistoryItems.stream()
                                 .anyMatch(b -> b.getBidId() != null && b.getBidId().equals(newBid.getBidId()));
                         if (!exists) {
+                            // Cập nhật trạng thái các bid cũ thành REFUNDED
+                            for (BidTransactionDTO oldBid : bidHistoryItems) {
+                                oldBid.setStatus("REFUNDED");
+                            }
                             bidHistoryItems.add(0, newBid);
                             if (bidHistoryItems.size() > 15) {
                                 bidHistoryItems.remove(15);
+                            }
+                            // Yêu cầu TableView vẽ lại để hiển thị trạng thái mới lập tức
+                            if (bidHistoryTable != null) {
+                                bidHistoryTable.refresh();
                             }
                         }
                     });
