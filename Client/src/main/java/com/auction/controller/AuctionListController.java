@@ -229,33 +229,63 @@ public class AuctionListController {
 
     private void loadActiveAuctions() {
         showMessage("Đang làm mới danh sách...");
-        SocketResponse response = auctionApi.getActiveAuctions();
+        javafx.concurrent.Task<SocketResponse> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.getActiveAuctions();
+            }
+        };
 
-        if (response != null && !response.isSuccess()) {
-            showError(response.getMessage());
-            return;
-        }
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && !response.isSuccess()) {
+                showError(response.getMessage());
+                return;
+            }
 
-        List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
-        allServerAuctions.setAll(auctions);
+            List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
+            allServerAuctions.setAll(auctions);
 
-        applySearchFilterAndPagination();
+            applySearchFilterAndPagination();
 
-        if (allServerAuctions.isEmpty()) {
-            showMessage("Hiện chưa có phiên đấu giá nào đang hoạt động.");
-        } else {
-            showMessage("Đã cập nhật. Tìm thấy tổng cộng " + allServerAuctions.size() + " phiên đấu giá.");
-        }
+            if (allServerAuctions.isEmpty()) {
+                showMessage("Hiện chưa có phiên đấu giá nào đang hoạt động.");
+            } else {
+                showMessage("Đã cập nhật. Tìm thấy tổng cộng " + allServerAuctions.size() + " phiên đấu giá.");
+            }
+        });
+
+        task.setOnFailed(event -> {
+            showMessage("Không thể kết nối đến máy chủ.");
+        });
+
+        Thread thread = new Thread(task, "active-auctions-loader");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private void loadActiveAuctionsSilently() {
-        SocketResponse response = auctionApi.getActiveAuctions();
-        if (response != null && response.isSuccess()) {
-            List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
-            allServerAuctions.setAll(auctions);
-            applySearchFilterAndPagination();
-        }
+        javafx.concurrent.Task<SocketResponse> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.getActiveAuctions();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                List<AuctionSummaryDTO> auctions = auctionApi.parseAuctionSummaryList(response);
+                allServerAuctions.setAll(auctions);
+                applySearchFilterAndPagination();
+            }
+        });
+
+        Thread thread = new Thread(task, "active-auctions-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
     }
+
 
     private void updateTablePlaceholder(boolean isDarkMode) {
         VBox emptyBox = new VBox(12);

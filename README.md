@@ -6,48 +6,6 @@
 
 Ứng dụng Client-Server phân tán trên nền tảng Java, mô phỏng sàn đấu giá tài sản trực tuyến thời gian thực. Người dùng có thể đăng bán tài sản đa hình (Điện tử, Mỹ thuật, Phương tiện), đặt giá thầu cạnh tranh trong phòng Live, và quản trị hệ thống — tất cả giao tiếp qua kết nối Socket TCP/IP với giao thức JSON tùy chỉnh.
 
----
-
-## Giao Diện
-
-<!-- SCREENSHOT GUIDE (xóa comment này sau khi thêm ảnh)
-  Thêm 6 ảnh theo thứ tự dưới đây.
-  Đặt tất cả ảnh vào thư mục docs/screenshots/ trong repo.
-  Tên file: screenshot-1-login.png, screenshot-2-dashboard.png, ...
--->
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-1-login.png" alt="Đăng nhập" width="420"/>
-      <br/><sub>Màn hình đăng nhập — Dark theme</sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-2-auctions.png" alt="Danh sách phiên đấu giá" width="420"/>
-      <br/><sub>Danh sách phiên đấu giá — Light theme</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-3-live.png" alt="Phòng Live" width="420"/>
-      <br/><sub>Phòng đấu giá Live — Dark theme</sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-4-seller.png" alt="Quản lý vật phẩm" width="420"/>
-      <br/><sub>Quản lý vật phẩm (Seller) — Light theme</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-5-history.png" alt="Lịch sử đấu giá" width="420"/>
-      <br/><sub>Lịch sử đấu giá — Dark theme</sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/screenshot-6-wallet.png" alt="Ví điện tử" width="420"/>
-      <br/><sub>Ví điện tử — Light theme</sub>
-    </td>
-  </tr>
-</table>
 
 ---
 
@@ -367,13 +325,8 @@ Dừng ứng dụng: nhấn **`Ctrl + C`** tại terminal tương ứng.
 
 ## Báo Cáo & Demo
 
-<!-- PLACEHOLDER — điền link thật trước khi publish
-  - Báo cáo PDF: upload lên Google Drive hoặc GitHub Releases, lấy link share
-  - Video demo: upload lên YouTube (unlisted hoặc public), lấy link
-  Xóa comment này sau khi đã có link.
--->
-
 | Tài liệu            | Link            |
 |:--------------------|:----------------|
-| Báo cáo đồ án (PDF) | *(sẽ cập nhật)* |
-| Video demo hệ thống | *(sẽ cập nhật)* |
+| Báo cáo đồ án (PDF) | [Google Drive](https://drive.google.com/drive/folders/1aNVkxSMh7OzZP0KNJxeiIXqfowq9UZsB) |
+| Video demo hệ thống | [Google Drive](https://drive.google.com/file/d/18xcNZg3Z8ir9OedHi31D7lqgKrCIY_nA/view) |
+
