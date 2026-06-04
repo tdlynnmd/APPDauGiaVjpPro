@@ -289,6 +289,20 @@ class AuthServiceTest {
         verify(userDAO).insertUser(any(Connection.class), any(User.class));
     }
 
+    @Test
+    void registerShouldNormalizeEmailToLowercase() throws Exception {
+        when(userDAO.findByUsername("user02")).thenReturn(Optional.empty());
+        when(userDAO.findByEmail("user02@example.com")).thenReturn(Optional.empty());
+        when(userDAO.insertUser(any(Connection.class), any(User.class))).thenReturn(true);
+
+        UserDTO result = authService.register(
+                "user02", "Password@123", "User02@Example.Com", UserRole.BIDDER
+        );
+
+        assertNotNull(result);
+        assertEquals("user02@example.com", result.getEmail());
+    }
+
     // =========================================================
     // TEST LOGIN
     // =========================================================
@@ -377,6 +391,30 @@ class AuthServiceTest {
         assertEquals("sellerlogin01", result.getUsername());
         assertEquals("sellerlogin01@example.com", result.getEmail());
         assertEquals(UserRole.SELLER, result.getRole());
+    }
+
+    @Test
+    void loginShouldBeCaseSensitiveForUsername() {
+        Bidder user = UserFactory.createUser(UserRole.BIDDER, "LinhS", "linhs@example.com", "Correct@123");
+        when(userDAO.findByUsername("LinhS")).thenReturn(Optional.of(user));
+
+        // Login với username "Linhs" (sai case) -> Phải ném ngoại lệ INVALID_CREDENTIALS
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () -> 
+            authService.login("Linhs", "Correct@123")
+        );
+        assertAuthError(exception, AuthErrorCode.INVALID_CREDENTIALS);
+    }
+
+    @Test
+    void loginShouldBeCaseInsensitiveForEmail() {
+        Seller user = UserFactory.createUser(UserRole.SELLER, "sellerlogin02", "seller02@example.com", "Correct@123");
+        when(userDAO.findByEmail("seller02@example.com")).thenReturn(Optional.of(user));
+
+        // Login với email "Seller02@Example.Com" (khác case) -> Đăng nhập thành công
+        UserDTO result = authService.login("Seller02@Example.Com", "Correct@123");
+        assertNotNull(result);
+        assertEquals("sellerlogin02", result.getUsername());
+        assertEquals("seller02@example.com", result.getEmail());
     }
 
     // =========================================================

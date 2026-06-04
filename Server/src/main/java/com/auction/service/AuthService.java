@@ -40,15 +40,17 @@ public class AuthService {
             throw new AuthenticationException(AuthErrorCode.ROLE_INVALID);
         }
 
+        String normalizedEmail = email.trim().toLowerCase(java.util.Locale.ROOT);
+
         if (userDAO.findByUsername(username).isPresent()) {
             throw new AuthenticationException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
-        if (userDAO.findByEmail(email).isPresent()) {
+        if (userDAO.findByEmail(normalizedEmail).isPresent()) {
             throw new AuthenticationException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        User newUser = UserFactory.createUser(role, username, email, password);
+        User newUser = UserFactory.createUser(role, username, normalizedEmail, password);
 
         try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
 
@@ -71,23 +73,37 @@ public class AuthService {
             throw new AuthenticationException(AuthErrorCode.INPUT_NULL_EMPTY);
         }
 
-        User user = userManage.getUserByUsername(usernameOrEmail);
-        if (user == null) {
-            user = userManage.getUserByEmail(usernameOrEmail);
+        String normalizedInput = usernameOrEmail.trim();
+        boolean isEmail = normalizedInput.contains("@");
+        if (isEmail) {
+            normalizedInput = normalizedInput.toLowerCase(java.util.Locale.ROOT);
+        }
+
+        User user = null;
+        if (isEmail) {
+            user = userManage.getUserByEmail(normalizedInput);
+        } else {
+            user = userManage.getUserByUsername(normalizedInput);
         }
 
         if (user == null) {
-            Optional<User> userOpt = usernameOrEmail.contains("@")
-                    ? userDAO.findByEmail(usernameOrEmail)
-                    : userDAO.findByUsername(usernameOrEmail);
+            Optional<User> userOpt = isEmail
+                    ? userDAO.findByEmail(normalizedInput)
+                    : userDAO.findByUsername(normalizedInput);
 
             if (userOpt.isEmpty()) {
                 throw new AuthenticationException(AuthErrorCode.INVALID_CREDENTIALS);
             }
             user = userOpt.get();
+            com.auction.service.AuctionService.getInstance().waitForPendingUserBids(user.getId());
+            user = userDAO.findById(user.getId()).orElse(user);
         }
 
-        if(user.getStatus() == UserStatus.BANNED) {
+        if (!isEmail && !user.getUsername().equals(normalizedInput)) {
+            throw new AuthenticationException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (user.getStatus() == UserStatus.BANNED) {
             throw new AuthenticationException(AuthErrorCode.ACCOUNT_LOCKED);
         }
 
@@ -115,14 +131,14 @@ public class AuthService {
 
     }
 
-    private void validateEmail(String email) throws AuthenticationException {
+    public static void validateEmail(String email) throws AuthenticationException {
         if (email == null || email.isEmpty())
             throw new AuthenticationException(AuthErrorCode.EMAIL_NULL_EMPTY);
         if (!email.matches(EMAIL_REGEX))
             throw new AuthenticationException(AuthErrorCode.EMAIL_INVALID_FORMAT);
     }
 
-    private void validateUsername(String username) throws AuthenticationException {
+    public static void validateUsername(String username) throws AuthenticationException {
         if (username == null || username.isEmpty())
             throw new AuthenticationException(AuthErrorCode.USERNAME_NULL_EMPTY);
         if (username.length() < 5)
@@ -133,7 +149,7 @@ public class AuthService {
             throw new AuthenticationException(AuthErrorCode.USERNAME_INVALID_FORMAT);
     }
 
-    private void validatePassword(String password) throws AuthenticationException {
+    public static void validatePassword(String password) throws AuthenticationException {
         if (password == null || password.isEmpty())
             throw new AuthenticationException(AuthErrorCode.PASSWORD_NULL_EMPTY);
         if (password.length() < 8)

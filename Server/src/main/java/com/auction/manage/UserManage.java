@@ -20,6 +20,7 @@ public class UserManage {
     private final Map<String, User> users = new ConcurrentHashMap<>();
     private final Map<String, String> usernameToIdMap = new ConcurrentHashMap<>();
     private final Map<String, String> emailToIdMap = new ConcurrentHashMap<>();
+    private static final Object MAPS_LOCK = new Object();
 
     private UserManage() {}
 
@@ -47,14 +48,16 @@ public class UserManage {
             throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        this.isUsernameExists(user.getUsername());
-        this.isEmailExists(user.getEmail());
+        synchronized (MAPS_LOCK) {
+            this.isUsernameExists(user.getUsername());
+            this.isEmailExists(user.getEmail());
 
-        String id = user.getId();
+            String id = user.getId();
 
-        users.put(id, user);
-        usernameToIdMap.put(user.getUsername(), id);
-        emailToIdMap.put(user.getEmail(), id);
+            users.put(id, user);
+            usernameToIdMap.put(user.getUsername(), id);
+            emailToIdMap.put(user.getEmail().toLowerCase(java.util.Locale.ROOT), id);
+        }
 
         System.out.println("[UserManage] ✅ Nạp người dùng lên RAM thành công: " + user.getUsername());
         return true;
@@ -69,7 +72,7 @@ public class UserManage {
 
         this.isUserIdInvalid(userId);
 
-        synchronized (userId.intern()) {
+        synchronized (MAPS_LOCK) {
             User oldUser = users.get(userId);
 
             String oldUsername = oldUser.getUsername();
@@ -80,7 +83,7 @@ public class UserManage {
             if (!newUsername.equals(oldUsername)) {
                 this.isUsernameExists(newUsername);
             }
-            if (!newEmail.equals(oldEmail)) {
+            if (!newEmail.equalsIgnoreCase(oldEmail)) {
                 this.isEmailExists(newEmail);
             }
 
@@ -88,13 +91,13 @@ public class UserManage {
                 usernameToIdMap.remove(oldUsername);
                 usernameToIdMap.put(newUsername, userId);
             }
-            if (!newEmail.equals(oldEmail)) {
-                emailToIdMap.remove(oldEmail);
-                emailToIdMap.put(newEmail, userId);
+            if (!newEmail.equalsIgnoreCase(oldEmail)) {
+                emailToIdMap.remove(oldEmail.toLowerCase(java.util.Locale.ROOT));
+                emailToIdMap.put(newEmail.toLowerCase(java.util.Locale.ROOT), userId);
             }
 
             oldUser.setUsername(newUsername);
-            oldUser.setEmail(newEmail);
+            oldUser.setEmail(newEmail.toLowerCase(java.util.Locale.ROOT));
             oldUser.setPassword(updatedUser.getPassword());
 
             System.out.println("[UserManage] 🔄 Cập nhật thông tin người dùng thành công: " + newUsername);
@@ -110,17 +113,51 @@ public class UserManage {
 
         this.isUserIdInvalid(userId);
 
-        synchronized (userId.intern()) {
+        synchronized (MAPS_LOCK) {
             User user = users.get(userId);
             String username = user.getUsername();
             String email = user.getEmail();
 
             users.remove(userId);
             usernameToIdMap.remove(username);
-            emailToIdMap.remove(email);
+            emailToIdMap.remove(email.toLowerCase(java.util.Locale.ROOT));
 
             System.out.println("[UserManage] 🧹 Trục xuất người dùng khỏi RAM thành công: " + username);
             return true;
+        }
+    }
+
+    /**
+     * Đồng bộ hóa bản đồ RAM khi đổi tên/email của người dùng
+     */
+    public void updateUsernameAndEmailInMaps(String userId, String newUsername, String newEmail) throws AuthenticationException {
+        if (userId == null) return;
+        synchronized (MAPS_LOCK) {
+            User user = users.get(userId);
+            if (user == null) return;
+            String oldUsername = user.getUsername();
+            String oldEmail = user.getEmail();
+
+            if (!newUsername.equals(oldUsername)) {
+                String existingId = usernameToIdMap.get(newUsername);
+                if (existingId != null && !existingId.equals(userId)) {
+                    throw new AuthenticationException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+                }
+                usernameToIdMap.remove(oldUsername);
+                usernameToIdMap.put(newUsername, userId);
+            }
+            if (!newEmail.equalsIgnoreCase(oldEmail)) {
+                String normalizedNewEmail = newEmail.toLowerCase(java.util.Locale.ROOT);
+                String existingId = emailToIdMap.get(normalizedNewEmail);
+                if (existingId != null && !existingId.equals(userId)) {
+                    throw new AuthenticationException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+                }
+                emailToIdMap.remove(oldEmail.toLowerCase(java.util.Locale.ROOT));
+                emailToIdMap.put(normalizedNewEmail, userId);
+            }
+
+            user.setUsername(newUsername);
+            user.setEmail(newEmail.toLowerCase(java.util.Locale.ROOT));
         }
     }
 
@@ -136,7 +173,7 @@ public class UserManage {
 
     public User getUserByEmail(String email) {
         if (email == null) return null;
-        String userId = emailToIdMap.get(email);
+        String userId = emailToIdMap.get(email.toLowerCase(java.util.Locale.ROOT));
         return userId != null ? users.get(userId) : null;
     }
 
@@ -170,7 +207,7 @@ public class UserManage {
     }
 
     public void isEmailExists(String email) throws AuthenticationException {
-        if (email != null && emailToIdMap.containsKey(email))
+        if (email != null && emailToIdMap.containsKey(email.toLowerCase(java.util.Locale.ROOT)))
             throw new AuthenticationException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
     }
 }

@@ -297,12 +297,9 @@ public class UserService {
         String username = request.getUsername();
         String email = request.getEmail();
 
-        if (username == null || username.trim().isEmpty()) {
-            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Username cannot be empty.");
-        }
-        if (email == null || email.trim().isEmpty()) {
-            throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Email cannot be empty.");
-        }
+        // 1. Kiểm tra định dạng Regex bằng luật của AuthService
+        com.auction.service.AuthService.validateUsername(username);
+        com.auction.service.AuthService.validateEmail(email);
 
         Optional<User> existingByUsername = userDAO.findByUsername(username);
         if (existingByUsername.isPresent() && !existingByUsername.get().getId().equals(userId)) {
@@ -331,16 +328,8 @@ public class UserService {
                 throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database transaction failed at updateProfile: " + e.getMessage());
             }
 
-            user.setUsername(username);
-            user.setEmail(email);
-
-            User ramUser = userManage.getUser(userId);
-            if (ramUser != null) {
-                synchronized (ramUser) {
-                    ramUser.setUsername(username);
-                    ramUser.setEmail(email);
-                }
-            }
+            // Đồng bộ hoá cả usernameToIdMap và emailToIdMap trên RAM và cập nhật thuộc tính User
+            userManage.updateUsernameAndEmailInMaps(userId, username, email);
         }
 
         return getUserProfile(userId);
@@ -357,6 +346,9 @@ public class UserService {
             throw new ValidationException(ValidationErrorCode.MISSING_REQUIRED_FIELD, "Old password and new password cannot be empty.");
         }
 
+        // 1. Kiểm tra định dạng Regex bằng luật của AuthService
+        com.auction.service.AuthService.validatePassword(newPassword);
+
         User user = getOrLoadUser(userId);
         if (user == null) {
             throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
@@ -365,10 +357,6 @@ public class UserService {
         synchronized (userId.intern()) {
             if (!user.checkPassword(oldPassword)) {
                 throw new AuthenticationException(AuthErrorCode.OLD_PASSWORD_INCORRECT);
-            }
-
-            if (newPassword.length() < 8) {
-                throw new AuthenticationException(AuthErrorCode.PASSWORD_TOO_SHORT);
             }
 
             String hashedPassword = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, newPassword.toCharArray());

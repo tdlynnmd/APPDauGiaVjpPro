@@ -150,6 +150,11 @@ class UserServiceTest {
         boolean withdrawAvailableBalanceResult = true;
         boolean updateStatusResult = true;
         User findByIdResult = null;
+        User findByUsernameResult = null;
+        User findByEmailResult = null;
+        boolean updateProfileResult = true;
+        boolean updatePasswordResult = true;
+
         // 🔥 THÊM BIẾN NÀY: Để chủ động cấu hình tổng số user trả về khi test
         long countTotalUsersResult = 3;
 
@@ -165,6 +170,26 @@ class UserServiceTest {
         List<User> paginatedUsers = new ArrayList<>();
         int lastPageSize;
         int lastOffset;
+
+        @Override
+        public Optional<User> findByUsername(String username) {
+            return Optional.ofNullable(findByUsernameResult);
+        }
+
+        @Override
+        public Optional<User> findByEmail(String email) {
+            return Optional.ofNullable(findByEmailResult);
+        }
+
+        @Override
+        public boolean updateProfile(Connection conn, String userId, String username, String email) {
+            return updateProfileResult;
+        }
+
+        @Override
+        public boolean updatePassword(Connection conn, String userId, String hashedPassword) {
+            return updatePasswordResult;
+        }
 
         // 🔥 GHI ĐÈ THÊM HÀM NÀY: Chặn đứng không cho chọc xuống hàm DB thật nữa
         @Override
@@ -553,6 +578,82 @@ class UserServiceTest {
         assertEquals("user-1", logDAO.lastTargetId);
         assertTrue(logDAO.lastActionDetail.contains("BANNED"));
         assertTrue(logDAO.lastActionDetail.contains("policy violation"));
+    }
+
+    @Test
+    void updateProfileShouldThrowWhenUsernameInvalidFormat() {
+        UpdateProfileRequest req = new UpdateProfileRequest("ab", "test@gmail.com");
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () ->
+            userService.updateProfile("user-1", req)
+        );
+        assertEquals("AUTH_USERNAME_002", exception.getErrorCode());
+    }
+
+    @Test
+    void updateProfileShouldThrowWhenEmailInvalidFormat() {
+        UpdateProfileRequest req = new UpdateProfileRequest("newname", "testgmail.com");
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () ->
+            userService.updateProfile("user-1", req)
+        );
+        assertEquals("AUTH_EMAIL_002", exception.getErrorCode());
+    }
+
+    @Test
+    void updateProfileShouldThrowWhenUsernameAlreadyExists() {
+        User anotherUser = sampleBidder("another-id");
+        anotherUser.setUsername("existingname");
+        userDAO.findByUsernameResult = anotherUser;
+
+        UpdateProfileRequest req = new UpdateProfileRequest("existingname", "test@gmail.com");
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () ->
+            userService.updateProfile("user-1", req)
+        );
+        assertEquals("AUTH_USERNAME_005", exception.getErrorCode());
+    }
+
+    @Test
+    void updateProfileShouldSucceedAndSyncRAMCache() throws Exception {
+        Bidder bidder = sampleBidder("bidder-profile-sync");
+        bidder.setUsername("oldusername");
+        bidder.setEmail("old@gmail.com");
+        UserManage.getInstance().addUser(bidder);
+        userDAO.findByIdResult = bidder;
+
+        UpdateProfileRequest req = new UpdateProfileRequest("newusername", "newemail@gmail.com");
+        assertDoesNotThrow(() -> userService.updateProfile("bidder-profile-sync", req));
+
+        assertEquals("newusername", bidder.getUsername());
+        assertEquals("newemail@gmail.com", bidder.getEmail());
+        
+        // Kiểm tra tra cứu nhanh trên RAM qua tên mới và tên cũ
+        assertNotNull(UserManage.getInstance().getUserByUsername("newusername"));
+        assertNull(UserManage.getInstance().getUserByUsername("oldusername"));
+    }
+
+    @Test
+    void updatePasswordShouldThrowWhenNewPasswordTooWeak() {
+        UpdatePasswordRequest req = new UpdatePasswordRequest("oldpass", "weak");
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () ->
+            userService.updatePassword("user-1", req, null)
+        );
+        assertEquals("AUTH_PASSWORD_002", exception.getErrorCode());
+    }
+
+    @Test
+    void updatePasswordShouldSucceedAndSyncRAM() throws Exception {
+        String hashedOldPassword = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, "OldPass123!".toCharArray());
+        Bidder bidder = new Bidder(
+                "bidder-pass-sync", "bidder_pass_sync", "bidder-pass-sync@example.com", hashedOldPassword,
+                UserRole.BIDDER, 500.0, 100.0, UserStatus.ACTIVE,
+                LocalDateTime.now().minusDays(1), LocalDateTime.now()
+        );
+        UserManage.getInstance().addUser(bidder);
+        userDAO.findByIdResult = bidder;
+
+        UpdatePasswordRequest req = new UpdatePasswordRequest("OldPass123!", "NewPass123!");
+        assertDoesNotThrow(() -> userService.updatePassword("bidder-pass-sync", req, null));
+
+        assertTrue(bidder.checkPassword("NewPass123!"));
     }
 
     private static class FakeDbConnection implements Connection {

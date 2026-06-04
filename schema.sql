@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `id` binary(16) NOT NULL,
   `user_type` enum('ADMIN','SELLER','BIDDER') NOT NULL,
-  `username` varchar(20) NOT NULL,
+  `username` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `status` enum('ACTIVE','INACTIVE','BANNED','UNVERIFIED') DEFAULT 'ACTIVE',
