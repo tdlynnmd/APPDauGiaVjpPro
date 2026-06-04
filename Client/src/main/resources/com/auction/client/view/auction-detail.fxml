@@ -11,6 +11,7 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
@@ -28,7 +29,34 @@
                         <Button fx:id="backButton" onAction="#handleBack" styleClass="ad-btn-back" text="⬅ Quay Lại" />
                         <Label styleClass="ad-header-title" text="|  Chi tiết phiên đấu giá" />
                     </HBox>
-                    <HBox HBox.hgrow="ALWAYS" />
+
+                    <Region HBox.hgrow="ALWAYS" />
+
+                    <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="header-balance-container">
+                        <children>
+                            <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="ava-balance">
+                                <children>
+                                    <Label text="Khả dụng:" />
+                                    <Label fx:id="headerAvailableBalance" styleClass="ava-balance-value" text="0 VNĐ" />
+                                </children>
+                            </HBox>
+                            <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="fro-balance">
+                                <children>
+                                    <Label text="Đóng băng:" />
+                                    <Label fx:id="headerFrozenBalance" styleClass="fro-balance-value" text="0 VNĐ" />
+                                </children>
+                            </HBox>
+                            <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="tot-balance">
+                                <children>
+                                    <Label text="Tổng số dư:" />
+                                    <Label fx:id="headerTotalBalance" styleClass="tot-balance-value" text="0 VNĐ" />
+                                </children>
+                            </HBox>
+                        </children>
+                    </HBox>
+
+                    <Region HBox.hgrow="ALWAYS" />
+
                     <Button fx:id="openLiveBiddingButton" onAction="#handleOpenLiveBidding" styleClass="ad-btn-live" text="📺 Vào Phòng Live" />
                     <Button fx:id="refreshButton" onAction="#handleRefresh" styleClass="ad-btn-refresh" text="🔄 Làm Mới" />
                 </HBox>

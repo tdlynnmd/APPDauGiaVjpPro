@@ -2086,3 +2086,34 @@
 .table-cell.badge-orange {
     -fx-text-fill: #fdd663 !important;
 }
+/* ==========================================================================
+   CỤM SỐ DƯ TÀI KHOẢN (HEADER BALANCE) - CHẾ ĐỘ TỐI
+   ========================================================================== */
+
+/* Khung bọc tổng thể chứa 3 ô số dư */
+.header-balance-container {
+    -fx-alignment: center-left;
+}
+
+/* Định dạng chung cho phần chữ nhãn (Khả dụng:, Đóng băng:, Tổng số dư:) */
+.header-balance-container .label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #9aa0a6; /* Màu xám sáng dịu cho Dark Mode */
+}
+
+/* --- ĐỔI MÀU CHỮ SỐ TIỀN TRƠN (Không nền, không in đậm) --- */
+
+/* 1. Số dư Khả dụng (Màu xanh lục sáng dịu mắt) */
+.header-balance-container .ava-balance .ava-balance-value {
+    -fx-text-fill: #81c995;
+}
+
+/* 2. Số dư Đóng băng (Màu hồng đỏ sáng) */
+.header-balance-container .fro-balance .fro-balance-value {
+    -fx-text-fill: #f28b82;
+}
+
+/* 3. Tổng số dư (Màu xanh dương sáng dịu) */
+.header-balance-container .tot-balance .tot-balance-value {
+    -fx-text-fill: #8ab4f8;
+}
