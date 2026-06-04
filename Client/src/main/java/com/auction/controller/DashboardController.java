@@ -48,6 +48,9 @@ public class DashboardController {
     private Button sellerManagementButton;
 
     @FXML
+    private Button sellerAuctionManagementButton;
+
+    @FXML
     private Button adminPanelButton;
 
     @FXML
@@ -74,6 +77,9 @@ public class DashboardController {
     private Region sellerManagementSpacer;
 
     @FXML
+    private Region sellerAuctionManagementSpacer;
+
+    @FXML
     private Region adminPanelSpacer;
 
     // --- COMPONENT THẺ VÍ MINI MỚI ĐỂ LẤP ĐẦY KHOẢNG TRỐNG THÔNG MINH ---
@@ -83,8 +89,6 @@ public class DashboardController {
     @FXML
     private Label miniBalanceLabel;
 
-    @FXML private Button sellerAuctionManagementButton;
-    @FXML private Region sellerAuctionManagementSpacer;
 
     @FXML private Button settingsButton;
 
@@ -181,13 +185,16 @@ public class DashboardController {
             setElementVisible(myBidsButton, myBidsSpacer, true);
             setButtonVisible(walletButton, true);
             setCardVisible(walletMiniCard, true); // Hiện thẻ ví cho khách đấu giá nhìn số dư công khai
-        } else if (role == UserRole.SELLER) {
+        }
+        else if (role == UserRole.SELLER) {
             setElementVisible(sellerManagementButton, sellerManagementSpacer, true);
             setButtonVisible(walletButton, true);
-            setCardVisible(walletMiniCard, true);        } else if (role == UserRole.ADMIN) {
+            setCardVisible(walletMiniCard, true);
+            setElementVisible(sellerAuctionManagementButton, sellerAuctionManagementSpacer, true);
+        }
+        else if (role == UserRole.ADMIN) {
             setElementVisible(adminPanelButton, adminPanelSpacer, true);
             setCardVisible(walletMiniCard, false); // Admin không cần thẻ ví cá nhân, ẩn đi cho gọn gàng
-            setElementVisible(sellerAuctionManagementButton, sellerAuctionManagementSpacer, true);
         }
     }
 
