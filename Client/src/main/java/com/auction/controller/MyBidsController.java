@@ -154,17 +154,21 @@ public class MyBidsController {
                     super.updateItem(item, empty);
                     if (empty || item == null) {
                         setText(null);
+                        setStyle("");
                     } else {
                         setText(item);
-                        setStyle("-fx-alignment: center; -fx-font-weight: bold;");
+                        setStyle("-fx-alignment: center; -fx-font-weight: bold; -fx-font-size: 14px;");
 
                         getStyleClass().removeAll("status-running", "status-open", "status-finished");
-                        if ("SUCCESS".equalsIgnoreCase(item)) {
-                            setStyle(getStyle() + "-fx-text-fill: #10B981;");
-                        } else if ("FAILED".equalsIgnoreCase(item)) {
-                            setStyle(getStyle() + "-fx-text-fill: #EF4444;");
+
+                        String status = item.toUpperCase().trim();
+                        // Tự động phân tách hệ màu thông minh: ACCEPT/SUCCESS -> XANH LÁ, REFUND/FAILED -> ĐỎ
+                        if (status.contains("ACCEPT")) {
+                            setStyle(getStyle() + "-fx-text-fill: #2ecc71 !important;");
+                        } else if (status.contains("REFUND")) {
+                            setStyle(getStyle() + "-fx-text-fill: #e74c3c !important;");
                         } else {
-                            setStyle(getStyle() + "-fx-text-fill: #F59E0B;");
+                            setStyle(getStyle() + "-fx-text-fill: #e67e22 !important;");
                         }
                     }
                 }
@@ -178,9 +182,15 @@ public class MyBidsController {
                     super.updateItem(item, empty);
                     if (empty || item == null) {
                         setText(null);
+                        getStyleClass().remove("datetime"); // Xóa class tránh lỗi lặp UI khi cuộn bảng
                     } else {
                         setText(item);
-                        setStyle("-fx-alignment: center; -fx-text-fill: -fx-secondary-text-color;");
+                        setStyle("-fx-alignment: center;");
+
+                        // Gắn class định danh "datetime" để FXML và CSS nhận diện in đậm, đổi màu giống chữ thường
+                        if (!getStyleClass().contains("datetime")) {
+                            getStyleClass().add("datetime");
+                        }
                     }
                 }
             });

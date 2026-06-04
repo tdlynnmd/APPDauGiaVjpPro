@@ -321,6 +321,10 @@
 .auction-table .table-cell.status-paid {
     -fx-text-fill: #059669; /* Xanh lục đậm ngọc bích */
 }
+.auction-table .table-cell.datetime {
+    -fx-text-fill: #333333 !important; /* Đồng bộ màu đen đậm giống như các cột thông thường */
+    -fx-font-weight: bold !important;  /* Ép chữ in đậm nét để dễ theo dõi */
+}
 
 /* Hệ thống nút bấm phụ trợ chế độ sáng */
 .btn-primary { -fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand; }

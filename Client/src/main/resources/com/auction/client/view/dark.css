@@ -326,6 +326,10 @@
 .auction-table .table-cell.status-paid {
     -fx-text-fill: #34d399; /* Màu xanh lục sáng Neon */
 }
+.auction-table .table-cell.datetime {
+    -fx-text-fill: #E4E6EB !important; /* Hoặc màu trắng sáng tùy thuộc mã màu chữ thường trong dark.css của bạn */
+    -fx-font-weight: bold !important;
+}
 
 /* Hệ thống nút bấm phụ trợ */
 .btn-primary { -fx-background-color: #fca311; -fx-text-fill: black; -fx-font-weight: bold; -fx-background-radius: 6; -fx-cursor: hand; }
