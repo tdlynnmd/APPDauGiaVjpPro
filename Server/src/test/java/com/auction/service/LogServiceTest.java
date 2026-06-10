@@ -1,5 +1,7 @@
 package com.auction.service;
 
+import com.auction.dao.UserDAO;
+import com.auction.dao.ItemDAO;
 import com.auction.dao.impl.LogDAOImpl;
 import com.auction.dto.ActionLogDTO;
 import com.auction.dto.PageDTO;
@@ -16,19 +18,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class LogServiceTest {
 
     private LogService logService;
     private FakeLogDAO logDAO;
+    private UserDAO userDAO;
+    private ItemDAO itemDAO;
 
     @BeforeEach
     void setUp() throws Exception {
         logService = new LogService();
 
         logDAO = new FakeLogDAO();
+        userDAO = mock(UserDAO.class);
+        itemDAO = mock(ItemDAO.class);
 
         injectField(logService, "logDAO", logDAO);
+        injectField(logService, "userDAO", userDAO);
+        injectField(logService, "itemDAO", itemDAO);
     }
 
     // Inject fake LogDAO vào LogService để không gọi database thật
