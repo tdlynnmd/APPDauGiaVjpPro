@@ -12,11 +12,14 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.ScrollPane?>
+<?import java.lang.String?>
 
 <StackPane prefHeight="750.0" prefWidth="1050.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.controller.LiveBiddingController">
     <children>
-
-        <BorderPane fx:id="rootContainer" styleClass="lb-root">
+        <ScrollPane fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0;">
+            <content>
+                <BorderPane fx:id="rootContainer" styleClass="lb-root">
             <top>
                 <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="lb-header">
                     <padding>
@@ -36,24 +39,36 @@
 
                         <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="header-balance-container">
                             <children>
-                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="ava-balance">
+                                <VBox>
+                                    <styleClass>
+                                        <String fx:value="mini-balance-card" />
+                                        <String fx:value="mini-card-available" />
+                                    </styleClass>
                                     <children>
-                                        <Label text="Khả dụng:" />
-                                        <Label fx:id="headerAvailableBalance" text="0 VNĐ" styleClass="ava-balance-value" />
+                                        <Label styleClass="mini-card-title" text="Khả dụng" />
+                                        <Label fx:id="headerAvailableBalance" styleClass="mini-card-value" text="0 VNĐ" />
                                     </children>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="fro-balance">
+                                </VBox>
+                                <VBox>
+                                    <styleClass>
+                                        <String fx:value="mini-balance-card" />
+                                        <String fx:value="mini-card-frozen" />
+                                    </styleClass>
                                     <children>
-                                        <Label text="Đóng băng:" />
-                                        <Label fx:id="headerFrozenBalance" text="0 VNĐ" styleClass="fro-balance-value" />
+                                        <Label styleClass="mini-card-title" text="Đóng băng" />
+                                        <Label fx:id="headerFrozenBalance" styleClass="mini-card-value" text="0 VNĐ" />
                                     </children>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="tot-balance">
+                                </VBox>
+                                <VBox>
+                                    <styleClass>
+                                        <String fx:value="mini-balance-card" />
+                                        <String fx:value="mini-card-total" />
+                                    </styleClass>
                                     <children>
-                                        <Label text="Tổng số dư:" />
-                                        <Label fx:id="headerTotalBalance" text="0 VNĐ" styleClass="tot-balance-value" />
+                                        <Label styleClass="mini-card-title" text="Tổng số dư" />
+                                        <Label fx:id="headerTotalBalance" styleClass="mini-card-value" text="0 VNĐ" />
                                     </children>
-                                </HBox>
+                                </VBox>
                             </children>
                         </HBox>
 
@@ -131,6 +146,15 @@
                                     <children>
                                         <Label styleClass="lb-box-title" text="Đặt giá thủ công" />
                                         <TextField fx:id="bidAmountField" promptText="Nhập số tiền muốn đặt..." styleClass="lb-input-field" />
+                                        <Label fx:id="bidAmountWordsLabel" style="-fx-text-fill: #27ae60; -fx-font-size: 11px; -fx-font-style: italic;" wrapText="true" />
+                                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                            <children>
+                                                <Button onAction="#handleQuickAddManualBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+100K" />
+                                                <Button onAction="#handleQuickAddManualBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+500K" />
+                                                <Button onAction="#handleQuickAddManualBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+1M" />
+                                                <Button onAction="#handleQuickAddManualBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+10M" />
+                                            </children>
+                                        </HBox>
                                         <Button fx:id="placeBidButton" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" styleClass="lb-btn-primary" text="ĐẶT GIÁ NGAY" />
                                     </children>
                                 </VBox>
@@ -142,11 +166,29 @@
                                     <children>
                                         <Label styleClass="lb-box-title" text="Cấu hình Tự động đặt giá (Auto-bid)" />
 
-                                        <Label text="Giá tối đa có thể trả:" styleClass="lb-field-sub-label" />
+                                        <Label styleClass="lb-field-sub-label" text="Giá tối đa có thể trả:" />
                                         <TextField fx:id="maxAutoBidField" promptText="Ví dụ: 5,000,000" styleClass="lb-input-field" />
+                                        <Label fx:id="maxAutoBidWordsLabel" style="-fx-text-fill: #27ae60; -fx-font-size: 11px; -fx-font-style: italic;" wrapText="true" />
+                                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                            <children>
+                                                <Button onAction="#handleQuickAddMaxAutoBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+100K" />
+                                                <Button onAction="#handleQuickAddMaxAutoBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+500K" />
+                                                <Button onAction="#handleQuickAddMaxAutoBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+1M" />
+                                                <Button onAction="#handleQuickAddMaxAutoBid" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+10M" />
+                                            </children>
+                                        </HBox>
 
-                                        <Label text="Mỗi lần tự tăng thêm:" styleClass="lb-field-sub-label" />
+                                        <Label styleClass="lb-field-sub-label" text="Mỗi lần tự tăng thêm:" />
                                         <TextField fx:id="autoBidIncrementField" promptText="Ví dụ: 100,000" styleClass="lb-input-field" />
+                                        <Label fx:id="autoBidIncrementWordsLabel" style="-fx-text-fill: #27ae60; -fx-font-size: 11px; -fx-font-style: italic;" wrapText="true" />
+                                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                            <children>
+                                                <Button onAction="#handleQuickAddAutoIncrement" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+Bước giá" />
+                                                <Button onAction="#handleQuickAddAutoIncrement" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+100K" />
+                                                <Button onAction="#handleQuickAddAutoIncrement" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+500K" />
+                                                <Button onAction="#handleQuickAddAutoIncrement" style="-fx-font-size: 11px; -fx-padding: 3 8;" styleClass="btn-secondary" text="+1M" />
+                                            </children>
+                                        </HBox>
 
                                         <HBox spacing="10.0" styleClass="lb-auto-actions">
                                             <children>
@@ -175,6 +217,8 @@
                 </HBox>
             </bottom>
         </BorderPane>
+            </content>
+        </ScrollPane>
 
         <VBox fx:id="loadingOverlay" alignment="CENTER" styleClass="lb_loading-overlay">
             <children>

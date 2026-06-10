@@ -16,6 +16,9 @@ public class ActionLogDTO implements Serializable {
     private String targetId;
     private LocalDateTime timestamp;
 
+    private String adminName;
+    private String targetName;
+
     public ActionLogDTO(String logId, String adminId, String actionDetail, String targetType, String targetId, LocalDateTime timestamp) {
         this.logId = logId;
         this.adminId = adminId;
@@ -42,4 +45,10 @@ public class ActionLogDTO implements Serializable {
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+    public String getAdminName() { return adminName; }
+    public void setAdminName(String adminName) { this.adminName = adminName; }
+
+    public String getTargetName() { return targetName; }
+    public void setTargetName(String targetName) { this.targetName = targetName; }
 }

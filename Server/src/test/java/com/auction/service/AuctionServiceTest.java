@@ -18,6 +18,8 @@ import com.auction.exception.AuctionException;
 import com.auction.exception.ValidationErrorCode;
 import com.auction.exception.ValidationException;
 import com.auction.exception.WalletException;
+import com.auction.exception.AuthorizationException;
+import com.auction.exception.AuthorizationErrorCode;
 import com.auction.manage.AuctionManage;
 import com.auction.manage.ConnectionManage;
 import com.auction.manage.ProductManage;
@@ -478,6 +480,61 @@ class AuctionServiceTest {
         assertNull(auctionManage.getAuctionById("auction-cancel"));
     }
 
+    @Test
+    void cancelAuctionShouldSucceedWhenSellerCancelsOwnRunningAuctionWithNoBids() throws Exception {
+        Item item = sampleItem("item-cancel-seller-1");
+        Auction auction = sampleAuction("auction-cancel-seller-1", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auction.setHighestBidderId(null);
+        auctionManage.addAuction(auction);
+
+        when(auctionDAO.findById("auction-cancel-seller-1")).thenReturn(Optional.of(auction));
+        when(itemDAO.updateStatus(any(Connection.class), eq("item-cancel-seller-1"), eq(ItemStatus.ACTIVE.name()))).thenReturn(true);
+
+        assertDoesNotThrow(() -> auctionService.cancelAuction("auction-cancel-seller-1", "seller-1", UserRole.SELLER, "Tôi muốn tự hủy phòng"));
+
+        verify(auctionDAO).updateStatus(any(Connection.class), eq("auction-cancel-seller-1"), eq(AuctionStatus.CANCELED.name()));
+        verify(itemDAO).updateStatus(any(Connection.class), eq("item-cancel-seller-1"), eq(ItemStatus.ACTIVE.name()));
+        verify(logDAO, never()).insertLog(any(Connection.class), anyString(), eq("seller-1"), anyString(), eq("AUCTION"), eq("auction-cancel-seller-1"));
+        assertNull(auctionManage.getAuctionById("auction-cancel-seller-1"));
+    }
+
+    @Test
+    void cancelAuctionShouldThrowWhenSellerCancelsOwnRunningAuctionWithBids() throws Exception {
+        Item item = sampleItem("item-cancel-seller-2");
+        Auction auction = sampleAuction("auction-cancel-seller-2", item);
+        auction.setStatus(AuctionStatus.RUNNING);
+        auction.setHighestBidderId("bidder-123");
+        auctionManage.addAuction(auction);
+
+        when(auctionDAO.findById("auction-cancel-seller-2")).thenReturn(Optional.of(auction));
+
+        AuctionException exception = assertThrows(AuctionException.class, () ->
+                auctionService.cancelAuction("auction-cancel-seller-2", "seller-1", UserRole.SELLER, "Hủy phòng có bid")
+        );
+        assertAuctionError(exception, AuctionErrorCode.CANNOT_CANCEL_AUCTION_RUNNING);
+    }
+
+    @Test
+    void cancelAuctionShouldThrowWhenSellerCancelsAnotherSellersAuction() throws Exception {
+        Electronics item = new Electronics(
+                "Laptop Dell", 12000000, "Laptop văn phòng", 2022, "seller-2", "dell.png", "Dell", 24
+        );
+        item.setId("item-cancel-seller-3");
+        Auction auction = sampleAuction("auction-cancel-seller-3", item);
+        injectField(auction, "sellerId", "seller-2");
+        auction.setStatus(AuctionStatus.OPEN);
+        auction.setHighestBidderId(null);
+        auctionManage.addAuction(auction);
+
+        when(auctionDAO.findById("auction-cancel-seller-3")).thenReturn(Optional.of(auction));
+
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () ->
+                auctionService.cancelAuction("auction-cancel-seller-3", "seller-1", UserRole.SELLER, "Hủy phòng người khác")
+        );
+        assertEquals(AuthorizationErrorCode.RESOURCE_OWNERSHIP_VIOLATION.getCode(), exception.getErrorCode());
+    }
+
     // =========================================================
     // KHỐI KIỂM THỬ THEO DÕI DANH SÁCH (SUMMARY MAPPING)
     // =========================================================
@@ -795,13 +852,47 @@ class AuctionServiceTest {
         @Override public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
         @Override public java.sql.Statement createStatement() throws SQLException { return null; }
         @Override public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException {
-            java.sql.PreparedStatement stmt = mock(java.sql.PreparedStatement.class);
-            java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
-            when(rs.next()).thenReturn(true, false);
-            when(rs.getDouble("frozen_balance")).thenReturn(99999999.0);
-            when(rs.getDouble("available_balance")).thenReturn(99999999.0);
-            when(stmt.executeQuery()).thenReturn(rs);
-            return stmt;
+            java.sql.ResultSet rs = (java.sql.ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                FakeDbConnection.class.getClassLoader(),
+                new Class<?>[] { java.sql.ResultSet.class },
+                new java.lang.reflect.InvocationHandler() {
+                    private int count = 0;
+                    @Override
+                    public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) throws Throwable {
+                        if ("next".equals(method.getName())) {
+                            count++;
+                            return count <= 1;
+                        }
+                        if ("getDouble".equals(method.getName())) {
+                            return 99999999.0;
+                        }
+                        if ("close".equals(method.getName())) {
+                            return null;
+                        }
+                        return null;
+                    }
+                }
+            );
+
+            return (java.sql.PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                FakeDbConnection.class.getClassLoader(),
+                new Class<?>[] { java.sql.PreparedStatement.class },
+                new java.lang.reflect.InvocationHandler() {
+                    @Override
+                    public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) throws Throwable {
+                        if ("executeQuery".equals(method.getName())) {
+                            return rs;
+                        }
+                        if ("executeUpdate".equals(method.getName())) {
+                            return 1;
+                        }
+                        if ("close".equals(method.getName())) {
+                            return null;
+                        }
+                        return null;
+                    }
+                }
+            );
         }
         @Override public java.sql.CallableStatement prepareCall(String sql) throws SQLException { return null; }
         @Override public String nativeSQL(String sql) throws SQLException { return null; }

@@ -330,8 +330,6 @@ class AuthorizationServiceTest {
         ClientSession seller = loggedInSession("seller-1", UserRole.SELLER);
 
         List<ActionType> bidderActions = List.of(
-                ActionType.DEPOSIT_MONEY,
-                ActionType.WITHDRAW_MONEY,
                 ActionType.PLACE_BID,
                 ActionType.AUCTION_SUBSCRIBED,
                 ActionType.AUCTION_UNSUBSCRIBED,

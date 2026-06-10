@@ -228,7 +228,7 @@ public class UserDAOImpl implements UserDAO {
 
     @Override
     public List<User> findPaginated(int limit, int offset) {
-        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE deleted_at IS NULL LIMIT ? OFFSET ?";
+        String sql = "SELECT BIN_TO_UUID(id, 1) AS id, user_type, username, email, password_hash, available_balance, frozen_balance, status, rating, created_at, updated_at FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?";
         List<User> users = new ArrayList<>();
 
         try (Connection conn = DatabaseConnection.getConnection();

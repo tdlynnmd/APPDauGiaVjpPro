@@ -581,6 +581,19 @@ class UserServiceTest {
     }
 
     @Test
+    void lockUserAccountShouldThrowWhenUserIsAlreadyBanned() {
+        Bidder bannedUser = sampleBidder("user-banned-already");
+        bannedUser.setStatus(UserStatus.BANNED);
+        userDAO.findByIdResult = bannedUser;
+
+        ValidationException exception = assertThrows(ValidationException.class, () ->
+            userService.lockUserAccount("admin-1", "user-banned-already", UserStatus.BANNED)
+        );
+        assertEquals(ValidationErrorCode.BAD_REQUEST.getCode(), exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("đã bị khóa"));
+    }
+
+    @Test
     void updateProfileShouldThrowWhenUsernameInvalidFormat() {
         UpdateProfileRequest req = new UpdateProfileRequest("ab", "test@gmail.com");
         AuthenticationException exception = assertThrows(AuthenticationException.class, () ->

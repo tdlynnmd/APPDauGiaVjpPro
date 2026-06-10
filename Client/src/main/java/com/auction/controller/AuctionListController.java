@@ -10,6 +10,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -38,7 +39,9 @@ public class AuctionListController {
 
     @FXML private javafx.scene.layout.StackPane rootPane;
     @FXML private TableView<AuctionSummaryDTO> auctionTable;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionIdColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> itemNameColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> itemTypeColumn;
     @FXML private TableColumn<AuctionSummaryDTO, Number> currentPriceColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> statusColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> endTimeColumn;
@@ -103,7 +106,7 @@ public class AuctionListController {
         loadActiveAuctions();
         updateTablePlaceholder(SceneNavigator.isAppDarkMode);
 
-        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(4), event -> {
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
             if (auctionTable.getScene() == null || auctionTable.getScene().getWindow() == null) {
                 autoRefreshTimeline.stop();
             } else {
@@ -120,9 +123,8 @@ public class AuctionListController {
     private void applySearchFilterAndPagination() {
         if (filteredAuctions == null) return;
 
-        if (auctionTable != null) {
-            auctionTable.getSelectionModel().clearSelection();
-        }
+        AuctionSummaryDTO selected = (auctionTable != null) ? auctionTable.getSelectionModel().getSelectedItem() : null;
+        String selectedId = selected != null ? selected.getAuctionId() : null;
 
         String keyword = (searchAuctionField != null) ? searchAuctionField.getText().trim().toLowerCase() : "";
 
@@ -146,6 +148,15 @@ public class AuctionListController {
                 finishedList.add(a);
             }
         }
+
+        java.util.Comparator<AuctionSummaryDTO> startTimeComparator = (a1, a2) -> {
+            if (a1.getStartTime() == null && a2.getStartTime() == null) return 0;
+            if (a1.getStartTime() == null) return 1;
+            if (a2.getStartTime() == null) return -1;
+            return a2.getStartTime().compareTo(a1.getStartTime());
+        };
+        activeList.sort(startTimeComparator);
+        finishedList.sort(startTimeComparator);
 
         int activeCount = activeList.size();
         int activePages = (int) Math.ceil((double) activeCount / auctionPageSize);
@@ -173,6 +184,11 @@ public class AuctionListController {
             for (int i = startIndex; i < endIndex; i++) {
                 paginatedAuctions.add(combinedList.get(i));
             }
+        }
+
+        if (selectedId != null) {
+            final String selId = selectedId;
+            Platform.runLater(() -> selectAuctionInTable(selId));
         }
 
         if (pageInfoLabel != null) {
@@ -311,6 +327,38 @@ public class AuctionListController {
     }
 
     private void setupTableColumns() {
+        if (auctionIdColumn != null) {
+            auctionIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getAuctionId() != null ? cellData.getValue().getAuctionId().substring(0, Math.min(8, cellData.getValue().getAuctionId().length())) : ""
+            ));
+            auctionIdColumn.setCellFactory(column -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) setText(null);
+                    else {
+                        setText(item);
+                        setStyle("-fx-alignment: center; -fx-font-family: monospace;");
+                    }
+                }
+            });
+        }
+
+        if (itemTypeColumn != null) {
+            itemTypeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getItemType() != null ? cellData.getValue().getItemType() : "UNKNOWN"));
+            itemTypeColumn.setCellFactory(column -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) setText(null);
+                    else {
+                        setText(item);
+                        setStyle("-fx-alignment: center; -fx-font-weight: bold;");
+                    }
+                }
+            });
+        }
+
         itemNameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getItemName()));
         itemNameColumn.setCellFactory(column -> new TableCell<>() {
             @Override
@@ -418,5 +466,17 @@ public class AuctionListController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void selectAuctionInTable(String auctionId) {
+        if (auctionTable == null || auctionId == null || auctionId.trim().isEmpty()) {
+            return;
+        }
+        for (AuctionSummaryDTO auction : paginatedAuctions) {
+            if (auctionId.equals(auction.getAuctionId())) {
+                auctionTable.getSelectionModel().select(auction);
+                return;
+            }
+        }
     }
 }

@@ -21,10 +21,26 @@ public class IntroController {
     @FXML private SVGPath leftLegA, leftLegB, rightLegA, rightLegB;
     @FXML private Label statusLabel;
 
+    @FXML private javafx.scene.control.DatePicker dummyDatePicker;
+    @FXML private javafx.scene.control.ComboBox<String> dummyComboBox;
+
     private Timeline walkingTimeline;
 
     @FXML
     public void initialize() {
+        Platform.runLater(() -> {
+            try {
+                if (dummyDatePicker != null) {
+                    dummyDatePicker.show();
+                    dummyDatePicker.hide();
+                }
+                if (dummyComboBox != null) {
+                    dummyComboBox.show();
+                    dummyComboBox.hide();
+                }
+            } catch (Exception ignored) {}
+        });
+
         walkingTimeline = new Timeline(new KeyFrame(Duration.millis(150), e -> {
             boolean toggle = leftLegA.isVisible();
             leftLegA.setVisible(!toggle);

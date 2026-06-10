@@ -24,6 +24,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.VBox;
 
@@ -41,6 +42,7 @@ public class AdminDashboardController {
     private static final int DEFAULT_PAGE_SIZE = 10;
 
     private final ClientAdminApi adminApi = new ClientAdminApi();
+    private boolean isRefreshing = false;
 
     private final ObservableList<UserDTO> users = FXCollections.observableArrayList();
     private final ObservableList<ActionLogDTO> logs = FXCollections.observableArrayList();
@@ -137,9 +139,19 @@ public class AdminDashboardController {
     @FXML private TableView<AuctionSummaryDTO> auctionsTable;
     @FXML private TableColumn<AuctionSummaryDTO, String> auctionIdColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> auctionItemIdColumn;
+    @FXML private TableColumn<AuctionSummaryDTO, String> auctionItemNameColumn;
     @FXML private TableColumn<AuctionSummaryDTO, Number> auctionPriceColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> auctionStatusColumn;
     @FXML private TableColumn<AuctionSummaryDTO, String> auctionEndTimeColumn;
+
+    @FXML private Label logDetailAdminNameLabel;
+    @FXML private Label logDetailAdminIdLabel;
+    @FXML private Label logDetailTargetTypeLabel;
+    @FXML private Label logDetailTargetIdLabel;
+    @FXML private Label logDetailTargetNameTitleLabel;
+    @FXML private Label logDetailTargetNameLabel;
+    @FXML private Label logDetailTimeLabel;
+    @FXML private Label logDetailReasonLabel;
 
     @FXML private Label auctionPageLabel;
     @FXML private TextField auctionPageSizeField;
@@ -168,6 +180,281 @@ public class AdminDashboardController {
         loadLogs(1);
         loadItems(1);
         loadAuctions(1);
+
+        showLogDetails(null);
+
+        autoRefreshTimeline = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(3), event -> {
+            if (usersTable == null || usersTable.getScene() == null || usersTable.getScene().getWindow() == null) {
+                stopAutoRefresh();
+            } else {
+                loadActiveTabSilently();
+            }
+        }));
+        autoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        autoRefreshTimeline.play();
+    }
+
+    private enum AdminTab {
+        USERS, ITEMS, AUCTIONS, LOGS
+    }
+    private AdminTab activeTab = AdminTab.USERS;
+    private javafx.animation.Timeline autoRefreshTimeline;
+
+    private List<ItemSummaryDTO> sortItemsByCreatedAtDesc(List<ItemSummaryDTO> list) {
+        if (list == null) return List.of();
+        java.util.ArrayList<ItemSummaryDTO> sorted = new java.util.ArrayList<>(list);
+        sorted.sort((i1, i2) -> {
+            if (i1.getCreatedAt() == null && i2.getCreatedAt() == null) return 0;
+            if (i1.getCreatedAt() == null) return 1;
+            if (i2.getCreatedAt() == null) return -1;
+            return i2.getCreatedAt().compareTo(i1.getCreatedAt());
+        });
+        return sorted;
+    }
+
+    private List<AuctionSummaryDTO> sortAuctionsByStartTimeDesc(List<AuctionSummaryDTO> list) {
+        if (list == null) return List.of();
+        java.util.ArrayList<AuctionSummaryDTO> sorted = new java.util.ArrayList<>(list);
+        sorted.sort((a1, a2) -> {
+            if (a1.getStartTime() == null && a2.getStartTime() == null) return 0;
+            if (a1.getStartTime() == null) return 1;
+            if (a2.getStartTime() == null) return -1;
+            return a2.getStartTime().compareTo(a1.getStartTime());
+        });
+        return sorted;
+    }
+
+    private List<ActionLogDTO> sortLogsByTimestampDesc(List<ActionLogDTO> list) {
+        if (list == null) return List.of();
+        java.util.ArrayList<ActionLogDTO> sorted = new java.util.ArrayList<>(list);
+        sorted.sort((l1, l2) -> {
+            if (l1.getTimestamp() == null && l2.getTimestamp() == null) return 0;
+            if (l1.getTimestamp() == null) return 1;
+            if (l2.getTimestamp() == null) return -1;
+            return l2.getTimestamp().compareTo(l1.getTimestamp());
+        });
+        return sorted;
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+            autoRefreshTimeline = null;
+        }
+    }
+
+    private void loadActiveTabSilently() {
+        if (activeTab == null) return;
+        switch (activeTab) {
+            case USERS:
+                loadUsersSilently(currentUserPage <= 0 ? 1 : currentUserPage);
+                break;
+            case ITEMS:
+                loadItemsSilently(currentItemPage <= 0 ? 1 : currentItemPage);
+                break;
+            case AUCTIONS:
+                loadAuctionsSilently(currentAuctionPage <= 0 ? 1 : currentAuctionPage);
+                break;
+            case LOGS:
+                loadLogsSilently(currentLogPage <= 0 ? 1 : currentLogPage);
+                break;
+        }
+    }
+
+    private void loadUsersSilently(int page) {
+        Integer pageSize = readPositiveInt(userPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang user");
+        if (pageSize == null) return;
+        
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return adminApi.getUsers(page, pageSize);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                PageDTO<UserDTO> userPage = adminApi.parseUserPage(response);
+                if (userPage != null) {
+                    UserDTO selected = usersTable.getSelectionModel().getSelectedItem();
+                    final String selectedId = selected != null ? selected.getId() : null;
+
+                    List<UserDTO> data = userPage.getData() == null ? List.of() : userPage.getData();
+                    isRefreshing = true;
+                    users.setAll(data);
+                    isRefreshing = false;
+                    currentUserPage = userPage.getCurrentPage();
+                    totalUserPages = userPage.getTotalPages();
+                    updateUserPageLabel();
+                    updateUserPageButtons();
+
+                    if (selectedId != null) {
+                        Platform.runLater(() -> {
+                            isRefreshing = true;
+                            for (UserDTO user : users) {
+                                if (selectedId.equals(user.getId())) {
+                                    usersTable.getSelectionModel().select(user);
+                                    break;
+                                }
+                            }
+                            isRefreshing = false;
+                        });
+                    }
+                }
+            }
+        });
+        
+        Thread thread = new Thread(task, "admin-users-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void loadLogsSilently(int page) {
+        Integer pageSize = readPositiveInt(logPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang log");
+        if (pageSize == null) return;
+        
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return adminApi.getLogs(page, pageSize);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                PageDTO<ActionLogDTO> logPage = adminApi.parseLogPage(response);
+                if (logPage != null) {
+                    ActionLogDTO selected = logsTable.getSelectionModel().getSelectedItem();
+                    final String selectedId = selected != null ? selected.getLogId() : null;
+
+                    List<ActionLogDTO> data = logPage.getData() == null ? List.of() : logPage.getData();
+                    isRefreshing = true;
+                    logs.setAll(sortLogsByTimestampDesc(data));
+                    isRefreshing = false;
+                    currentLogPage = logPage.getCurrentPage();
+                    totalLogPages = logPage.getTotalPages();
+                    updateLogPageLabel();
+                    updateLogPageButtons();
+
+                    if (selectedId != null) {
+                        Platform.runLater(() -> {
+                            isRefreshing = true;
+                            for (ActionLogDTO log : logs) {
+                                if (selectedId.equals(log.getLogId())) {
+                                    logsTable.getSelectionModel().select(log);
+                                    break;
+                                }
+                            }
+                            isRefreshing = false;
+                        });
+                    }
+                }
+            }
+        });
+        
+        Thread thread = new Thread(task, "admin-logs-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void loadItemsSilently(int page) {
+        Integer pageSize = readPositiveInt(itemPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang item");
+        if (pageSize == null) return;
+        
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return adminApi.getItems(page, pageSize);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                PageDTO<ItemSummaryDTO> itemPage = adminApi.parseItemPage(response);
+                if (itemPage != null) {
+                    ItemSummaryDTO selected = itemsTable.getSelectionModel().getSelectedItem();
+                    final String selectedId = selected != null ? selected.getItemId() : null;
+
+                    List<ItemSummaryDTO> data = itemPage.getData() == null ? List.of() : itemPage.getData();
+                    isRefreshing = true;
+                    items.setAll(sortItemsByCreatedAtDesc(data));
+                    isRefreshing = false;
+                    currentItemPage = itemPage.getCurrentPage();
+                    totalItemPages = itemPage.getTotalPages();
+                    updateItemPageLabel();
+                    updateItemPageButtons();
+
+                    if (selectedId != null) {
+                        Platform.runLater(() -> {
+                            isRefreshing = true;
+                            for (ItemSummaryDTO item : items) {
+                                if (selectedId.equals(item.getItemId())) {
+                                    itemsTable.getSelectionModel().select(item);
+                                    break;
+                                }
+                            }
+                            isRefreshing = false;
+                        });
+                    }
+                }
+            }
+        });
+        
+        Thread thread = new Thread(task, "admin-items-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void loadAuctionsSilently(int page) {
+        Integer pageSize = readPositiveInt(auctionPageSizeField, DEFAULT_PAGE_SIZE, "kich thuoc trang auction");
+        if (pageSize == null) return;
+        
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return adminApi.getAuctions(page, pageSize);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                PageDTO<AuctionSummaryDTO> auctionPage = adminApi.parseAuctionPage(response);
+                if (auctionPage != null) {
+                    AuctionSummaryDTO selected = auctionsTable.getSelectionModel().getSelectedItem();
+                    final String selectedId = selected != null ? selected.getAuctionId() : null;
+
+                    List<AuctionSummaryDTO> data = auctionPage.getData() == null ? List.of() : auctionPage.getData();
+                    isRefreshing = true;
+                    auctions.setAll(sortAuctionsByStartTimeDesc(data));
+                    isRefreshing = false;
+                    currentAuctionPage = auctionPage.getCurrentPage();
+                    totalAuctionPages = auctionPage.getTotalPages();
+                    updateAuctionPageLabel();
+                    updateAuctionPageButtons();
+
+                    if (selectedId != null) {
+                        Platform.runLater(() -> {
+                            isRefreshing = true;
+                            for (AuctionSummaryDTO auction : auctions) {
+                                if (selectedId.equals(auction.getAuctionId())) {
+                                    auctionsTable.getSelectionModel().select(auction);
+                                    break;
+                                }
+                            }
+                            isRefreshing = false;
+                        });
+                    }
+                }
+            }
+        });
+        
+        Thread thread = new Thread(task, "admin-auctions-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     // =========================================================================
@@ -175,24 +462,28 @@ public class AdminDashboardController {
     // =========================================================================
     @FXML
     private void handleSwitchToUsersTab() {
+        activeTab = AdminTab.USERS;
         setTabVisibility(true, false, false, false);
         loadUsers(currentUserPage <= 0 ? 1 : currentUserPage);
     }
 
     @FXML
     private void handleSwitchToItemsTab() {
+        activeTab = AdminTab.ITEMS;
         setTabVisibility(false, true, false, false);
         loadItems(currentItemPage <= 0 ? 1 : currentItemPage);
     }
 
     @FXML
     private void handleSwitchToAuctionsTab() {
+        activeTab = AdminTab.AUCTIONS;
         setTabVisibility(false, false, true, false);
         loadAuctions(currentAuctionPage <= 0 ? 1 : currentAuctionPage);
     }
 
     @FXML
     private void handleSwitchToLogsTab() {
+        activeTab = AdminTab.LOGS;
         setTabVisibility(false, false, false, true);
         loadLogs(currentLogPage <= 0 ? 1 : currentLogPage);
     }
@@ -331,6 +622,7 @@ public class AdminDashboardController {
             });
         }
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldUser, newUser) -> {
+            if (isRefreshing) return;
             if (newUser != null && lockUserIdField != null) lockUserIdField.setText(newUser.getId());
         });
     }
@@ -359,7 +651,7 @@ public class AdminDashboardController {
 
         if (logActionDetailColumn != null) {
             logActionDetailColumn.setCellValueFactory(data ->
-                    new SimpleStringProperty(safeText(data.getValue().getActionDetail()))
+                    new SimpleStringProperty(extractReason(data.getValue().getActionDetail()))
             );
         }
 
@@ -379,6 +671,83 @@ public class AdminDashboardController {
             logTimestampColumn.setCellValueFactory(data ->
                     new SimpleStringProperty(formatDateTime(data.getValue().getTimestamp()))
             );
+        }
+
+        logsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (isRefreshing) return;
+            showLogDetails(newVal);
+        });
+    }
+
+    private String extractReason(String actionDetail) {
+        if (actionDetail == null) return "";
+        int idx = actionDetail.indexOf("Lý do: ");
+        if (idx != -1) {
+            return actionDetail.substring(idx + 7).trim();
+        }
+        idx = actionDetail.indexOf("Reason: ");
+        if (idx != -1) {
+            return actionDetail.substring(idx + 8).trim();
+        }
+        return actionDetail;
+    }
+
+    private void showLogDetails(ActionLogDTO logDto) {
+        if (logDto == null) {
+            if (logDetailAdminNameLabel != null) logDetailAdminNameLabel.setText("--");
+            if (logDetailAdminIdLabel != null) logDetailAdminIdLabel.setText("--");
+            if (logDetailTargetTypeLabel != null) logDetailTargetTypeLabel.setText("--");
+            if (logDetailTargetIdLabel != null) logDetailTargetIdLabel.setText("--");
+            if (logDetailTimeLabel != null) logDetailTimeLabel.setText("--");
+            if (logDetailReasonLabel != null) logDetailReasonLabel.setText("--");
+            
+            if (logDetailTargetNameTitleLabel != null) {
+                logDetailTargetNameTitleLabel.setVisible(false);
+                logDetailTargetNameTitleLabel.setManaged(false);
+            }
+            if (logDetailTargetNameLabel != null) {
+                logDetailTargetNameLabel.setVisible(false);
+                logDetailTargetNameLabel.setManaged(false);
+            }
+            return;
+        }
+
+        if (logDetailAdminNameLabel != null) {
+            logDetailAdminNameLabel.setText(logDto.getAdminName() != null && !logDto.getAdminName().isEmpty() ? logDto.getAdminName() : "---");
+        }
+        if (logDetailAdminIdLabel != null) {
+            logDetailAdminIdLabel.setText(safeText(logDto.getAdminId()));
+        }
+
+        if (logDetailTargetTypeLabel != null) {
+            logDetailTargetTypeLabel.setText(safeText(logDto.getTargetType()));
+        }
+        if (logDetailTargetIdLabel != null) {
+            logDetailTargetIdLabel.setText(safeText(logDto.getTargetId()));
+        }
+        if (logDetailTimeLabel != null) {
+            logDetailTimeLabel.setText(formatDateTime(logDto.getTimestamp()));
+        }
+        if (logDetailReasonLabel != null) {
+            logDetailReasonLabel.setText(extractReason(logDto.getActionDetail()));
+        }
+
+        String type = logDto.getTargetType() == null ? "" : logDto.getTargetType().toUpperCase();
+        if ("USER".equals(type) || "ITEM".equals(type)) {
+            if (logDetailTargetNameTitleLabel != null && logDetailTargetNameLabel != null) {
+                logDetailTargetNameTitleLabel.setVisible(true);
+                logDetailTargetNameTitleLabel.setManaged(true);
+                logDetailTargetNameLabel.setVisible(true);
+                logDetailTargetNameLabel.setManaged(true);
+                logDetailTargetNameLabel.setText(safeText(logDto.getTargetName() != null ? logDto.getTargetName() : "--"));
+            }
+        } else {
+            if (logDetailTargetNameTitleLabel != null && logDetailTargetNameLabel != null) {
+                logDetailTargetNameTitleLabel.setVisible(false);
+                logDetailTargetNameTitleLabel.setManaged(false);
+                logDetailTargetNameLabel.setVisible(false);
+                logDetailTargetNameLabel.setManaged(false);
+            }
         }
     }
 
@@ -472,13 +841,31 @@ public class AdminDashboardController {
                 ? List.of()
                 : userPage.getData();
 
+        UserDTO selected = usersTable.getSelectionModel().getSelectedItem();
+        final String selectedId = selected != null ? selected.getId() : null;
+
+        isRefreshing = true;
         users.setAll(data);
+        isRefreshing = false;
 
         currentUserPage = userPage == null ? requestedPage : userPage.getCurrentPage();
         totalUserPages = userPage == null ? 0 : userPage.getTotalPages();
 
         updateUserPageLabel();
         updateUserPageButtons();
+
+        if (selectedId != null) {
+            Platform.runLater(() -> {
+                isRefreshing = true;
+                for (UserDTO user : users) {
+                    if (selectedId.equals(user.getId())) {
+                        usersTable.getSelectionModel().select(user);
+                        break;
+                    }
+                }
+                isRefreshing = false;
+            });
+        }
 
         showMessage("Da tai " + data.size() + " user.");
     }
@@ -527,13 +914,31 @@ public class AdminDashboardController {
                 ? List.of()
                 : logPage.getData();
 
-        logs.setAll(data);
+        ActionLogDTO selected = logsTable.getSelectionModel().getSelectedItem();
+        final String selectedId = selected != null ? selected.getLogId() : null;
+
+        isRefreshing = true;
+        logs.setAll(sortLogsByTimestampDesc(data));
+        isRefreshing = false;
 
         currentLogPage = logPage == null ? requestedPage : logPage.getCurrentPage();
         totalLogPages = logPage == null ? 0 : logPage.getTotalPages();
 
         updateLogPageLabel();
         updateLogPageButtons();
+
+        if (selectedId != null) {
+            Platform.runLater(() -> {
+                isRefreshing = true;
+                for (ActionLogDTO log : logs) {
+                    if (selectedId.equals(log.getLogId())) {
+                        logsTable.getSelectionModel().select(log);
+                        break;
+                    }
+                }
+                isRefreshing = false;
+            });
+        }
 
         showMessage("Da tai " + data.size() + " audit log.");
     }
@@ -654,6 +1059,7 @@ public class AdminDashboardController {
             });
         }
         itemsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
+            if (isRefreshing) return;
             if (newItem != null && deleteItemIdField != null) deleteItemIdField.setText(newItem.getItemId());
         });
     }
@@ -693,13 +1099,31 @@ public class AdminDashboardController {
         List<ItemSummaryDTO> data = itemPage == null || itemPage.getData() == null
                 ? List.of() : itemPage.getData();
 
-        items.setAll(data);
+        ItemSummaryDTO selected = itemsTable.getSelectionModel().getSelectedItem();
+        final String selectedId = selected != null ? selected.getItemId() : null;
+
+        isRefreshing = true;
+        items.setAll(sortItemsByCreatedAtDesc(data));
+        isRefreshing = false;
 
         currentItemPage = itemPage == null ? requestedPage : itemPage.getCurrentPage();
         totalItemPages = itemPage == null ? 0 : itemPage.getTotalPages();
 
         updateItemPageLabel();
         updateItemPageButtons();
+
+        if (selectedId != null) {
+            Platform.runLater(() -> {
+                isRefreshing = true;
+                for (ItemSummaryDTO item : items) {
+                    if (selectedId.equals(item.getItemId())) {
+                        itemsTable.getSelectionModel().select(item);
+                        break;
+                    }
+                }
+                isRefreshing = false;
+            });
+        }
 
         showMessage("Da tai " + data.size() + " vat pham.");
     }
@@ -713,7 +1137,8 @@ public class AdminDashboardController {
         auctionsTable.setItems(auctions);
 
         if (auctionIdColumn != null) auctionIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getAuctionId())));
-        if (auctionItemIdColumn != null) auctionItemIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemName())));
+        if (auctionItemIdColumn != null) auctionItemIdColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemId())));
+        if (auctionItemNameColumn != null) auctionItemNameColumn.setCellValueFactory(data -> new SimpleStringProperty(safeText(data.getValue().getItemName())));
 
         if (auctionPriceColumn != null) {
             auctionPriceColumn.setCellValueFactory(data -> new ReadOnlyDoubleWrapper(data.getValue().getCurrentPrice()));
@@ -754,6 +1179,7 @@ public class AdminDashboardController {
 
         if (auctionEndTimeColumn != null) auctionEndTimeColumn.setCellValueFactory(data -> new SimpleStringProperty(formatDateTime(data.getValue().getEndTime())));
         auctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldAuction, newAuction) -> {
+            if (isRefreshing) return;
             if (newAuction != null && cancelAuctionIdField != null) cancelAuctionIdField.setText(newAuction.getAuctionId());
         });
     }
@@ -793,7 +1219,12 @@ public class AdminDashboardController {
         List<AuctionSummaryDTO> data = auctionPage == null || auctionPage.getData() == null
                 ? List.of() : auctionPage.getData();
 
-        auctions.setAll(data);
+        AuctionSummaryDTO selected = auctionsTable.getSelectionModel().getSelectedItem();
+        final String selectedId = selected != null ? selected.getAuctionId() : null;
+
+        isRefreshing = true;
+        auctions.setAll(sortAuctionsByStartTimeDesc(data));
+        isRefreshing = false;
 
         currentAuctionPage = auctionPage == null ? requestedPage : auctionPage.getCurrentPage();
         totalAuctionPages = auctionPage == null ? 0 : auctionPage.getTotalPages();
@@ -801,11 +1232,25 @@ public class AdminDashboardController {
         updateAuctionPageLabel();
         updateAuctionPageButtons();
 
+        if (selectedId != null) {
+            Platform.runLater(() -> {
+                isRefreshing = true;
+                for (AuctionSummaryDTO auction : auctions) {
+                    if (selectedId.equals(auction.getAuctionId())) {
+                        auctionsTable.getSelectionModel().select(auction);
+                        break;
+                    }
+                }
+                isRefreshing = false;
+            });
+        }
+
         showMessage("Da tai " + data.size() + " phien dau gia.");
     }
 
     @FXML
     private void handleBack() {
+        stopAutoRefresh();
         SceneNavigator.showDashboard();
     }
 

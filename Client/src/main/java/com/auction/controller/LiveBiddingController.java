@@ -141,10 +141,19 @@ public class LiveBiddingController implements RealtimeUpdateListener {
     private TextField bidAmountField;
 
     @FXML
+    private Label bidAmountWordsLabel;
+
+    @FXML
     private TextField maxAutoBidField;
 
     @FXML
+    private Label maxAutoBidWordsLabel;
+
+    @FXML
     private TextField autoBidIncrementField;
+
+    @FXML
+    private Label autoBidIncrementWordsLabel;
 
     @FXML
     private Button setupAutoBidButton;
@@ -221,6 +230,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         setBidControlsDisabled(true);
         showMessage("Chưa chọn phiên đấu giá.");
         Platform.runLater(this::applyTheme);
+        setupMoneyFieldFormatting(bidAmountField, bidAmountWordsLabel);
+        setupMoneyFieldFormatting(maxAutoBidField, maxAutoBidWordsLabel);
+        setupMoneyFieldFormatting(autoBidIncrementField, autoBidIncrementWordsLabel);
     }
 
     private void applyTheme() {
@@ -274,6 +286,16 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         registerRealtimeListener();
 
         this.liveRoomJoined = false;
+
+        if (preloadedDetail != null) {
+            currentAuctionDetail = preloadedDetail;
+            displayAuctionDetail(currentAuctionDetail);
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisible(false);
+                loadingOverlay.setManaged(false);
+            }
+        }
+
         loadAuctionDetailAndEnterRoom();
     }
 
@@ -394,70 +416,68 @@ public class LiveBiddingController implements RealtimeUpdateListener {
      * TỐI ƯU HỢP NHẤT: Chạy ngầm tiến trình kéo dữ liệu ban đầu và tham gia vào live room để tránh đứng hình UI
      */
     private void loadAuctionDetailAndEnterRoom() {
-        setBusy(true);
-        showMessage("Đang đồng bộ dữ liệu và kết nối phòng trực tiếp...");
+        if (currentAuctionDetail == null) {
+            setBusy(true);
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisible(true);
+                loadingOverlay.setManaged(true);
+            }
+            showMessage("Đang đồng bộ dữ liệu và kết nối phòng trực tiếp...");
+        }
 
         Task<AuctionDetailDTO> task = new Task<>() {
             @Override
             protected AuctionDetailDTO call() throws Exception {
-                SocketResponse detailResponse = auctionApi.getAuctionDetail(auctionId);
-                AuctionDetailDTO detail = null;
-                if (detailResponse != null && detailResponse.isSuccess()) {
-                    detail = auctionApi.parseAuctionDetail(detailResponse);
-                }
-
                 SocketResponse enterResponse = auctionApi.enterLiveRoom(auctionId);
                 if (enterResponse != null && enterResponse.isSuccess()) {
                     liveRoomJoined = true;
-                    AuctionDetailDTO enterDetail = auctionApi.parseAuctionDetail(enterResponse);
-                    if (enterDetail != null) {
-                        detail = enterDetail;
-                    }
+                    return auctionApi.parseAuctionDetail(enterResponse);
                 }
-                return detail;
+                return null;
             }
         };
 
         task.setOnSucceeded(event -> {
-            setBusy(false); //
-            if (loadingOverlay != null) { //
-                Platform.runLater(() -> { //
-                    loadingOverlay.setVisible(false); //
-                    loadingOverlay.setManaged(false); //
-                }); //
-            } //
-            AuctionDetailDTO detail = task.getValue(); //
-            if (detail != null) { //
-                currentAuctionDetail = detail; //
-                displayAuctionDetail(currentAuctionDetail); //
-                if (liveRoomJoined) { //
-                    showMessage("Đã kết nối vào phòng đấu giá trực tuyến thành công."); //
+            setBusy(false);
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(false);
+                    loadingOverlay.setManaged(false);
+                });
+            }
+            AuctionDetailDTO detail = task.getValue();
+            if (detail != null) {
+                currentAuctionDetail = detail;
+                displayAuctionDetail(currentAuctionDetail);
+                if (liveRoomJoined) {
+                    showMessage("Đã kết nối vào phòng đấu giá trực tuyến thành công.");
 
-                    boolean hasAutoBid = currentAuctionDetail.getActiveAutoBidMaxBid() > 0; //
-                    updateAutoBidUIState(hasAutoBid); //
+                    boolean hasAutoBid = currentAuctionDetail.getActiveAutoBidMaxBid() > 0;
+                    updateAutoBidUIState(hasAutoBid);
 
                     if (hasAutoBid) {
-                        // ĐỊNH DẠNG LẠI KHI KHÔI PHỤC DỮ LIỆU TỪ SERVER LÊN GIAO DIỆN CHUẨN VNĐ
                         if (maxAutoBidField != null) {
                             maxAutoBidField.setText(formatMoney(currentAuctionDetail.getActiveAutoBidMaxBid()) + " VNĐ");
                         }
                         if (autoBidIncrementField != null) {
                             autoBidIncrementField.setText(formatMoney(currentAuctionDetail.getActiveAutoBidIncrement()) + " VNĐ");
                         }
-                        showMessage("✅ Đã khôi phục cấu hình AutoBid của bạn."); //
+                        showMessage("✅ Đã khôi phục cấu hình AutoBid của bạn.");
                     } else {
-                        if (maxAutoBidField != null) { //
-                            maxAutoBidField.setText(""); //
-                        } //
-                        if (autoBidIncrementField != null) { //
-                            autoBidIncrementField.setText(""); //
-                        } //
+                        if (maxAutoBidField != null) {
+                            maxAutoBidField.setText("");
+                        }
+                        if (autoBidIncrementField != null) {
+                            autoBidIncrementField.setText("");
+                        }
                     }
                 } else {
-                    showError("Kết nối Realtime thất bại, vui lòng bấm làm mới!"); //
+                    showError("Kết nối Realtime thất bại, vui lòng bấm làm mới!");
                 }
             } else {
-                showError("Không thể đọc dữ liệu chi tiết phiên đấu giá."); //
+                if (currentAuctionDetail == null) {
+                    showError("Không thể đọc dữ liệu chi tiết phiên đấu giá.");
+                }
             }
         });
 
@@ -469,7 +489,9 @@ public class LiveBiddingController implements RealtimeUpdateListener {
                     loadingOverlay.setManaged(false);
                 });
             }
-            showError("Không thể hoàn tất kết nối mạng đến phòng live.");
+            if (currentAuctionDetail == null) {
+                showError("Không thể hoàn tất kết nối mạng đến phòng live.");
+            }
         });
 
         executeThread(task, "live-init-flow");
@@ -544,12 +566,18 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         setBidControlsDisabled(!canPlaceBid(detail.getStatus()));
     }
 
-    /**
-     * Cap nhat bang lich su dat gia.
-     */
     private void loadBidHistory(List<BidTransactionDTO> bidHistory) {
         if (bidHistory == null) {
             bidHistory = Collections.emptyList();
+        } else {
+            java.util.ArrayList<BidTransactionDTO> sorted = new java.util.ArrayList<>(bidHistory);
+            sorted.sort((b1, b2) -> {
+                if (b1.getTime() == null && b2.getTime() == null) return 0;
+                if (b1.getTime() == null) return 1;
+                if (b2.getTime() == null) return -1;
+                return b2.getTime().compareTo(b1.getTime());
+            });
+            bidHistory = sorted;
         }
 
         bidHistoryItems.setAll(bidHistory);
@@ -725,8 +753,8 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         try {
-            String cleanText = field.getText().trim().replace(" ", "").replace(",", "");
-            double amount = Double.parseDouble(cleanText);
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(field.getText());
+            double amount = Double.parseDouble(parsed);
             if (amount <= 0) {
                 showError("Số tiền nhập vào phải lớn hơn 0.");
                 return null;
@@ -1118,10 +1146,8 @@ public class LiveBiddingController implements RealtimeUpdateListener {
         }
 
         try {
-            String rawAmount = bidAmountField.getText().trim()
-                    .replace(" ", "")
-                    .replace(",", "");
-            double amount = Double.parseDouble(rawAmount);
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(bidAmountField.getText());
+            double amount = Double.parseDouble(parsed);
 
             if (amount <= 0) {
                 showError("Số tiền đặt giá phải lớn hơn 0.");
@@ -1433,5 +1459,136 @@ public class LiveBiddingController implements RealtimeUpdateListener {
 
         UserDTO user = ClientSession.getCurrentUser();
         return user != null && user.getRole() == UserRole.BIDDER;
+    }
+
+    private void setupMoneyFieldFormatting(TextField field, Label wordsLabel) {
+        if (field == null) return;
+        
+        field.textProperty().addListener(new javafx.beans.value.ChangeListener<String>() {
+            private boolean updating = false;
+
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends String> obs, String oldVal, String newVal) {
+                if (updating || newVal == null) return;
+                updating = true;
+                try {
+                    String clean = newVal.replaceAll(",", "");
+                    if (clean.matches("^[0-9]+$")) {
+                        int caretPosition = field.getCaretPosition();
+                        int initialLen = newVal.length();
+
+                        double amount = Double.parseDouble(clean);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        String formatted = df.format(amount);
+
+                        field.setText(formatted);
+
+                        int finalLen = formatted.length();
+                        int newCaret = caretPosition + (finalLen - initialLen);
+                        if (newCaret >= 0 && newCaret <= formatted.length()) {
+                            field.selectPositionCaret(newCaret);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    updating = false;
+                }
+            }
+        });
+
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                String rawText = field.getText();
+                if (rawText != null && !rawText.trim().isEmpty()) {
+                    String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(rawText);
+                    try {
+                        double amount = Double.parseDouble(parsed);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        field.setText(df.format(amount));
+                    } catch (Exception e) {
+                        field.setText(parsed);
+                    }
+                }
+            }
+        });
+
+        field.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                if (wordsLabel != null) wordsLabel.setText("");
+                return;
+            }
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(newVal);
+            try {
+                double amount = Double.parseDouble(parsed);
+                if (wordsLabel != null) {
+                    wordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(amount));
+                }
+            } catch (Exception e) {
+                if (wordsLabel != null) wordsLabel.setText("⚠️ Số tiền không hợp lệ.");
+            }
+        });
+    }
+
+    private void addAmountToField(TextField field, String amountText, Label wordsLabel) {
+        if (field == null) return;
+        String raw = field.getText();
+        String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(raw);
+        long currentVal = 0;
+        if (parsed != null && !parsed.trim().isEmpty()) {
+            try {
+                currentVal = (long) Double.parseDouble(parsed);
+            } catch (NumberFormatException ignored) {}
+        }
+        long increment = 0;
+        if ("+100K".equalsIgnoreCase(amountText)) {
+            increment = 100000;
+        } else if ("+500K".equalsIgnoreCase(amountText)) {
+            increment = 500000;
+        } else if ("+1M".equalsIgnoreCase(amountText)) {
+            increment = 1000000;
+        } else if ("+10M".equalsIgnoreCase(amountText)) {
+            increment = 10000000;
+        } else if ("+Bước giá".equalsIgnoreCase(amountText) || "Bước giá".equalsIgnoreCase(amountText)) {
+            if (currentAuctionDetail != null) {
+                double step = currentAuctionDetail.getLiveStepPrice() > 0 
+                        ? currentAuctionDetail.getLiveStepPrice() 
+                        : currentAuctionDetail.getStepPrice();
+                increment = (long) step;
+            } else {
+                increment = 0;
+            }
+        }
+
+        long newVal = currentVal + increment;
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+        field.setText(df.format(newVal));
+        
+        if (wordsLabel != null) {
+            wordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(newVal));
+        }
+    }
+
+    @FXML
+    private void handleQuickAddManualBid(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(bidAmountField, btn.getText(), bidAmountWordsLabel);
+        }
+    }
+
+    @FXML
+    private void handleQuickAddMaxAutoBid(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(maxAutoBidField, btn.getText(), maxAutoBidWordsLabel);
+        }
+    }
+
+    @FXML
+    private void handleQuickAddAutoIncrement(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(autoBidIncrementField, btn.getText(), autoBidIncrementWordsLabel);
+        }
     }
 }

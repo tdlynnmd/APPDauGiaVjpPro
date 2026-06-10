@@ -155,3 +155,21 @@ CREATE TABLE `action_logs` (
   KEY `idx_target` (`target_type`,`target_id`),
   CONSTRAINT `fk_logs_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. BẢNG PENDING_BIDS (Hàng đợi bền vững phục vụ khôi phục khi mất điện đột ngột)
+DROP TABLE IF EXISTS `pending_bids`;
+CREATE TABLE `pending_bids` (
+  `id` binary(16) NOT NULL,
+  `bidder_id` binary(16) NOT NULL,
+  `auction_id` binary(16) NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `new_bid_id` binary(16) NOT NULL,
+  `old_highest_bidder_id` binary(16) DEFAULT NULL,
+  `old_winning_bid_id` binary(16) DEFAULT NULL,
+  `old_price` decimal(15,2) NOT NULL,
+  `end_time` timestamp NOT NULL,
+  `live_step_price` decimal(15,2) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

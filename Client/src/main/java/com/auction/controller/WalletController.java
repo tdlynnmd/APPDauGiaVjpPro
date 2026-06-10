@@ -54,6 +54,7 @@ public class WalletController {
     @FXML private Label headerTotalBalance;
 
     @FXML private TextField amountField;
+    @FXML private Label amountWordsLabel;
 
     @FXML private HBox transactionBox;
 
@@ -86,7 +87,7 @@ public class WalletController {
     @FXML
     public void initialize() {
         com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
-        applyTheme();
+        Platform.runLater(this::applyTheme);
 
         if (!isWalletViewerSession()) {
             showError("Chi tai khoan Bidder hoac Seller moi duoc xem vi.");
@@ -114,6 +115,7 @@ public class WalletController {
         });
 
         loadWalletProfile();
+        setupMoneyFieldFormatting(amountField, amountWordsLabel);
     }
 
     /**
@@ -125,7 +127,12 @@ public class WalletController {
             return;
         }
 
-        rootContainer.getStylesheets().clear();
+        Parent target = rootContainer;
+        if (rootContainer.getScene() != null && rootContainer.getScene().getRoot() != null) {
+            target = rootContainer.getScene().getRoot();
+        }
+
+        target.getStylesheets().clear();
 
         String cssPath = SceneNavigator.isAppDarkMode
                 ? "/com/auction/client/view/dark.css"
@@ -133,7 +140,7 @@ public class WalletController {
 
         try {
             String css = Objects.requireNonNull(getClass().getResource(cssPath)).toExternalForm();
-            rootContainer.getStylesheets().add(css);
+            target.getStylesheets().add(css);
         } catch (Exception e) {
             System.out.println("Khong the nap theme cho Wallet: " + cssPath);
         }
@@ -149,9 +156,11 @@ public class WalletController {
     }
 
     private boolean canUseWalletTransactions() {
-        return ClientSession.isLoggedIn()
-                && ClientSession.getCurrentUser() != null
-                && ClientSession.getCurrentUser().getRole() == UserRole.BIDDER;
+        if (!ClientSession.isLoggedIn() || ClientSession.getCurrentUser() == null) {
+            return false;
+        }
+        UserRole role = ClientSession.getCurrentUser().getRole();
+        return role == UserRole.BIDDER || role == UserRole.SELLER;
     }
 
     private void applyWalletModeByRole() {
@@ -615,6 +624,58 @@ public class WalletController {
      * - walletApi.depositMoney
      * - walletApi.withdrawMoney
      */
+    private void setupMoneyFieldFormatting(TextField field, Label wordsLabel) {
+        if (field == null) return;
+        
+        field.textProperty().addListener(new javafx.beans.value.ChangeListener<String>() {
+            private boolean updating = false;
+
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends String> obs, String oldVal, String newVal) {
+                if (updating || newVal == null) return;
+                updating = true;
+                try {
+                    String clean = newVal.replaceAll(",", "");
+                    if (clean.matches("^[0-9]+$")) {
+                        int caretPosition = field.getCaretPosition();
+                        int initialLen = newVal.length();
+
+                        double amount = Double.parseDouble(clean);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        String formatted = df.format(amount);
+
+                        field.setText(formatted);
+
+                        int finalLen = formatted.length();
+                        int newCaret = caretPosition + (finalLen - initialLen);
+                        if (newCaret >= 0 && newCaret <= formatted.length()) {
+                            field.selectPositionCaret(newCaret);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    updating = false;
+                }
+            }
+        });
+
+        field.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                if (wordsLabel != null) wordsLabel.setText("");
+                return;
+            }
+            String clean = newVal.replaceAll(",", "");
+            try {
+                double amount = Double.parseDouble(clean);
+                if (wordsLabel != null) {
+                    wordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(amount));
+                }
+            } catch (Exception e) {
+                if (wordsLabel != null) wordsLabel.setText("");
+            }
+        });
+    }
+
     @FunctionalInterface
     private interface WalletRequestSupplier {
         SocketResponse get();

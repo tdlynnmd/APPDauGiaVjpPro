@@ -45,8 +45,8 @@ public class AuthorizationService {
             Map.entry(ActionType.UPDATE_PROFILE.name(), Set.of(UserRole.ADMIN, UserRole.SELLER, UserRole.BIDDER)),
             Map.entry(ActionType.UPDATE_PASSWORD.name(), Set.of(UserRole.ADMIN, UserRole.SELLER, UserRole.BIDDER)),
 
-            Map.entry(ActionType.DEPOSIT_MONEY.name(), Set.of(UserRole.BIDDER)),
-            Map.entry(ActionType.WITHDRAW_MONEY.name(), Set.of(UserRole.BIDDER)),
+            Map.entry(ActionType.DEPOSIT_MONEY.name(), Set.of(UserRole.BIDDER, UserRole.SELLER)),
+            Map.entry(ActionType.WITHDRAW_MONEY.name(), Set.of(UserRole.BIDDER, UserRole.SELLER)),
             Map.entry(ActionType.PLACE_BID.name(), Set.of(UserRole.BIDDER)),
             Map.entry(ActionType.LIVE_ENTERED.name(), Set.of(UserRole.BIDDER, UserRole.SELLER, UserRole.ADMIN)),
             Map.entry(ActionType.LIVE_EXITED.name(), Set.of(UserRole.BIDDER, UserRole.SELLER, UserRole.ADMIN)),

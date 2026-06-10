@@ -20,6 +20,7 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
 import com.auction.dto.AuctionSummaryDTO;
 import javafx.scene.control.TableColumn;
 
@@ -59,7 +60,7 @@ public class SellerItemController {
     @FXML private Button nextPageButton;
     @FXML private Button refreshButton;
 
-    @FXML private ScrollPane rightSplitPaneContainer;
+    @FXML private StackPane rightSplitPaneContainer;
     @FXML private VBox formCreateContainer;
     @FXML private VBox formEditContainer;
 
@@ -87,7 +88,7 @@ public class SellerItemController {
     @FXML private TextField itemNameField;
     @FXML private TextField startingPriceField;
     @FXML private TextField descriptionField;
-    @FXML private TextField yearCreatedField;
+    @FXML private ComboBox<String> yearCreatedField;
     @FXML private TextField imageUrlField;
 
     @FXML private VBox artFieldsBox;
@@ -111,7 +112,7 @@ public class SellerItemController {
     @FXML private ComboBox<String> editItemTypeComboBox;
     @FXML private TextField editItemNameField;
     @FXML private TextField editStartingPriceField;
-    @FXML private TextField editYearCreatedField;
+    @FXML private ComboBox<String> editYearCreatedField;
     @FXML private TextField editDescriptionField;
     @FXML private TextField editImageUrlField;
 
@@ -131,8 +132,16 @@ public class SellerItemController {
 
     @FXML private TextField itemIdField;
     @FXML private TextField stepPriceField;
-    @FXML private TextField startTimeField;
-    @FXML private TextField endTimeField;
+    @FXML private DatePicker startDatePicker;
+    @FXML private ComboBox<String> startHourComboBox;
+    @FXML private ComboBox<String> startMinComboBox;
+    @FXML private DatePicker endDatePicker;
+    @FXML private ComboBox<String> endHourComboBox;
+    @FXML private ComboBox<String> endMinComboBox;
+
+    @FXML private Label startingPriceWordsLabel;
+    @FXML private Label editStartingPriceWordsLabel;
+    @FXML private Label stepPriceWordsLabel;
 
     @FXML private VBox auctionConfigContainer;
     @FXML private Label auctionItemIdLabel;
@@ -145,6 +154,9 @@ public class SellerItemController {
      */
     private void applyStatusFilterAndSort() {
         if (filteredItems == null) return;
+
+        ItemSummaryDTO selected = (sellerItemsTable != null) ? sellerItemsTable.getSelectionModel().getSelectedItem() : null;
+        String selectedId = selected != null ? selected.getItemId() : null;
 
         String keyword = (searchField != null) ? searchField.getText().trim().toLowerCase() : "";
 
@@ -204,13 +216,10 @@ public class SellerItemController {
         if (sellerItemsTable.getSortOrder().isEmpty()) {
             sortedItems.setComparator((item1, item2) -> {
                 if (item1 == null || item2 == null) return 0;
-                String s1 = item1.getStatus() == null ? "" : item1.getStatus().toUpperCase();
-                String s2 = item2.getStatus() == null ? "" : item2.getStatus().toUpperCase();
-                if (s1.equals(s2)) return 0;
-
-                int p1 = "ACTIVE".equals(s1) ? 1 : (("SOLD".equals(s1) || "CLOSE".equals(s1) || "CLOSED".equals(s1)) ? 2 : 3);
-                int p2 = "ACTIVE".equals(s2) ? 1 : (("SOLD".equals(s2) || "CLOSE".equals(s2) || "CLOSED".equals(s2)) ? 2 : 3);
-                return Integer.compare(p1, p2);
+                if (item1.getCreatedAt() == null && item2.getCreatedAt() == null) return 0;
+                if (item1.getCreatedAt() == null) return 1;
+                if (item2.getCreatedAt() == null) return -1;
+                return item2.getCreatedAt().compareTo(item1.getCreatedAt());
             });
         } else {
             TableColumn<ItemSummaryDTO, ?> currentSortColumn = sellerItemsTable.getSortOrder().get(0);
@@ -249,6 +258,17 @@ public class SellerItemController {
 
         sellerItemsTable.setItems(sortedItems);
         updatePageUI();
+
+        if (selectedId != null) {
+            for (ItemSummaryDTO item : sellerItems) {
+                if (selectedId.equals(item.getItemId())) {
+                    isRefreshing = true;
+                    sellerItemsTable.getSelectionModel().select(item);
+                    isRefreshing = false;
+                    break;
+                }
+            }
+        }
     }
 
     private AuctionSummaryDTO selectedAuction;
@@ -258,9 +278,15 @@ public class SellerItemController {
         com.auction.util.HeaderBalanceHelper.setupHeaderBalance(headerAvailableBalance, headerFrozenBalance, headerTotalBalance);
         initializeItemTypeControl();
         initializeSellerItemsTable();
+        initializeDateTimePickers();
+        initializeYearComboBoxes();
         fillDefaultTimeIfEmpty();
 
         applyTheme();
+
+        setupMoneyFieldFormatting(startingPriceField, startingPriceWordsLabel);
+        setupMoneyFieldFormatting(editStartingPriceField, editStartingPriceWordsLabel);
+        setupMoneyFieldFormatting(stepPriceField, stepPriceWordsLabel);
 
         if (rightSplitPaneContainer != null) { rightSplitPaneContainer.setVisible(false); rightSplitPaneContainer.setManaged(false); }
         if (formCreateContainer != null) { formCreateContainer.setVisible(false); formCreateContainer.setManaged(false); }
@@ -271,6 +297,7 @@ public class SellerItemController {
 
         loadSellerItems(1, true);
 
+        Platform.runLater(this::warmUpContainers);
         startSellerAutoRefresh();
     }
     private javafx.animation.Timeline sellerAutoRefreshTimeline;
@@ -280,7 +307,13 @@ public class SellerItemController {
         }
 
         sellerAutoRefreshTimeline = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), event -> loadSellerItems(currentSellerPage, false))
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(2), event -> {
+                    if (sellerItemsTable == null || sellerItemsTable.getScene() == null || sellerItemsTable.getScene().getWindow() == null) {
+                        stopSellerAutoRefresh();
+                    } else {
+                        loadSellerItems(currentSellerPage, false);
+                    }
+                })
         );
         sellerAutoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
         sellerAutoRefreshTimeline.play();
@@ -555,7 +588,7 @@ public class SellerItemController {
 
                 this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
                         + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
-                        + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                        + (readText(editYearCreatedField) == null ? "" : readText(editYearCreatedField)) + "|"
                         + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
                         + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
             }
@@ -571,7 +604,7 @@ public class SellerItemController {
 
                     this.originalFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
                             + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
-                            + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                            + (readText(editYearCreatedField) == null ? "" : readText(editYearCreatedField)) + "|"
                             + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
                             + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
                 }
@@ -644,7 +677,8 @@ public class SellerItemController {
      */
     @FXML
     private void handleCloseCreateForm() {
-        if (isAnyFieldFilled(itemNameField, startingPriceField, yearCreatedField, descriptionField, imageUrlField, painterField, artStyleField, brandField, warrantyMonthsField, modelField, engineTypeField, licensePlateField, kmAgeField)) {
+        boolean isYearFilled = yearCreatedField != null && yearCreatedField.getEditor().getText() != null && !yearCreatedField.getEditor().getText().trim().isEmpty();
+        if (isYearFilled || isAnyFieldFilled(itemNameField, startingPriceField, descriptionField, imageUrlField, painterField, artStyleField, brandField, warrantyMonthsField, modelField, engineTypeField, licensePlateField, kmAgeField)) {
             if (!confirmExit()) {
                 return;
             }
@@ -670,7 +704,7 @@ public class SellerItemController {
 
         String currentFormText = (editItemNameField.getText() == null ? "" : editItemNameField.getText()) + "|"
                 + (editStartingPriceField.getText() == null ? "" : editStartingPriceField.getText()) + "|"
-                + (editYearCreatedField.getText() == null ? "" : editYearCreatedField.getText()) + "|"
+                + (readText(editYearCreatedField) == null ? "" : readText(editYearCreatedField)) + "|"
                 + (editDescriptionField.getText() == null ? "" : editDescriptionField.getText()) + "|"
                 + (editImageUrlField.getText() == null ? "" : editImageUrlField.getText());
 
@@ -810,6 +844,14 @@ public class SellerItemController {
             }
 
             List<ItemSummaryDTO> allItems = itemApi.parseItemSummaryList(response);
+            if (allItems != null) {
+                allItems.sort((i1, i2) -> {
+                    if (i1.getCreatedAt() == null && i2.getCreatedAt() == null) return 0;
+                    if (i1.getCreatedAt() == null) return 1;
+                    if (i2.getCreatedAt() == null) return -1;
+                    return i2.getCreatedAt().compareTo(i1.getCreatedAt());
+                });
+            }
 
             isRefreshing = true;
 
@@ -864,22 +906,26 @@ public class SellerItemController {
         CreateItemRequest request = buildCreateItemRequest();
         if (request == null) return;
 
-        SocketResponse response = itemApi.createItem(request);
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
-            return;
-        }
+        runRequest("Đang xử lý tạo sản phẩm...",
+            () -> itemApi.createItem(request),
+            response -> {
+                if (!isSuccessful(response)) {
+                    showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
+                    return;
+                }
 
-        loadSellerItems(currentSellerPage, false);
-        showInfo(response.getMessage());
-        showMessage("Tạo sản phẩm thành công.");
+                loadSellerItems(currentSellerPage, false);
+                showInfo(response.getMessage());
+                showMessage("Tạo sản phẩm thành công.");
 
-        if (formCreateContainer != null) {
-            formCreateContainer.setVisible(false);
-            formCreateContainer.setManaged(false);
-        }
-        handleClearItemForm();
-        checkAndCollapseRightContainer();
+                if (formCreateContainer != null) {
+                    formCreateContainer.setVisible(false);
+                    formCreateContainer.setManaged(false);
+                }
+                handleClearItemForm();
+                checkAndCollapseRightContainer();
+            }
+        );
     }
 
     /**
@@ -892,25 +938,29 @@ public class SellerItemController {
             return;
         }
 
-        SocketResponse response = itemApi.updateItem(request);
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
-            return;
-        }
+        runRequest("Đang xử lý cập nhật sản phẩm...",
+            () -> itemApi.updateItem(request),
+            response -> {
+                if (!isSuccessful(response)) {
+                    showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
+                    return;
+                }
 
-        loadSellerItems(currentSellerPage, false);
-        showInfo(response.getMessage());
-        showMessage("Cập nhật sản phẩm thành công.");
+                loadSellerItems(currentSellerPage, false);
+                showInfo(response.getMessage());
+                showMessage("Cập nhật sản phẩm thành công.");
 
-        if (formEditContainer != null) {
-            formEditContainer.setVisible(false);
-            formEditContainer.setManaged(false);
-        }
-        clearEditFormFields();
-        this.currentEditingItem = null;
-        this.originalFormText = "";
+                if (formEditContainer != null) {
+                    formEditContainer.setVisible(false);
+                    formEditContainer.setManaged(false);
+                }
+                clearEditFormFields();
+                this.currentEditingItem = null;
+                this.originalFormText = "";
 
-        checkAndCollapseRightContainer();
+                checkAndCollapseRightContainer();
+            }
+        );
     }
 
     /**
@@ -945,38 +995,41 @@ public class SellerItemController {
                 return;
             }
 
-            SocketResponse response = itemApi.deleteItem(selectedItemLocal.getItemId(), reason);
+            runRequest("Đang thực hiện xóa vật phẩm...",
+                () -> itemApi.deleteItem(selectedItemLocal.getItemId(), reason),
+                response -> {
+                    if (!isSuccessful(response)) {
+                        showError(response == null ? "Xóa thất bại. Server không phản hồi hợp lệ." : response.getMessage());
+                        return;
+                    }
 
-            if (!isSuccessful(response)) {
-                showError(response == null ? "Xóa thất bại. Server không phản hồi hợp lệ." : response.getMessage());
-                return;
-            }
+                    loadSellerItems(currentSellerPage, false);
 
-            loadSellerItems(currentSellerPage, false);
+                    if (this.selectedItem != null && selectedItemLocal.getItemId().equals(this.selectedItem.getItemId())) {
+                        if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
+                        if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
 
-            if (this.selectedItem != null && selectedItemLocal.getItemId().equals(this.selectedItem.getItemId())) {
-                if (formEditContainer != null) { formEditContainer.setVisible(false); formEditContainer.setManaged(false); }
-                if (auctionConfigContainer != null) { auctionConfigContainer.setVisible(false); auctionConfigContainer.setManaged(false); }
+                        this.originalFormText = "";
+                        this.currentEditingItem = null;
+                        this.selectedItem = null;
 
-                this.originalFormText = "";
-                this.currentEditingItem = null;
-                this.selectedItem = null;
+                        checkAndCollapseRightContainer();
+                    }
 
-                checkAndCollapseRightContainer();
-            }
+                    showInfo(response.getMessage());
+                    showMessage("Sản phẩm đã được xóa thành công.");
 
-            showInfo(response.getMessage());
-            showMessage("Sản phẩm đã được xóa thành công.");
+                    applyStatusFilterAndSort();
 
-            applyStatusFilterAndSort();
-
-            if (sellerItemsTable != null) {
-                sellerItemsTable.getSelectionModel().clearSelection();
-                if (!sellerItemsTable.getItems().isEmpty()) {
-                    sellerItemsTable.getSelectionModel().select(0);
+                    if (sellerItemsTable != null) {
+                        sellerItemsTable.getSelectionModel().clearSelection();
+                        if (!sellerItemsTable.getItems().isEmpty()) {
+                            sellerItemsTable.getSelectionModel().select(0);
+                        }
+                        sellerItemsTable.refresh();
+                    }
                 }
-                sellerItemsTable.refresh();
-            }
+            );
         }
     }
 
@@ -996,18 +1049,12 @@ public class SellerItemController {
             return;
         }
 
-        // ĐỊNH NGHĨA: Bộ định dạng ngày/tháng/năm giờ:phút thân thiện
-        java.time.format.DateTimeFormatter friendlyFormatter =
-                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-        // CẬP NHẬT: Truyền thêm friendlyFormatter vào hàm đọc thời gian bắt đầu
-        LocalDateTime startTime = readDateTimeWithFormatter(startTimeField, "thời gian bắt đầu", friendlyFormatter);
+        LocalDateTime startTime = readDateTimeFromPickers(startDatePicker, startHourComboBox, startMinComboBox, "thời gian bắt đầu");
         if (startTime == null) {
             return;
         }
 
-        // CẬP NHẬT: Truyền thêm friendlyFormatter vào hàm đọc thời gian kết thúc
-        LocalDateTime endTime = readDateTimeWithFormatter(endTimeField, "thời gian kết thúc", friendlyFormatter);
+        LocalDateTime endTime = readDateTimeFromPickers(endDatePicker, endHourComboBox, endMinComboBox, "thời gian kết thúc");
         if (endTime == null) {
             return;
         }
@@ -1017,64 +1064,217 @@ public class SellerItemController {
             return;
         }
 
-        // Lệnh .toString() ở đây vẫn tự động biến đổi thành chuỗi ISO chuẩn để gửi lên API hoạt động thông suốt
-        SocketResponse response = auctionApi.createAuction(
+        runRequest("Đang xử lý tạo phiên đấu giá...",
+            () -> auctionApi.createAuction(
                 itemId,
                 stepPrice,
                 startTime.toString(),
                 endTime.toString()
+            ),
+            response -> {
+                if (!isSuccessful(response)) {
+                    showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
+                    return;
+                }
+
+                showInfo(response.getMessage());
+                showMessage("Tạo phiên đấu giá thành công.");
+
+                if (auctionConfigContainer != null) {
+                    auctionConfigContainer.setVisible(false);
+                    auctionConfigContainer.setManaged(false);
+                }
+
+                if (stepPriceField != null) stepPriceField.clear();
+                if (startDatePicker != null) startDatePicker.setValue(null);
+                if (startHourComboBox != null) startHourComboBox.setValue(null);
+                if (startMinComboBox != null) startMinComboBox.setValue(null);
+                if (endDatePicker != null) endDatePicker.setValue(null);
+                if (endHourComboBox != null) endHourComboBox.setValue(null);
+                if (endMinComboBox != null) endMinComboBox.setValue(null);
+
+                checkAndCollapseRightContainer();
+
+                applyStatusFilterAndSort();
+                if (sellerItemsTable != null) {
+                    sellerItemsTable.refresh();
+                }
+
+                loadSellerItems(currentSellerPage, false);
+            }
         );
-
-        if (!isSuccessful(response)) {
-            showError(response == null ? "Server không trả về phản hồi hợp lệ." : response.getMessage());
-            return;
-        }
-
-        showInfo(response.getMessage());
-        showMessage("Tạo phiên đấu giá thành công.");
-
-        if (auctionConfigContainer != null) {
-            auctionConfigContainer.setVisible(false);
-            auctionConfigContainer.setManaged(false);
-        }
-
-        if (stepPriceField != null) stepPriceField.clear();
-        if (startTimeField != null) startTimeField.clear();
-        if (endTimeField != null) endTimeField.clear();
-
-        checkAndCollapseRightContainer();
-
-        applyStatusFilterAndSort();
-        if (sellerItemsTable != null) {
-            sellerItemsTable.refresh();
-        }
-
-        loadSellerItems(currentSellerPage, false);
     }
 
-    private LocalDateTime readDateTimeWithFormatter(TextField field, String fieldName, java.time.format.DateTimeFormatter formatter) {
-        if (field == null) return null;
-        String text = field.getText().trim();
-        if (text.isEmpty()) {
-            showError("Vui lòng nhập " + fieldName + ".");
+    private LocalDateTime readDateTimeFromPickers(DatePicker datePicker, ComboBox<String> hourCombo, ComboBox<String> minCombo, String fieldName) {
+        if (datePicker == null || datePicker.getValue() == null) {
+            showError("Vui lòng chọn ngày cho " + fieldName + ".");
+            return null;
+        }
+        String hour = hourCombo != null ? hourCombo.getValue() : null;
+        String minute = minCombo != null ? minCombo.getValue() : null;
+        if (hour == null || hour.trim().isEmpty() || minute == null || minute.trim().isEmpty()) {
+            showError("Vui lòng chọn giờ và phút cho " + fieldName + ".");
             return null;
         }
         try {
-            // Dịch chuỗi nhập tay dd/MM/yyyy HH:mm thành đối tượng LocalDateTime
-            return LocalDateTime.parse(text, formatter);
-        } catch (java.time.format.DateTimeParseException e) {
-            showError("Định dạng " + fieldName + " không hợp lệ! Vui lòng nhập đúng dạng dd/MM/yyyy HH:mm (Ví dụ: 04/06/2026 10:45)");
+            return LocalDateTime.of(datePicker.getValue(), java.time.LocalTime.of(Integer.parseInt(hour), Integer.parseInt(minute)));
+        } catch (Exception e) {
+            showError(fieldName + " không hợp lệ.");
             return null;
         }
     }
 
-    /**
-     * FXML action: điền nhanh thời gian gợi ý cho form auction.
-     */
+    private void initializeDateTimePickers() {
+        ObservableList<String> hours = FXCollections.observableArrayList();
+        for (int i = 0; i < 24; i++) {
+            hours.add(String.format("%02d", i));
+        }
+        ObservableList<String> minutes = FXCollections.observableArrayList();
+        for (int i = 0; i < 60; i++) {
+            minutes.add(String.format("%02d", i));
+        }
+
+        if (startHourComboBox != null) startHourComboBox.setItems(hours);
+        if (startMinComboBox != null) startMinComboBox.setItems(minutes);
+        if (endHourComboBox != null) endHourComboBox.setItems(hours);
+        if (endMinComboBox != null) endMinComboBox.setItems(minutes);
+    }
+
+    private void setupMoneyFieldFormatting(TextField field, Label wordsLabel) {
+        if (field == null) return;
+        
+        field.textProperty().addListener(new javafx.beans.value.ChangeListener<String>() {
+            private boolean updating = false;
+
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends String> obs, String oldVal, String newVal) {
+                if (updating || newVal == null) return;
+                updating = true;
+                try {
+                    String clean = newVal.replaceAll(",", "");
+                    if (clean.matches("^[0-9]+$")) {
+                        int caretPosition = field.getCaretPosition();
+                        int initialLen = newVal.length();
+
+                        double amount = Double.parseDouble(clean);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        String formatted = df.format(amount);
+
+                        field.setText(formatted);
+
+                        int finalLen = formatted.length();
+                        int newCaret = caretPosition + (finalLen - initialLen);
+                        if (newCaret >= 0 && newCaret <= formatted.length()) {
+                            field.selectPositionCaret(newCaret);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    updating = false;
+                }
+            }
+        });
+
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                String rawText = field.getText();
+                if (rawText != null && !rawText.trim().isEmpty()) {
+                    String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(rawText);
+                    try {
+                        double amount = Double.parseDouble(parsed);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        field.setText(df.format(amount));
+                    } catch (Exception e) {
+                        field.setText(parsed);
+                    }
+                }
+            }
+        });
+
+        field.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                if (wordsLabel != null) wordsLabel.setText("");
+                return;
+            }
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(newVal);
+            updateMoneyWordsLabel(parsed, wordsLabel);
+        });
+    }
+
+    private void updateMoneyWordsLabel(String parsedAmount, Label wordsLabel) {
+        if (wordsLabel == null) return;
+        try {
+            double amount = Double.parseDouble(parsedAmount);
+            wordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(amount));
+        } catch (NumberFormatException e) {
+            wordsLabel.setText("⚠️ Số tiền không hợp lệ.");
+        }
+    }
+
     @FXML
-    private void handleUseDefaultTime() {
-        fillDefaultTime();
-        showMessage("Đã điền thời gian gợi ý.");
+    private void handleQuickAddCreatePrice(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(startingPriceField, btn.getText(), startingPriceWordsLabel);
+        }
+    }
+
+    @FXML
+    private void handleQuickAddEditPrice(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(editStartingPriceField, btn.getText(), editStartingPriceWordsLabel);
+        }
+    }
+
+    @FXML
+    private void handleQuickAddStepPrice(javafx.event.ActionEvent event) {
+        if (event.getSource() instanceof Button) {
+            Button btn = (Button) event.getSource();
+            addAmountToField(stepPriceField, btn.getText(), stepPriceWordsLabel);
+        }
+    }
+
+    private void addAmountToField(TextField field, String amountText, Label wordsLabel) {
+        if (field == null) return;
+        String raw = field.getText();
+        String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(raw);
+        long currentVal = 0;
+        if (parsed != null && !parsed.trim().isEmpty()) {
+            try {
+                currentVal = Long.parseLong(parsed);
+            } catch (NumberFormatException ignored) {}
+        }
+        long increment = 0;
+        if ("+100K".equalsIgnoreCase(amountText)) increment = 100000;
+        else if ("+500K".equalsIgnoreCase(amountText)) increment = 500000;
+        else if ("+1M".equalsIgnoreCase(amountText)) increment = 1000000;
+        else if ("+10M".equalsIgnoreCase(amountText)) increment = 10000000;
+
+        field.setText(String.valueOf(currentVal + increment));
+        updateMoneyWordsLabel(field.getText(), wordsLabel);
+    }
+
+    @FXML
+    private void handleQuickAddDuration(javafx.event.ActionEvent event) {
+        if (!(event.getSource() instanceof Button)) return;
+        Button btn = (Button) event.getSource();
+        String text = btn.getText();
+
+        LocalDateTime start = readDateTimeFromPickers(startDatePicker, startHourComboBox, startMinComboBox, "thời gian bắt đầu");
+        if (start == null) {
+            showError("Vui lòng thiết lập ngày giờ bắt đầu trước khi tính nhanh thời lượng.");
+            return;
+        }
+
+        int days = 1;
+        if (text.contains("3")) days = 3;
+        else if (text.contains("7")) days = 7;
+
+        LocalDateTime end = start.plusDays(days);
+        if (endDatePicker != null) endDatePicker.setValue(end.toLocalDate());
+        if (endHourComboBox != null) endHourComboBox.setValue(String.format("%02d", end.getHour()));
+        if (endMinComboBox != null) endMinComboBox.setValue(String.format("%02d", end.getMinute()));
     }
 
     @FXML
@@ -1472,7 +1672,7 @@ public class SellerItemController {
         }
 
         try {
-            String rawStepPrice = stepPriceField.getText().trim().replace(",", ".");
+            String rawStepPrice = stepPriceField.getText().trim().replaceAll(",", "");
             double stepPrice = Double.parseDouble(rawStepPrice);
 
             if (stepPrice <= 0) {
@@ -1502,27 +1702,39 @@ public class SellerItemController {
     }
 
     private void fillDefaultTimeIfEmpty() {
-        java.time.format.DateTimeFormatter friendlyFormatter =
-                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-        if (startTimeField != null && startTimeField.getText().trim().isEmpty()) {
-            startTimeField.setText(LocalDateTime.now().plusMinutes(2).format(friendlyFormatter));
+        LocalDateTime startTime = LocalDateTime.now().plusMinutes(5);
+        if (startDatePicker != null && startDatePicker.getValue() == null) {
+            startDatePicker.setValue(startTime.toLocalDate());
+            if (startHourComboBox != null) startHourComboBox.setValue(String.format("%02d", startTime.getHour()));
+            if (startMinComboBox != null) startMinComboBox.setValue(String.format("%02d", startTime.getMinute()));
+        } else if (startDatePicker != null && startDatePicker.getValue() != null) {
+            try {
+                String sh = startHourComboBox.getValue();
+                String sm = startMinComboBox.getValue();
+                startTime = LocalDateTime.of(startDatePicker.getValue(), java.time.LocalTime.of(Integer.parseInt(sh), Integer.parseInt(sm)));
+            } catch (Exception e) {
+                startTime = LocalDateTime.now().plusMinutes(5);
+            }
         }
-        if (endTimeField != null && endTimeField.getText().trim().isEmpty()) {
-            endTimeField.setText(LocalDateTime.now().plusDays(1).format(friendlyFormatter));
+        if (endDatePicker != null && endDatePicker.getValue() == null) {
+            LocalDateTime defaultEnd = startTime.plusMinutes(10);
+            endDatePicker.setValue(defaultEnd.toLocalDate());
+            if (endHourComboBox != null) endHourComboBox.setValue(String.format("%02d", defaultEnd.getHour()));
+            if (endMinComboBox != null) endMinComboBox.setValue(String.format("%02d", defaultEnd.getMinute()));
         }
     }
 
     private void fillDefaultTime() {
-        LocalDateTime startTime = LocalDateTime.now()
-                .plusMinutes(5)
-                .withSecond(0)
-                .withNano(0);
+        LocalDateTime startTime = LocalDateTime.now().plusMinutes(5).withSecond(0).withNano(0);
+        LocalDateTime endTime = startTime.plusMinutes(10);
 
-        LocalDateTime endTime = startTime.plusHours(1);
+        if (startDatePicker != null) startDatePicker.setValue(startTime.toLocalDate());
+        if (startHourComboBox != null) startHourComboBox.setValue(String.format("%02d", startTime.getHour()));
+        if (startMinComboBox != null) startMinComboBox.setValue(String.format("%02d", startTime.getMinute()));
 
-        setText(startTimeField, startTime.toString());
-        setText(endTimeField, endTime.toString());
+        if (endDatePicker != null) endDatePicker.setValue(endTime.toLocalDate());
+        if (endHourComboBox != null) endHourComboBox.setValue(String.format("%02d", endTime.getHour()));
+        if (endMinComboBox != null) endMinComboBox.setValue(String.format("%02d", endTime.getMinute()));
     }
 
     private String readText(TextField field) {
@@ -1564,7 +1776,7 @@ public class SellerItemController {
 
     private Double parsePositiveDouble(String value, String fieldName) {
         try {
-            double number = Double.parseDouble(value.trim().replace(",", "."));
+            double number = Double.parseDouble(value.trim().replaceAll(",", ""));
             if (number < 0) {
                 showError(fieldName + " phải lớn hơn hoặc bằng 0.");
                 return null;
@@ -1707,7 +1919,10 @@ public class SellerItemController {
 
     @FXML
     private void handleCloseAuctionForm() {
-        if (isAnyFieldFilled(stepPriceField, startTimeField, endTimeField)) {
+        boolean hasData = (stepPriceField != null && !stepPriceField.getText().trim().isEmpty())
+                || (startDatePicker != null && startDatePicker.getValue() != null)
+                || (endDatePicker != null && endDatePicker.getValue() != null);
+        if (hasData) {
             if (!confirmExit()) {
                 return;
             }
@@ -1721,5 +1936,173 @@ public class SellerItemController {
         if (stepPriceField != null) stepPriceField.clear();
 
         checkAndCollapseRightContainer();
+    }
+
+    private void initializeYearComboBoxes() {
+        ObservableList<String> years = FXCollections.observableArrayList();
+        int currentYear = java.time.Year.now().getValue();
+        for (int y = currentYear; y >= 1900; y--) {
+            years.add(String.valueOf(y));
+        }
+        if (yearCreatedField != null) {
+            yearCreatedField.setItems(years);
+            yearCreatedField.setEditable(true);
+        }
+        if (editYearCreatedField != null) {
+            editYearCreatedField.setItems(years);
+            editYearCreatedField.setEditable(true);
+        }
+    }
+
+    private void clearText(ComboBox<String> combo) {
+        if (combo != null) combo.getSelectionModel().clearSelection();
+    }
+
+    private String readText(ComboBox<String> combo) {
+        if (combo == null) return null;
+        return combo.getEditor().getText();
+    }
+
+    private void setText(ComboBox<String> combo, String value) {
+        if (combo != null) {
+            combo.setValue(value);
+        }
+    }
+
+    private Integer readRequiredInteger(ComboBox<String> combo, String fieldName) {
+        String value = readText(combo);
+        if (isBlank(value)) {
+            showError("Vui lòng nhập " + fieldName + ".");
+            return null;
+        }
+        return parseInteger(value, fieldName);
+    }
+
+    private Integer readOptionalInteger(ComboBox<String> combo, String fieldName) {
+        String value = readText(combo);
+        if (isBlank(value)) {
+            return null;
+        }
+        return parseInteger(value, fieldName);
+    }
+
+    private boolean hasInvalidOptionalNumber(ComboBox<String> combo, Number parsedValue) {
+        if (combo == null) return false;
+        String raw = readText(combo);
+        if (raw == null || raw.trim().isEmpty()) return false;
+        return parsedValue == null;
+    }
+
+    private void setBusy(boolean busy) {
+        setDisabled(refreshButton, busy);
+        setDisabled(previousPageButton, busy);
+        setDisabled(nextPageButton, busy);
+        setDisabled(searchField, busy);
+        setDisabled(pageSizeField, busy);
+        setDisabled(sellerItemsTable, busy);
+        setDisabled(rightSplitPaneContainer, busy);
+    }
+
+    private void setDisabled(javafx.scene.Node node, boolean disabled) {
+        if (node != null) {
+            node.setDisable(disabled);
+        }
+    }
+
+    private void runRequest(String loadingMessage, java.util.function.Supplier<SocketResponse> request, java.util.function.Consumer<SocketResponse> onSuccess) {
+        setBusy(true);
+        showMessage(loadingMessage);
+
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return request.get();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            setBusy(false);
+            onSuccess.accept(task.getValue());
+        });
+
+        task.setOnFailed(event -> {
+            setBusy(false);
+            showError("Không thể kết nối hoặc xử lý phản hồi server.");
+        });
+
+        Thread worker = new Thread(task, "seller-item-request-thread");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void warmUpContainers() {
+        if (rightSplitPaneContainer == null) {
+            return;
+        }
+        try {
+            double origOpacity = rightSplitPaneContainer.getOpacity();
+            rightSplitPaneContainer.setOpacity(0.0);
+
+            boolean origVisible = rightSplitPaneContainer.isVisible();
+            boolean origManaged = rightSplitPaneContainer.isManaged();
+
+            boolean origCreateVisible = formCreateContainer != null && formCreateContainer.isVisible();
+            boolean origCreateManaged = formCreateContainer != null && formCreateContainer.isManaged();
+
+            boolean origEditVisible = formEditContainer != null && formEditContainer.isVisible();
+            boolean origEditManaged = formEditContainer != null && formEditContainer.isManaged();
+
+            boolean origAuctionVisible = auctionConfigContainer != null && auctionConfigContainer.isVisible();
+            boolean origAuctionManaged = auctionConfigContainer != null && auctionConfigContainer.isManaged();
+
+            rightSplitPaneContainer.setVisible(true);
+            rightSplitPaneContainer.setManaged(true);
+
+            if (formCreateContainer != null) {
+                formCreateContainer.setVisible(true);
+                formCreateContainer.setManaged(true);
+            }
+            if (formEditContainer != null) {
+                formEditContainer.setVisible(true);
+                formEditContainer.setManaged(true);
+            }
+            if (auctionConfigContainer != null) {
+                auctionConfigContainer.setVisible(true);
+                auctionConfigContainer.setManaged(true);
+            }
+
+            rightSplitPaneContainer.applyCss();
+            rightSplitPaneContainer.layout();
+
+            if (itemTypeComboBox != null) { itemTypeComboBox.show(); itemTypeComboBox.hide(); }
+            if (yearCreatedField != null) { yearCreatedField.show(); yearCreatedField.hide(); }
+            if (editItemTypeComboBox != null) { editItemTypeComboBox.show(); editItemTypeComboBox.hide(); }
+            if (editYearCreatedField != null) { editYearCreatedField.show(); editYearCreatedField.hide(); }
+            if (startDatePicker != null) { startDatePicker.show(); startDatePicker.hide(); }
+            if (endDatePicker != null) { endDatePicker.show(); endDatePicker.hide(); }
+            if (startHourComboBox != null) { startHourComboBox.show(); startHourComboBox.hide(); }
+            if (startMinComboBox != null) { startMinComboBox.show(); startMinComboBox.hide(); }
+            if (endHourComboBox != null) { endHourComboBox.show(); endHourComboBox.hide(); }
+            if (endMinComboBox != null) { endMinComboBox.show(); endMinComboBox.hide(); }
+
+            rightSplitPaneContainer.setVisible(origVisible);
+            rightSplitPaneContainer.setManaged(origManaged);
+
+            if (formCreateContainer != null) {
+                formCreateContainer.setVisible(origCreateVisible);
+                formCreateContainer.setManaged(origCreateManaged);
+            }
+            if (formEditContainer != null) {
+                formEditContainer.setVisible(origEditVisible);
+                formEditContainer.setManaged(origEditManaged);
+            }
+            if (auctionConfigContainer != null) {
+                auctionConfigContainer.setVisible(origAuctionVisible);
+                auctionConfigContainer.setManaged(origAuctionManaged);
+            }
+
+            rightSplitPaneContainer.setOpacity(origOpacity);
+        } catch (Exception ignored) {
+        }
     }
 }

@@ -17,6 +17,8 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
+import javafx.application.Platform;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,6 +45,7 @@ public class SellerAuctionController {
 
     private int currentPageIndex = 1;
     private int rowsPerPage = 10;
+    private boolean isRefreshing = false;
 
     @FXML private Parent rootContainer;
     @FXML private Label messageLabel;
@@ -60,8 +63,14 @@ public class SellerAuctionController {
     @FXML private TableColumn<AuctionSummaryDTO, Number> auctionStepPriceColumn;
 
     @FXML private TextField auctionStepPriceField;
-    @FXML private TextField auctionStartTimeField;
-    @FXML private TextField auctionEndTimeField;
+    @FXML private DatePicker auctionStartDatePicker;
+    @FXML private ComboBox<String> auctionStartHourComboBox;
+    @FXML private ComboBox<String> auctionStartMinComboBox;
+    @FXML private DatePicker auctionEndDatePicker;
+    @FXML private ComboBox<String> auctionEndHourComboBox;
+    @FXML private ComboBox<String> auctionEndMinComboBox;
+
+    @FXML private Label auctionStepPriceWordsLabel;
 
     @FXML private Button refreshButton;
     @FXML private Button updateAuctionButton;
@@ -74,7 +83,8 @@ public class SellerAuctionController {
     @FXML private Button nextPageButton;
 
     @FXML private Button editAuctionButton;
-    @FXML private ScrollPane rightSplitPaneContainer;
+    @FXML private Button cancelAuctionButton;
+    @FXML private StackPane rightSplitPaneContainer;
     @FXML private Button clearFilterButton;
     @FXML private Button searchButton;
 
@@ -85,6 +95,8 @@ public class SellerAuctionController {
     private void handleSearch() {
         handleLoadSellerAuctions();
     }
+
+    private javafx.animation.Timeline autoRefreshTimeline;
 
     @FXML
     public void initialize() {
@@ -97,9 +109,200 @@ public class SellerAuctionController {
         }
 
         initializeSellerAuctionsTable();
+        initializeDateTimePickers();
+        setupMoneyFieldFormatting();
         setupSearchAndPaginationLogic();
         setupTablePlaceholderByTheme(SceneNavigator.isAppDarkMode);
         handleLoadSellerAuctions();
+
+        Platform.runLater(this::warmUpContainers);
+
+        autoRefreshTimeline = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(2), event -> {
+            if (sellerAuctionsTable == null || sellerAuctionsTable.getScene() == null || sellerAuctionsTable.getScene().getWindow() == null) {
+                stopAutoRefresh();
+            } else {
+                loadSellerAuctionsSilently();
+            }
+        }));
+        autoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        autoRefreshTimeline.play();
+    }
+
+    private void initializeDateTimePickers() {
+        ObservableList<String> hours = FXCollections.observableArrayList();
+        for (int i = 0; i < 24; i++) {
+            hours.add(String.format("%02d", i));
+        }
+        ObservableList<String> minutes = FXCollections.observableArrayList();
+        for (int i = 0; i < 60; i++) {
+            minutes.add(String.format("%02d", i));
+        }
+
+        if (auctionStartHourComboBox != null) auctionStartHourComboBox.setItems(hours);
+        if (auctionStartMinComboBox != null) auctionStartMinComboBox.setItems(minutes);
+        if (auctionEndDatePicker != null) {
+            // default
+        }
+        if (auctionEndHourComboBox != null) auctionEndHourComboBox.setItems(hours);
+        if (auctionEndMinComboBox != null) auctionEndMinComboBox.setItems(minutes);
+    }
+
+    private void setupMoneyFieldFormatting() {
+        if (auctionStepPriceField == null) return;
+        
+        auctionStepPriceField.textProperty().addListener(new javafx.beans.value.ChangeListener<String>() {
+            private boolean updating = false;
+
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends String> obs, String oldVal, String newVal) {
+                if (updating || newVal == null) return;
+                updating = true;
+                try {
+                    String clean = newVal.replaceAll(",", "");
+                    if (clean.matches("^[0-9]+$")) {
+                        int caretPosition = auctionStepPriceField.getCaretPosition();
+                        int initialLen = newVal.length();
+
+                        double amount = Double.parseDouble(clean);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        String formatted = df.format(amount);
+
+                        auctionStepPriceField.setText(formatted);
+
+                        int finalLen = formatted.length();
+                        int newCaret = caretPosition + (finalLen - initialLen);
+                        if (newCaret >= 0 && newCaret <= formatted.length()) {
+                            auctionStepPriceField.selectPositionCaret(newCaret);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    updating = false;
+                }
+            }
+        });
+
+        auctionStepPriceField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                String rawText = auctionStepPriceField.getText();
+                if (rawText != null && !rawText.trim().isEmpty()) {
+                    String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(rawText);
+                    try {
+                        double amount = Double.parseDouble(parsed);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        auctionStepPriceField.setText(df.format(amount));
+                    } catch (Exception e) {
+                        auctionStepPriceField.setText(parsed);
+                    }
+                }
+            }
+        });
+
+        auctionStepPriceField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                if (auctionStepPriceWordsLabel != null) auctionStepPriceWordsLabel.setText("");
+                return;
+            }
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(newVal);
+            updateMoneyWordsLabel(parsed);
+        });
+    }
+
+    private void updateMoneyWordsLabel(String parsedAmount) {
+        if (auctionStepPriceWordsLabel == null) return;
+        try {
+            double amount = Double.parseDouble(parsedAmount);
+            auctionStepPriceWordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(amount));
+        } catch (NumberFormatException e) {
+            auctionStepPriceWordsLabel.setText("⚠️ Số tiền không hợp lệ.");
+        }
+    }
+
+    @FXML
+    private void handleQuickAddStepPrice(javafx.event.ActionEvent event) {
+        if (!(event.getSource() instanceof Button)) return;
+        Button btn = (Button) event.getSource();
+        String amountText = btn.getText();
+        
+        String raw = auctionStepPriceField.getText();
+        String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(raw);
+        long currentVal = 0;
+        if (parsed != null && !parsed.trim().isEmpty()) {
+            try {
+                currentVal = Long.parseLong(parsed);
+            } catch (NumberFormatException ignored) {}
+        }
+        long increment = 0;
+        if ("+100K".equalsIgnoreCase(amountText)) increment = 100000;
+        else if ("+500K".equalsIgnoreCase(amountText)) increment = 500000;
+        else if ("+1M".equalsIgnoreCase(amountText)) increment = 1000000;
+        else if ("+10M".equalsIgnoreCase(amountText)) increment = 10000000;
+
+        auctionStepPriceField.setText(String.valueOf(currentVal + increment));
+        updateMoneyWordsLabel(auctionStepPriceField.getText());
+    }
+
+    @FXML
+    private void handleQuickAddDuration(javafx.event.ActionEvent event) {
+        if (!(event.getSource() instanceof Button)) return;
+        Button btn = (Button) event.getSource();
+        String text = btn.getText();
+
+        LocalDateTime start = readDateTimeFromPickers(auctionStartDatePicker, auctionStartHourComboBox, auctionStartMinComboBox);
+        if (start == null) {
+            showError("Vui lòng thiết lập ngày giờ bắt đầu trước khi chọn nhanh thời lượng kết thúc.");
+            return;
+        }
+
+        int days = 1;
+        if (text.contains("3")) days = 3;
+        else if (text.contains("7")) days = 7;
+
+        LocalDateTime end = start.plusDays(days);
+        if (auctionEndDatePicker != null) auctionEndDatePicker.setValue(end.toLocalDate());
+        if (auctionEndHourComboBox != null) auctionEndHourComboBox.setValue(String.format("%02d", end.getHour()));
+        if (auctionEndMinComboBox != null) auctionEndMinComboBox.setValue(String.format("%02d", end.getMinute()));
+    }
+
+    private void loadSellerAuctionsSilently() {
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return auctionApi.getSellerAuctions();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                List<AuctionSummaryDTO> list = auctionApi.parseAuctionSummaryList(response);
+                sellerAuctions.setAll(sortAuctionsByStartTimeDesc(list));
+                renderPaginatedTable();
+            }
+        });
+
+        Thread thread = new Thread(task, "seller-auction-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private List<AuctionSummaryDTO> sortAuctionsByStartTimeDesc(List<AuctionSummaryDTO> list) {
+        if (list == null) return List.of();
+        java.util.ArrayList<AuctionSummaryDTO> sorted = new java.util.ArrayList<>(list);
+        sorted.sort((a1, a2) -> {
+            if (a1.getStartTime() == null && a2.getStartTime() == null) return 0;
+            if (a1.getStartTime() == null) return 1;
+            if (a2.getStartTime() == null) return -1;
+            return a2.getStartTime().compareTo(a1.getStartTime());
+        });
+        return sorted;
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+            autoRefreshTimeline = null;
+        }
     }
 
     private void initializeSellerAuctionsTable() {
@@ -154,6 +357,7 @@ public class SellerAuctionController {
         });
 
         sellerAuctionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            if (isRefreshing) return;
             if (newValue == null) return;
 
             if (rightSplitPaneContainer.isVisible()) {
@@ -300,16 +504,18 @@ public class SellerAuctionController {
         if (selectedAuction == null) return false;
 
         String defaultStepPrice = String.format("%.0f", selectedAuction.getStepPrice());
-        String defaultStartTime = formatTime(selectedAuction.getStartTime());
-        String defaultEndTime = formatTime(selectedAuction.getEndTime());
+        LocalDateTime defaultStart = selectedAuction.getStartTime();
+        LocalDateTime defaultEnd = selectedAuction.getEndTime();
 
-        String currentStepPrice = auctionStepPriceField.getText() == null ? "" : auctionStepPriceField.getText().trim();
-        String currentStartTime = auctionStartTimeField.getText() == null ? "" : auctionStartTimeField.getText().trim();
-        String currentEndTime = auctionEndTimeField.getText() == null ? "" : auctionEndTimeField.getText().trim();
+        String currentStepPrice = auctionStepPriceField.getText() == null ? "" : com.auction.util.CurrencyFormatter.parseMoneyShortcut(auctionStepPriceField.getText().trim());
+        LocalDateTime currentStart = readDateTimeFromPickers(auctionStartDatePicker, auctionStartHourComboBox, auctionStartMinComboBox);
+        LocalDateTime currentEnd = readDateTimeFromPickers(auctionEndDatePicker, auctionEndHourComboBox, auctionEndMinComboBox);
+
+        if (currentStart == null || currentEnd == null) return true;
 
         return !defaultStepPrice.equals(currentStepPrice)
-                || !defaultStartTime.equals(currentStartTime)
-                || !defaultEndTime.equals(currentEndTime);
+                || !defaultStart.equals(currentStart)
+                || !defaultEnd.equals(currentEnd);
     }
 
     /**
@@ -361,6 +567,9 @@ public class SellerAuctionController {
         if (currentPageIndex > maxPageIdx) currentPageIndex = maxPageIdx;
         if (currentPageIndex < 1) currentPageIndex = 1;
 
+        AuctionSummaryDTO selected = (sellerAuctionsTable != null) ? sellerAuctionsTable.getSelectionModel().getSelectedItem() : null;
+        String selectedId = selected != null ? selected.getAuctionId() : null;
+
         int fromIndex = (currentPageIndex - 1) * rowsPerPage;
         int toIndex = Math.min(fromIndex + rowsPerPage, totalItems);
 
@@ -378,6 +587,17 @@ public class SellerAuctionController {
         pageLabel.setText(String.format("Trang %d / %d", currentPageIndex, maxPageIdx));
         previousPageButton.setDisable(currentPageIndex == 1);
         nextPageButton.setDisable(currentPageIndex == maxPageIdx);
+
+        if (selectedId != null) {
+            for (AuctionSummaryDTO auction : pageObservableList) {
+                if (selectedId.equals(auction.getAuctionId())) {
+                    isRefreshing = true;
+                    sellerAuctionsTable.getSelectionModel().select(auction);
+                    isRefreshing = false;
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -419,7 +639,7 @@ public class SellerAuctionController {
             return;
         }
 
-        sellerAuctions.setAll(auctionApi.parseAuctionSummaryList(response));
+        sellerAuctions.setAll(sortAuctionsByStartTimeDesc(auctionApi.parseAuctionSummaryList(response)));
         currentPageIndex = 1;
         renderPaginatedTable();
         showMessage("Đã đồng bộ danh sách phiên đấu giá.");
@@ -435,12 +655,30 @@ public class SellerAuctionController {
         boolean isEditable = status.equals("OPEN");
 
         auctionStepPriceField.setText(String.format("%.0f", auction.getStepPrice()));
-        auctionStartTimeField.setText(formatTime(auction.getStartTime()));
-        auctionEndTimeField.setText(formatTime(auction.getEndTime()));
+        updateMoneyWordsLabel(auctionStepPriceField.getText());
 
-        auctionStepPriceField.setDisable(!isEditable);
-        auctionStartTimeField.setDisable(!isEditable);
-        auctionEndTimeField.setDisable(!isEditable);
+        LocalDateTime startTime = auction.getStartTime();
+        LocalDateTime endTime = auction.getEndTime();
+
+        if (startTime != null) {
+            if (auctionStartDatePicker != null) auctionStartDatePicker.setValue(startTime.toLocalDate());
+            if (auctionStartHourComboBox != null) auctionStartHourComboBox.setValue(String.format("%02d", startTime.getHour()));
+            if (auctionStartMinComboBox != null) auctionStartMinComboBox.setValue(String.format("%02d", startTime.getMinute()));
+        }
+
+        if (endTime != null) {
+            if (auctionEndDatePicker != null) auctionEndDatePicker.setValue(endTime.toLocalDate());
+            if (auctionEndHourComboBox != null) auctionEndHourComboBox.setValue(String.format("%02d", endTime.getHour()));
+            if (auctionEndMinComboBox != null) auctionEndMinComboBox.setValue(String.format("%02d", endTime.getMinute()));
+        }
+
+        if (auctionStepPriceField != null) auctionStepPriceField.setDisable(!isEditable);
+        if (auctionStartDatePicker != null) auctionStartDatePicker.setDisable(!isEditable);
+        if (auctionStartHourComboBox != null) auctionStartHourComboBox.setDisable(!isEditable);
+        if (auctionStartMinComboBox != null) auctionStartMinComboBox.setDisable(!isEditable);
+        if (auctionEndDatePicker != null) auctionEndDatePicker.setDisable(!isEditable);
+        if (auctionEndHourComboBox != null) auctionEndHourComboBox.setDisable(!isEditable);
+        if (auctionEndMinComboBox != null) auctionEndMinComboBox.setDisable(!isEditable);
         updateAuctionButton.setDisable(!isEditable);
 
         if (!isEditable) {
@@ -458,11 +696,17 @@ public class SellerAuctionController {
         Double stepPrice = readStepPrice();
         if (stepPrice == null) return;
 
-        LocalDateTime startTime = readDateTime(auctionStartTimeField, "thời gian bắt đầu");
-        if (startTime == null) return;
+        LocalDateTime startTime = readDateTimeFromPickers(auctionStartDatePicker, auctionStartHourComboBox, auctionStartMinComboBox);
+        if (startTime == null) {
+            showError("Vui lòng nhập ngày giờ bắt đầu hợp lệ.");
+            return;
+        }
 
-        LocalDateTime endTime = readDateTime(auctionEndTimeField, "thời gian kết thúc");
-        if (endTime == null) return;
+        LocalDateTime endTime = readDateTimeFromPickers(auctionEndDatePicker, auctionEndHourComboBox, auctionEndMinComboBox);
+        if (endTime == null) {
+            showError("Vui lòng nhập ngày giờ kết thúc hợp lệ.");
+            return;
+        }
 
         if (!endTime.isAfter(startTime)) {
             showError("Thời gian kết thúc phải sau thời gian bắt đầu.");
@@ -509,13 +753,18 @@ public class SellerAuctionController {
         clearUpdateForm();
 
         if (auctionStepPriceField != null) auctionStepPriceField.setDisable(false);
-        if (auctionStartTimeField != null) auctionStartTimeField.setDisable(false);
-        if (auctionEndTimeField != null) auctionEndTimeField.setDisable(false);
+        if (auctionStartDatePicker != null) auctionStartDatePicker.setDisable(false);
+        if (auctionStartHourComboBox != null) auctionStartHourComboBox.setDisable(false);
+        if (auctionStartMinComboBox != null) auctionStartMinComboBox.setDisable(false);
+        if (auctionEndDatePicker != null) auctionEndDatePicker.setDisable(false);
+        if (auctionEndHourComboBox != null) auctionEndHourComboBox.setDisable(false);
+        if (auctionEndMinComboBox != null) auctionEndMinComboBox.setDisable(false);
         if (updateAuctionButton != null) updateAuctionButton.setDisable(false);
     }
 
     @FXML
     private void handleBack() {
+        stopAutoRefresh();
         SceneNavigator.showDashboard();
     }
 
@@ -554,7 +803,7 @@ public class SellerAuctionController {
         }
 
         try {
-            double value = Double.parseDouble(raw);
+            double value = Double.parseDouble(raw.replaceAll(",", ""));
             if (value <= 0) {
                 showError("Bước giá phải lớn hơn 0.");
                 return null;
@@ -566,18 +815,14 @@ public class SellerAuctionController {
         }
     }
 
-    private LocalDateTime readDateTime(TextField field, String fieldName) {
-        String raw = field == null ? "" : field.getText().trim();
-
-        if (raw.isEmpty()) {
-            showError("Vui lòng nhập " + fieldName + ".");
-            return null;
-        }
-
+    private LocalDateTime readDateTimeFromPickers(DatePicker datePicker, ComboBox<String> hourCombo, ComboBox<String> minCombo) {
+        if (datePicker == null || datePicker.getValue() == null) return null;
+        String hour = hourCombo != null ? hourCombo.getValue() : null;
+        String minute = minCombo != null ? minCombo.getValue() : null;
+        if (hour == null || minute == null) return null;
         try {
-            return LocalDateTime.parse(raw, dateTimeFormatter);
-        } catch (DateTimeParseException e) {
-            showError(fieldName + " không đúng định dạng ngày/tháng/năm giờ:phút. Ví dụ: 20/05/2026 10:30");
+            return LocalDateTime.of(datePicker.getValue(), java.time.LocalTime.of(Integer.parseInt(hour), Integer.parseInt(minute)));
+        } catch (Exception e) {
             return null;
         }
     }
@@ -601,8 +846,13 @@ public class SellerAuctionController {
 
     private void clearUpdateForm() {
         if (auctionStepPriceField != null) auctionStepPriceField.clear();
-        if (auctionStartTimeField != null) auctionStartTimeField.clear();
-        if (auctionEndTimeField != null) auctionEndTimeField.clear();
+        if (auctionStepPriceWordsLabel != null) auctionStepPriceWordsLabel.setText("");
+        if (auctionStartDatePicker != null) auctionStartDatePicker.setValue(null);
+        if (auctionStartHourComboBox != null) auctionStartHourComboBox.setValue(null);
+        if (auctionStartMinComboBox != null) auctionStartMinComboBox.setValue(null);
+        if (auctionEndDatePicker != null) auctionEndDatePicker.setValue(null);
+        if (auctionEndHourComboBox != null) auctionEndHourComboBox.setValue(null);
+        if (auctionEndMinComboBox != null) auctionEndMinComboBox.setValue(null);
     }
 
     private void setBusy(boolean busy) {
@@ -612,12 +862,17 @@ public class SellerAuctionController {
         setDisabled(searchField, busy);
         setDisabled(pageSizeField, busy);
         setDisabled(editAuctionButton, busy);
+        setDisabled(cancelAuctionButton, busy);
         setDisabled(clearFilterButton, busy);
         if (busy) {
             setDisabled(updateAuctionButton, true);
             setDisabled(auctionStepPriceField, true);
-            setDisabled(auctionStartTimeField, true);
-            setDisabled(auctionEndTimeField, true);
+            setDisabled(auctionStartDatePicker, true);
+            setDisabled(auctionStartHourComboBox, true);
+            setDisabled(auctionStartMinComboBox, true);
+            setDisabled(auctionEndDatePicker, true);
+            setDisabled(auctionEndHourComboBox, true);
+            setDisabled(auctionEndMinComboBox, true);
         } else if (selectedAuction != null) {
             fillAuctionUpdateForm(selectedAuction);
         }
@@ -669,5 +924,83 @@ public class SellerAuctionController {
         alert.setHeaderText(null);
         alert.setContentText(safeText(message));
         alert.showAndWait();
+    }
+
+    @FXML
+    private void handleCancelAuction() {
+        if (selectedAuction == null) {
+            showError("Vui lòng chọn một phiên đấu giá trên bảng trước khi hủy.");
+            return;
+        }
+
+        String status = safeText(selectedAuction.getStatus()).toUpperCase().trim();
+        if (!"OPEN".equals(status) && !"RUNNING".equals(status)) {
+            showError("Chỉ cho phép hủy các phiên đấu giá ở trạng thái OPEN hoặc RUNNING.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog("Chủ phòng tự nguyện hủy.");
+        dialog.setTitle("Xác nhận hủy phiên đấu giá");
+        dialog.setHeaderText("Hủy phiên đấu giá: " + selectedAuction.getAuctionId());
+        dialog.setContentText("Nhập lý do hủy:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            String reason = result.get().trim();
+            if (reason.isEmpty()) {
+                reason = "Chủ phòng tự nguyện hủy.";
+            }
+            final String finalReason = reason;
+            runRequest(
+                    "Đang hủy phiên đấu giá...",
+                    () -> auctionApi.cancelAuction(selectedAuction.getAuctionId(), finalReason, null),
+                    this::handleCancelAuctionResponse
+            );
+        }
+    }
+
+    private void handleCancelAuctionResponse(SocketResponse response) {
+        if (!isSuccessful(response)) {
+            showError(response == null ? "Hủy phiên thất bại." : response.getMessage());
+            return;
+        }
+
+        showInfo(response.getMessage() == null ? "Hủy phiên đấu giá thành công." : response.getMessage());
+
+        rightSplitPaneContainer.setVisible(false);
+        rightSplitPaneContainer.setManaged(false);
+
+        handleLoadSellerAuctions();
+    }
+
+    private void warmUpContainers() {
+        if (rightSplitPaneContainer == null) {
+            return;
+        }
+        try {
+            double origOpacity = rightSplitPaneContainer.getOpacity();
+            rightSplitPaneContainer.setOpacity(0.0);
+
+            boolean origVisible = rightSplitPaneContainer.isVisible();
+            boolean origManaged = rightSplitPaneContainer.isManaged();
+
+            rightSplitPaneContainer.setVisible(true);
+            rightSplitPaneContainer.setManaged(true);
+
+            rightSplitPaneContainer.applyCss();
+            rightSplitPaneContainer.layout();
+
+            if (auctionStartDatePicker != null) { auctionStartDatePicker.show(); auctionStartDatePicker.hide(); }
+            if (auctionEndDatePicker != null) { auctionEndDatePicker.show(); auctionEndDatePicker.hide(); }
+            if (auctionStartHourComboBox != null) { auctionStartHourComboBox.show(); auctionStartHourComboBox.hide(); }
+            if (auctionStartMinComboBox != null) { auctionStartMinComboBox.show(); auctionStartMinComboBox.hide(); }
+            if (auctionEndHourComboBox != null) { auctionEndHourComboBox.show(); auctionEndHourComboBox.hide(); }
+            if (auctionEndMinComboBox != null) { auctionEndMinComboBox.show(); auctionEndMinComboBox.hide(); }
+
+            rightSplitPaneContainer.setVisible(origVisible);
+            rightSplitPaneContainer.setManaged(origManaged);
+            rightSplitPaneContainer.setOpacity(origOpacity);
+        } catch (Exception ignored) {
+        }
     }
 }

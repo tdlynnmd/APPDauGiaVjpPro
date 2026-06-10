@@ -8,6 +8,8 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
@@ -26,6 +28,7 @@
                                 <Label styleClass="sim-screen-title" text="QUẢN LÝ PHIÊN ĐẤU GIÁ" />
                                 <Pane prefHeight="75.0" HBox.hgrow="ALWAYS" />
                                 <Button fx:id="editAuctionButton" onAction="#handleOpenEditForm" styleClass="sim-btn-action" text="📝 Sửa Phiên Đấu Giá" />
+                                <Button fx:id="cancelAuctionButton" onAction="#handleCancelAuction" styleClass="sim-btn-danger" text="🚫 Hủy Phiên Đấu Giá" />
                             </children>
                             <padding>
                                 <Insets bottom="10.0" />
@@ -46,16 +49,12 @@
             <center>
                 <HBox spacing="10.0" style="-fx-padding: 10;">
                     <children>
-
                         <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                             <children>
-
                                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                                     <children>
                                         <TextField fx:id="searchField" prefWidth="280.0" promptText="Tìm kiếm theo tên vật phẩm..." styleClass="sim-input" />
-
                                         <Button fx:id="searchButton" onAction="#handleSearch" styleClass="sim-btn-action" text="🔍 Tìm kiếm" />
-
                                         <Button fx:id="clearFilterButton" onAction="#handleClearFilter" styleClass="sim-btn-secondary" text="❌ Xóa bộ lọc" />
                                         <Pane HBox.hgrow="ALWAYS" />
                                         <Label text="Kích thước trang:" />
@@ -99,53 +98,89 @@
                                         <Insets top="5.0" />
                                     </padding>
                                 </HBox>
-
                             </children>
                         </VBox>
-
-                        <ScrollPane fx:id="rightSplitPaneContainer" fitToWidth="true" managed="false" maxWidth="450.0" minWidth="420.0" prefWidth="420.0" styleClass="sim-scroll-pane" visible="false">
-                            <content>
-                                <VBox spacing="15.0" style="-fx-padding: 10;">
-                                    <children>
-
-                                        <VBox spacing="12.0" styleClass="sim-card">
-                                            <children>
-                                                <HBox alignment="CENTER_LEFT">
-                                                    <children>
-                                                        <Label styleClass="sim-form-title" text="📝 CHỈNH SỬA PHIÊN ĐẤU GIÁ" />
-                                                        <Pane HBox.hgrow="ALWAYS" />
-                                                        <Button onAction="#handleCloseEditForm" styleClass="sim-btn-close-text" text="✕ Đóng" />
-                                                    </children>
-                                                </HBox>
-                                                <Separator styleClass="sim-separator" />
-
-                                                <Label styleClass="sim-field-label" text="Bước giá tối thiểu (*):" />
-                                                <TextField fx:id="auctionStepPriceField" promptText="Nhập bước giá..." styleClass="sim-input" />
-
-                                                <Label styleClass="sim-field-label" text="Thời gian bắt đầu (dd/MM/yyyy HH:mm) (*):" />
-                                                <TextField fx:id="auctionStartTimeField" promptText="Ví dụ: 20/05/2026 10:30" styleClass="sim-input" />
-
-                                                <Label styleClass="sim-field-label" text="Thời gian kết thúc (dd/MM/yyyy HH:mm) (*):" />
-                                                <TextField fx:id="auctionEndTimeField" promptText="Ví dụ: 21/05/2026 10:30" styleClass="sim-input" />
-
-                                                <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 5 0 0 0;">
-                                                    <children>
-                                                        <Button onAction="#handleResetToDefaultData" styleClass="sim-btn-danger-outline" text="🔄 XOÁ FORM" />
-                                                        <Pane HBox.hgrow="ALWAYS" />
-                                                        <Button fx:id="updateAuctionButton" onAction="#handleUpdateAuction" styleClass="sim-btn-submit" text="💾 XÁC NHẬN" />
-                                                    </children>
-                                                </HBox>
-                                            </children>
-                                        </VBox>
-
-                                    </children>
-                                </VBox>
-                            </content>
-                        </ScrollPane>
-
                     </children>
                 </HBox>
             </center>
         </BorderPane>
+
+        <!-- Overlaid Modal (Phương án A) -->
+        <StackPane fx:id="rightSplitPaneContainer" visible="false" managed="false" style="-fx-background-color: rgba(0, 0, 0, 0.65); -fx-alignment: center;">
+            <padding>
+                <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+            </padding>
+            <children>
+                <ScrollPane fitToWidth="true" maxWidth="620.0" maxHeight="690.0" style="-fx-background-radius: 12; -fx-border-radius: 12; -fx-background: -fx-background-color; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 8);">
+                    <content>
+                        <VBox spacing="15.0" style="-fx-padding: 20; -fx-background-color: -fx-background-color; -fx-background-radius: 12;">
+                            <children>
+
+                                <VBox spacing="12.0" styleClass="sim-card">
+                                    <children>
+                                        <HBox alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label styleClass="sim-form-title" text="📝 CHỈNH SỬA PHIÊN ĐẤU GIÁ" />
+                                                <Pane HBox.hgrow="ALWAYS" />
+                                                <Button onAction="#handleCloseEditForm" styleClass="sim-btn-close-text" text="✕ Đóng" />
+                                            </children>
+                                        </HBox>
+                                        <Separator styleClass="sim-separator" />
+
+                                        <Label styleClass="sim-field-label" text="Bước giá tối thiểu (VNĐ) (*):" />
+                                        <TextField fx:id="auctionStepPriceField" promptText="Nhập bước giá, vd: 100k, 1m" styleClass="sim-input" />
+                                        <Label fx:id="auctionStepPriceWordsLabel" style="-fx-text-fill: #27ae60; -fx-font-size: 13px; -fx-font-style: italic;" wrapText="true" />
+                                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Button text="+100K" onAction="#handleQuickAddStepPrice" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                                <Button text="+500K" onAction="#handleQuickAddStepPrice" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                                <Button text="+1M" onAction="#handleQuickAddStepPrice" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                                <Button text="+10M" onAction="#handleQuickAddStepPrice" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                            </children>
+                                        </HBox>
+
+                                        <Label styleClass="sim-field-label" text="Thời gian bắt đầu (*):" />
+                                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                                            <children>
+                                                <DatePicker fx:id="auctionStartDatePicker" prefWidth="180.0" promptText="Chọn ngày" styleClass="sim-input" />
+                                                <ComboBox fx:id="auctionStartHourComboBox" prefWidth="85.0" promptText="Giờ" styleClass="sim-combobox" />
+                                                <ComboBox fx:id="auctionStartMinComboBox" prefWidth="85.0" promptText="Phút" styleClass="sim-combobox" />
+                                            </children>
+                                        </HBox>
+
+                                        <Label styleClass="sim-field-label" text="Thời gian kết thúc (*):" />
+                                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                                            <children>
+                                                <DatePicker fx:id="auctionEndDatePicker" prefWidth="180.0" promptText="Chọn ngày" styleClass="sim-input" />
+                                                <ComboBox fx:id="auctionEndHourComboBox" prefWidth="85.0" promptText="Giờ" styleClass="sim-combobox" />
+                                                <ComboBox fx:id="auctionEndMinComboBox" prefWidth="85.0" promptText="Phút" styleClass="sim-combobox" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-padding: 5 0 0 0;">
+                                            <children>
+                                                <Label text="Chọn nhanh kết thúc:" style="-fx-font-weight: bold; -fx-text-fill: -fx-text-color;" />
+                                                <Button text="+1 Ngày" onAction="#handleQuickAddDuration" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                                <Button text="+3 Ngày" onAction="#handleQuickAddDuration" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                                <Button text="+7 Ngày" onAction="#handleQuickAddDuration" styleClass="sim-btn-secondary" style="-fx-font-size: 11px; -fx-padding: 3 8;" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 5 0 0 0;">
+                                            <children>
+                                                <Button onAction="#handleResetToDefaultData" styleClass="sim-btn-danger-outline" text="🔄 XOÁ FORM" />
+                                                <Pane HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="updateAuctionButton" onAction="#handleUpdateAuction" styleClass="sim-btn-submit" text="💾 XÁC NHẬN" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                            </children>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </children>
+        </StackPane>
     </children>
 </StackPane>

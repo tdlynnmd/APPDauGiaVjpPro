@@ -2036,6 +2036,16 @@
     -fx-padding: 15;
     -fx-spacing: 8px;
 }
+.ap-card-action-log {
+    -fx-background-color: #242b35;      /* Xám lam nền tối */
+    -fx-border-color: #3b4b5e;          /* Viền xám sẫm */
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 15;
+    -fx-spacing: 8px;
+}
+.ap-action-header-log { -fx-font-weight: bold; -fx-text-fill: #00d2d3; -fx-font-size: 14px; }
+.ap-log-detail-val { -fx-font-size: 13px; -fx-text-fill: #e4e6eb; -fx-font-weight: bold; }
 
 .ap-card-title { -fx-font-weight: bold; -fx-text-fill: -fx-text-main; }
 .ap-input-label { -fx-font-size: 11px; -fx-text-fill: -fx-text-main; }
@@ -2090,30 +2100,52 @@
    CỤM SỐ DƯ TÀI KHOẢN (HEADER BALANCE) - CHẾ ĐỘ TỐI
    ========================================================================== */
 
-/* Khung bọc tổng thể chứa 3 ô số dư */
 .header-balance-container {
     -fx-alignment: center-left;
+    -fx-spacing: 12px;
 }
 
-/* Định dạng chung cho phần chữ nhãn (Khả dụng:, Đóng băng:, Tổng số dư:) */
-.header-balance-container .label {
-    -fx-font-size: 13px;
-    -fx-text-fill: #9aa0a6; /* Màu xám sáng dịu cho Dark Mode */
+/* Định dạng cấu trúc ô card nhỏ */
+.mini-balance-card {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 5px 12px;
+    -fx-spacing: 2px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 6, 0, 0, 3);
 }
 
-/* --- ĐỔI MÀU CHỮ SỐ TIỀN TRƠN (Không nền, không in đậm) --- */
-
-/* 1. Số dư Khả dụng (Màu xanh lục sáng dịu mắt) */
-.header-balance-container .ava-balance .ava-balance-value {
-    -fx-text-fill: #81c995;
+.mini-card-title {
+    -fx-font-size: 10px !important;
+    -fx-font-weight: bold !important;
+    -fx-font-family: "Segoe UI", sans-serif !important;
 }
 
-/* 2. Số dư Đóng băng (Màu hồng đỏ sáng) */
-.header-balance-container .fro-balance .fro-balance-value {
-    -fx-text-fill: #f28b82;
+.mini-card-value {
+    -fx-font-size: 13px !important;
+    -fx-font-weight: 900 !important;
+    -fx-font-family: "Segoe UI", sans-serif !important;
 }
 
-/* 3. Tổng số dư (Màu xanh dương sáng dịu) */
-.header-balance-container .tot-balance .tot-balance-value {
-    -fx-text-fill: #8ab4f8;
+/* Phối màu đêm dịu mắt nhưng cực nét tương tự wallet */
+.mini-card-available {
+    -fx-background-color: #143F2E; /* Nền lục tối */
+    -fx-border-color: #27AE60;
 }
+.mini-card-available .mini-card-title { -fx-text-fill: #2ECC71 !important; }
+.mini-card-available .mini-card-value { -fx-text-fill: #2ECC71 !important; }
+
+.mini-card-frozen {
+    -fx-background-color: #4A1C1C; /* Nền đỏ tối */
+    -fx-border-color: #E74C3C;
+}
+.mini-card-frozen .mini-card-title { -fx-text-fill: #FF6666 !important; }
+.mini-card-frozen .mini-card-value { -fx-text-fill: #FF4D4D !important; }
+
+.mini-card-total {
+    -fx-background-color: #1F3A52; /* Nền lam huyền bí */
+    -fx-border-color: #2980B9;
+}
+.mini-card-total .mini-card-title { -fx-text-fill: #5DADE2 !important; }
+.mini-card-total .mini-card-value { -fx-text-fill: #fca311 !important; }

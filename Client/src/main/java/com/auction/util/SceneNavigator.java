@@ -129,16 +129,44 @@ public class SceneNavigator {
             FXMLLoader loader = new FXMLLoader(resource);
             Parent root = loader.load();
 
-            if (mainStage.getScene() == null) {
-                Scene scene = new Scene(root, 900, 600);
-                mainStage.setScene(scene);
+            boolean isFirstTime = (mainStage.getScene() == null);
+            boolean wasMaximized = mainStage.isMaximized();
+            boolean wasFullScreen = mainStage.isFullScreen();
+
+            double width;
+            double height;
+
+            if (!isFirstTime) {
+                width = mainStage.getScene().getWidth();
+                height = mainStage.getScene().getHeight();
             } else {
-                mainStage.getScene().setRoot(root);
+                double prefW = root.prefWidth(-1);
+                double prefH = root.prefHeight(-1);
+                width = prefW > 0 ? prefW : 900;
+                height = prefH > 0 ? prefH : 600;
+
+                javafx.geometry.Rectangle2D screenBounds = javafx.stage.Screen.getPrimary().getVisualBounds();
+                if (width > screenBounds.getWidth()) {
+                    width = screenBounds.getWidth() * 0.95;
+                }
+                if (height > screenBounds.getHeight()) {
+                    height = screenBounds.getHeight() * 0.90;
+                }
             }
+
+            Scene scene = new Scene(root, width, height);
+            mainStage.setScene(scene);
 
             mainStage.setTitle("Online Auction - " + title);
 
-            if (!mainStage.isMaximized()) {
+            if (wasMaximized) {
+                mainStage.setMaximized(true);
+            }
+            if (wasFullScreen) {
+                mainStage.setFullScreen(true);
+            }
+
+            if (isFirstTime) {
                 mainStage.centerOnScreen();
             }
 

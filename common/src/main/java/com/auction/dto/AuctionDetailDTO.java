@@ -126,4 +126,45 @@ public class AuctionDetailDTO {
     public void setViewerCount(int viewerCount) {
         this.viewerCount = viewerCount;
     }
+
+    private String itemType;
+    private Integer yearCreated;
+    private String painter;
+    private String artStyle;
+    private String brand;
+    private Integer warrantyMonths;
+    private String model;
+    private String engineType;
+    private String licensePlate;
+    private Double kmAge;
+
+    public String getItemType() { return itemType; }
+    public void setItemType(String itemType) { this.itemType = itemType; }
+
+    public Integer getYearCreated() { return yearCreated; }
+    public void setYearCreated(Integer yearCreated) { this.yearCreated = yearCreated; }
+
+    public String getPainter() { return painter; }
+    public void setPainter(String painter) { this.painter = painter; }
+
+    public String getArtStyle() { return artStyle; }
+    public void setArtStyle(String artStyle) { this.artStyle = artStyle; }
+
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
+
+    public Integer getWarrantyMonths() { return warrantyMonths; }
+    public void setWarrantyMonths(Integer warrantyMonths) { this.warrantyMonths = warrantyMonths; }
+
+    public String getModel() { return model; }
+    public void setModel(String model) { this.model = model; }
+
+    public String getEngineType() { return engineType; }
+    public void setEngineType(String engineType) { this.engineType = engineType; }
+
+    public String getLicensePlate() { return licensePlate; }
+    public void setLicensePlate(String licensePlate) { this.licensePlate = licensePlate; }
+
+    public Double getKmAge() { return kmAge; }
+    public void setKmAge(Double kmAge) { this.kmAge = kmAge; }
 }

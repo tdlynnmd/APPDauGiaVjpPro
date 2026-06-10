@@ -140,7 +140,8 @@
                                 <TableView fx:id="auctionsTable" styleClass="ap-table" VBox.vgrow="ALWAYS">
                                     <columns>
                                         <TableColumn fx:id="auctionIdColumn" prefWidth="80.0" text="Auction ID" />
-                                        <TableColumn fx:id="auctionItemIdColumn" prefWidth="180.0" text="Tên vật phẩm" />
+                                        <TableColumn fx:id="auctionItemIdColumn" prefWidth="120.0" text="Mã sản phẩm" />
+                                        <TableColumn fx:id="auctionItemNameColumn" prefWidth="150.0" text="Tên sản phẩm" />
                                         <TableColumn fx:id="auctionPriceColumn" prefWidth="120.0" text="Giá hiện hành" />
 
                                         <TableColumn fx:id="auctionStatusColumn" prefWidth="100.0" text="Trạng thái" />
@@ -251,10 +252,33 @@
                             </children>
                         </VBox>
 
-                        <VBox fx:id="actionLogBox" styleClass="ap-action-container-log" visible="false">
+                        <VBox fx:id="actionLogBox" styleClass="ap-action-container" visible="false" spacing="10.0">
                             <children>
-                                <Label styleClass="ap-log-info-main" text="Chế độ xem nhật ký hệ thống." />
-                                <Label styleClass="ap-log-info-sub" text="Không có tác vụ chỉnh sửa tại màn hình này." />
+                                <Label styleClass="ap-action-header-log" text="CHI TIẾT NHẬT KÝ" />
+                                <VBox styleClass="ap-card-action-log" spacing="8.0">
+                                    <children>
+                                        <Label styleClass="ap-input-label" text="Tên Admin thực hiện:" />
+                                        <Label fx:id="logDetailAdminNameLabel" styleClass="ap-log-detail-val" text="--" wrapText="true" />
+                                        
+                                        <Label styleClass="ap-input-label" text="Mã ID Admin:" />
+                                        <Label fx:id="logDetailAdminIdLabel" styleClass="ap-log-detail-val" text="--" wrapText="true" />
+                                        
+                                        <Label styleClass="ap-input-label" text="Loại đối tượng tác động:" />
+                                        <Label fx:id="logDetailTargetTypeLabel" styleClass="ap-log-detail-val" text="--" />
+                                        
+                                        <Label styleClass="ap-input-label" text="ID đối tượng tác động:" />
+                                        <Label fx:id="logDetailTargetIdLabel" styleClass="ap-log-detail-val" text="--" wrapText="true" />
+                                        
+                                        <Label fx:id="logDetailTargetNameTitleLabel" styleClass="ap-input-label" text="Tên đối tượng:" visible="false" managed="false" />
+                                        <Label fx:id="logDetailTargetNameLabel" styleClass="ap-log-detail-val" text="--" wrapText="true" visible="false" managed="false" />
+                                        
+                                        <Label styleClass="ap-input-label" text="Thời gian thực hiện:" />
+                                        <Label fx:id="logDetailTimeLabel" styleClass="ap-log-detail-val" text="--" />
+                                        
+                                        <Label styleClass="ap-input-label" text="Lý do thực hiện:" />
+                                        <Label fx:id="logDetailReasonLabel" styleClass="ap-log-detail-val" text="--" wrapText="true" />
+                                    </children>
+                                </VBox>
                             </children>
                         </VBox>
 

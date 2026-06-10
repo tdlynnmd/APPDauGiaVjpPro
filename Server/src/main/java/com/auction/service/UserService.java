@@ -73,8 +73,8 @@ public class UserService {
             }
 
             User ramUser = getOrLoadUser(bidderId);
-            if (ramUser instanceof Bidder bidder) {
-                bidder.setAvailableBalance(bidder.getAvailableBalance() + amount);
+            if (ramUser != null) {
+                ramUser.setAvailableBalance(ramUser.getAvailableBalance() + amount);
             }
         }
     }
@@ -94,14 +94,12 @@ public class UserService {
                 throw new AuthenticationException(AuthErrorCode.USER_NOT_FOUND);
             }
 
-            if (ramUser instanceof Bidder bidder) {
-                if (bidder.getAvailableBalance() < amount) {
-                    throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
-                }
+            if (ramUser.getAvailableBalance() < amount) {
+                throw new WalletException(WalletErrorCode.INSUFFICIENT_BALANCE);
+            }
 
-                if (bidder.getStatus() == UserStatus.BANNED) {
-                    throw new WalletException(WalletErrorCode.ACCOUNT_BANNED);
-                }
+            if (ramUser.getStatus() == UserStatus.BANNED) {
+                throw new WalletException(WalletErrorCode.ACCOUNT_BANNED);
             }
 
             try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
@@ -115,9 +113,7 @@ public class UserService {
                 throw new WalletException(WalletErrorCode.TRANSACTION_FAILED, "Database link failed at withdrawMoney: " + e.getMessage());
             }
 
-            if (ramUser instanceof Bidder bidderLive) {
-                bidderLive.setAvailableBalance(bidderLive.getAvailableBalance() - amount);
-            }
+            ramUser.setAvailableBalance(ramUser.getAvailableBalance() - amount);
         }
     }
 
@@ -190,6 +186,11 @@ public class UserService {
         final String cleanReason = normalizeAdminReason(reason);
 
         synchronized (cleanUserId.intern()) {
+            User targetUser = getOrLoadUser(cleanUserId);
+            if (targetUser != null && targetUser.getStatus() == UserStatus.BANNED) {
+                throw new ValidationException(ValidationErrorCode.BAD_REQUEST, "Tài khoản người dùng này đã bị khóa (BANNED) từ trước.");
+            }
+
             Connection conn = null;
             try {
                 conn = com.auction.config.DatabaseConnection.getConnection();

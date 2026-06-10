@@ -44,7 +44,8 @@ public class AdminQueryService {
                     item.getName(),
                     item.getStartingPrice(),
                     item.getItemType().name(),
-                    item.getStatus().name()
+                    item.getStatus().name(),
+                    item.getCreatedAt()
             ));
         }
 
@@ -81,16 +82,33 @@ public class AdminQueryService {
                     ? ramAuction.getCurrentPrice()
                     : dbAuction.getCurrentPrice();
 
-            String displayStatus = dbAuction.getStatus().name();
+            String displayStatus = (ramAuction != null)
+                    ? ramAuction.getStatus().name()
+                    : dbAuction.getStatus().name();
+
+            String itemName = "Vật phẩm #" + dbAuction.getItemId();
+            String itemType = "UNKNOWN";
+            if (ramAuction != null && ramAuction.getItem() != null) {
+                itemName = ramAuction.getItem().getName();
+                itemType = ramAuction.getItem().getItemType().name();
+            } else {
+                var dbItem = itemDAO.findById(dbAuction.getItemId()).orElse(null);
+                if (dbItem != null) {
+                    itemName = dbItem.getName();
+                    itemType = dbItem.getItemType().name();
+                }
+            }
 
             dtoList.add(new AuctionSummaryDTO(
                     dbAuction.getId(),
                     dbAuction.getItemId(),
+                    itemName,
                     displayPrice,
                     displayStatus,
                     dbAuction.getEndTime(),
                     dbAuction.getStartTime(),
-                    dbAuction.getStepPrice()
+                    dbAuction.getStepPrice(),
+                    itemType
             ));
         }
 

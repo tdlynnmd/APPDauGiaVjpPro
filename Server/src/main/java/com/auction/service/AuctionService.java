@@ -123,6 +123,7 @@ public class AuctionService {
      */
     protected AuctionService() {
         startDbWriter();
+        recoverPendingBids();
     }
 
     /**
@@ -214,6 +215,13 @@ public class AuctionService {
 
             // 4. Lưu liên kết phòng đã tham gia
             userDAO.addJoinedAuction(conn, task.bidderId, task.auctionId);
+
+            // 5. Xóa khỏi hàng đợi bền vững pending_bids
+            String deletePendingSql = "DELETE FROM pending_bids WHERE new_bid_id = UUID_TO_BIN(?, 1)";
+            try (PreparedStatement delStmt = conn.prepareStatement(deletePendingSql)) {
+                delStmt.setString(1, task.newBidId);
+                delStmt.executeUpdate();
+            }
 
             conn.commit();
             log.info("[Async DB Writer] ✅ bid={} auction={} amount={}", task.newBidId, task.auctionId, task.amount);
@@ -381,6 +389,29 @@ public class AuctionService {
         );
 
         if (asyncEnabled) {
+            try {
+                savePendingBidToDb(task);
+            } catch (SQLException e) {
+                log.error("❌ [Write-Ahead Log] Không thể lưu pending bid thầu vào database: {}", e.getMessage());
+                // Rollback RAM
+                auction.rollbackBidInRam(oldHighestBidderId, oldPrice, oldEndTime);
+                synchronized (bidder.getId().intern()) {
+                    bidder.unfreeze(amount);
+                    if (oldHighestBidderId != null && oldHighestBidderId.equals(bidder.getId())) {
+                        bidder.freeze(oldPrice);
+                    }
+                }
+                if (oldHighestBidderId != null && !oldHighestBidderId.equals(bidder.getId())) {
+                    User oldRamUser = com.auction.manage.UserManage.getInstance().getUser(oldHighestBidderId);
+                    if (oldRamUser instanceof Bidder oldBidderLive) {
+                        synchronized (oldHighestBidderId.intern()) {
+                            oldBidderLive.setAvailableBalance(oldBidderLive.getAvailableBalance() - oldPrice);
+                            oldBidderLive.setFrozenBalance(oldBidderLive.getFrozenBalance() + oldPrice);
+                        }
+                    }
+                }
+                throw new AuctionException(AuctionErrorCode.BID_SAVE_FAILED, "Hệ thống ghi nhận thầu bị gián đoạn. Vui lòng thử lại.");
+            }
             dbQueue.add(task);
         } else {
             try {
@@ -878,9 +909,21 @@ public class AuctionService {
                 statusText = "PAID";
             }
         }
+        String itemType = "UNKNOWN";
+        if (auction.getItem() != null) {
+            itemType = auction.getItem().getItemType().name();
+        } else {
+            try {
+                com.auction.models.Item.Item liveItem = itemDAO.findById(auction.getItemId()).orElse(null);
+                if (liveItem != null) {
+                    itemType = liveItem.getItemType().name();
+                    auction.setItem(liveItem);
+                }
+            } catch (Exception ignored) {}
+        }
         return new AuctionSummaryDTO(
-                auction.getId(), itemName, auction.getCurrentPrice(), statusText, auction.getEndTime(),
-                auction.getStartTime(), auction.getLiveStepPrice()
+                auction.getId(), auction.getItemId(), itemName, auction.getCurrentPrice(), statusText, auction.getEndTime(),
+                auction.getStartTime(), auction.getLiveStepPrice(), itemType
         );
     }
 
@@ -1008,6 +1051,27 @@ public class AuctionService {
         );
         dto.setLiveStepPrice(auction.getLiveStepPrice());
         dto.setViewerCount(LiveRoomManage.getInstance().getRoomSize(auction.getId()));
+
+        if (item != null) {
+            dto.setItemType(item.getItemType().name());
+            dto.setYearCreated(item.getYearCreated());
+            if (item instanceof com.auction.models.Item.Art) {
+                com.auction.models.Item.Art art = (com.auction.models.Item.Art) item;
+                dto.setPainter(art.getPainter());
+                dto.setArtStyle(art.getArtStyle());
+            } else if (item instanceof com.auction.models.Item.Electronics) {
+                com.auction.models.Item.Electronics elec = (com.auction.models.Item.Electronics) item;
+                dto.setBrand(elec.getBrand());
+                dto.setWarrantyMonths(elec.getWarrantyMonths());
+            } else if (item instanceof com.auction.models.Item.Vehicle) {
+                com.auction.models.Item.Vehicle veh = (com.auction.models.Item.Vehicle) item;
+                dto.setModel(veh.getModel());
+                dto.setEngineType(veh.getEngineType());
+                dto.setLicensePlate(veh.getLicensePlate());
+                dto.setKmAge(veh.getKmAge());
+            }
+        }
+
         return dto;
     }
 
@@ -1044,8 +1108,8 @@ public class AuctionService {
                 if (!auction.getSellerId().equals(operatorId)) {
                     throw new AuthorizationException(AuthorizationErrorCode.RESOURCE_OWNERSHIP_VIOLATION, "Access denied: You do not own this auction room.");
                 }
-                if (auction.getStatus() == AuctionStatus.RUNNING || auction.getHighestBidderId() != null) {
-                    throw new AuctionException(AuctionErrorCode.CANNOT_CANCEL_AUCTION_RUNNING, "Cannot cancel an auction that is currently running or already has active bids.");
+                if (auction.getHighestBidderId() != null) {
+                    throw new AuctionException(AuctionErrorCode.CANNOT_CANCEL_AUCTION_RUNNING, "Cannot cancel an auction that already has active bids.");
                 }
             }
 
@@ -1067,10 +1131,11 @@ public class AuctionService {
                 auctionDAO.updateStatus(conn, auctionId, AuctionStatus.CANCELED.name());
                 itemDAO.updateStatus(conn, auction.getItemId(), com.auction.enums.ItemStatus.ACTIVE.name());
 
-                String logId = UUID.randomUUID().toString();
-                String actorStr = (operatorRole == UserRole.ADMIN) ? "Admin cưỡng chế hủy" : "Seller tự hủy";
-                String actionDetail = actorStr + " phiên đấu giá [" + auctionId + "]. Lý do: " + reason;
-                logDAO.insertLog(conn, logId, operatorId, actionDetail, "AUCTION", auctionId);
+                if (operatorRole == UserRole.ADMIN) {
+                    String logId = UUID.randomUUID().toString();
+                    String actionDetail = "Admin cưỡng chế hủy phiên đấu giá [" + auctionId + "]. Lý do: " + reason;
+                    logDAO.insertLog(conn, logId, operatorId, actionDetail, "AUCTION", auctionId);
+                }
 
                 conn.commit();
                 System.out.println("[DB Transaction] ✅ Phiên đấu giá đã được hủy thành công bởi: " + operatorRole);
@@ -1084,6 +1149,11 @@ public class AuctionService {
                             winnerLive.setFrozenBalance(winnerLive.getFrozenBalance() - currentPrice);
                             System.out.println("[RAM Sync] 🔄 Đã xả đóng băng hoàn tiền cọc trên RAM cho: " + currentWinnerId);
                         }
+                    }
+                    try {
+                        syncAndSendBalanceUpdate(currentWinnerId);
+                    } catch (Exception ex) {
+                        log.error("[AuctionService] Lỗi gửi WALLET_UPDATE cho bidder khi hủy phiên: {}", ex.getMessage());
                     }
                 }
 
@@ -1468,14 +1538,21 @@ public class AuctionService {
             // Cập nhật trạng thái theo mốc thời gian thực tế
             finalAuction.refreshStatus(LocalDateTime.now());
 
+            String itemType = "UNKNOWN";
+            if (finalAuction.getItem() != null) {
+                itemType = finalAuction.getItem().getItemType().name();
+            }
+
             summaries.add(new AuctionSummaryDTO(
                     finalAuction.getId(),
+                    finalAuction.getItemId(),
                     itemName,
                     finalAuction.getCurrentPrice(),
                     finalAuction.getStatus().name(),
                     finalAuction.getEndTime(),
                     finalAuction.getStartTime(),
-                    finalAuction.getStepPrice()
+                    finalAuction.getStepPrice(),
+                    itemType
             ));
         }
         return summaries;
@@ -1561,5 +1638,86 @@ public class AuctionService {
             auction.updateDetails(stepPrice, startTime, endTime);
             System.out.println("[RAM Sync] 🔄 Đã đồng bộ thông tin cập nhật lên RAM cho phiên: " + auctionId);
         }
+    }
+
+    private void savePendingBidToDb(BidTask task) throws SQLException {
+        String sql = "INSERT INTO pending_bids (id, bidder_id, auction_id, amount, new_bid_id, " +
+                "old_highest_bidder_id, old_winning_bid_id, old_price, end_time, live_step_price, created_at) " +
+                "VALUES (UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, UUID_TO_BIN(?, 1), " +
+                "UUID_TO_BIN(?, 1), UUID_TO_BIN(?, 1), ?, ?, ?, ?)";
+        try (Connection conn = com.auction.config.DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            String id = UUID.randomUUID().toString();
+            stmt.setString(1, id);
+            stmt.setString(2, task.bidderId);
+            stmt.setString(3, task.auctionId);
+            stmt.setDouble(4, task.amount);
+            stmt.setString(5, task.newBidId);
+            if (task.oldHighestBidderId != null) {
+                stmt.setString(6, task.oldHighestBidderId);
+            } else {
+                stmt.setNull(6, java.sql.Types.BINARY);
+            }
+            if (task.oldWinningBidId != null) {
+                stmt.setString(7, task.oldWinningBidId);
+            } else {
+                stmt.setNull(7, java.sql.Types.BINARY);
+            }
+            stmt.setDouble(8, task.oldPrice);
+            stmt.setTimestamp(9, java.sql.Timestamp.valueOf(task.endTime));
+            stmt.setDouble(10, task.liveStepPrice);
+            stmt.setTimestamp(11, java.sql.Timestamp.valueOf(task.time));
+            
+            stmt.executeUpdate();
+        }
+    }
+
+    private void recoverPendingBids() {
+        log.info("[Recovery] 🔍 Đang quét hàng đợi bền vững pending_bids để khôi phục sau sự cố...");
+        String sql = "SELECT BIN_TO_UUID(bidder_id, 1) AS bidder_id, " +
+                "BIN_TO_UUID(auction_id, 1) AS auction_id, amount, " +
+                "BIN_TO_UUID(new_bid_id, 1) AS new_bid_id, " +
+                "BIN_TO_UUID(old_highest_bidder_id, 1) AS old_highest_bidder_id, " +
+                "BIN_TO_UUID(old_winning_bid_id, 1) AS old_winning_bid_id, " +
+                "old_price, end_time, live_step_price, created_at FROM pending_bids ORDER BY created_at ASC";
+        
+        List<BidTask> recoveredTasks = new ArrayList<>();
+        try (Connection conn = com.auction.config.DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                String bidderId = rs.getString("bidder_id");
+                String auctionId = rs.getString("auction_id");
+                double amount = rs.getDouble("amount");
+                String newBidId = rs.getString("new_bid_id");
+                String oldHighestBidderId = rs.getString("old_highest_bidder_id");
+                String oldWinningBidId = rs.getString("old_winning_bid_id");
+                double oldPrice = rs.getDouble("old_price");
+                LocalDateTime endTime = rs.getTimestamp("end_time").toLocalDateTime();
+                double liveStepPrice = rs.getDouble("live_step_price");
+                LocalDateTime time = rs.getTimestamp("created_at").toLocalDateTime();
+                
+                recoveredTasks.add(new BidTask(
+                        bidderId, auctionId, amount, newBidId,
+                        oldHighestBidderId, oldWinningBidId, oldPrice,
+                        endTime, liveStepPrice, time
+                ));
+            }
+        } catch (SQLException e) {
+            log.error("[Recovery] ❌ Lỗi khi đọc bảng pending_bids: {}", e.getMessage(), e);
+            return;
+        }
+        
+        if (recoveredTasks.isEmpty()) {
+            log.info("[Recovery] ✅ Không có lệnh thầu nào bị bỏ dở. Hệ thống sạch sẽ.");
+            return;
+        }
+        
+        log.info("[Recovery] ⚠️ Phát hiện {} lệnh thầu chưa được ghi nhận do sự cố mất điện. Tiến hành ghi bù...", recoveredTasks.size());
+        for (BidTask task : recoveredTasks) {
+            dbQueue.add(task);
+        }
+        log.info("[Recovery] 🎯 Đã đẩy toàn bộ lệnh thầu cần khôi phục vào hàng đợi ghi ngầm.");
     }
 }

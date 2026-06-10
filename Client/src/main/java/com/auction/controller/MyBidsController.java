@@ -11,6 +11,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
@@ -96,6 +97,80 @@ public class MyBidsController {
 
         updateTablePlaceholder(SceneNavigator.isAppDarkMode);
         loadPage(1);
+
+        autoRefreshTimeline = new javafx.animation.Timeline(new javafx.animation.KeyFrame(javafx.util.Duration.seconds(3), event -> {
+            if (myBidsTable == null || myBidsTable.getScene() == null || myBidsTable.getScene().getWindow() == null) {
+                stopAutoRefresh();
+            } else {
+                loadPageSilently(currentPage);
+            }
+        }));
+        autoRefreshTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        autoRefreshTimeline.play();
+    }
+
+    private javafx.animation.Timeline autoRefreshTimeline;
+
+    private void loadPageSilently(int page) {
+        int pageSize = readPageSize();
+        Task<SocketResponse> task = new Task<>() {
+            @Override
+            protected SocketResponse call() {
+                return bidHistoryApi.getMyBidHistory(page, pageSize);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            SocketResponse response = task.getValue();
+            if (response != null && response.isSuccess()) {
+                BidTransactionDTO selected = (myBidsTable != null) ? myBidsTable.getSelectionModel().getSelectedItem() : null;
+                String selectedBidId = selected != null ? selected.getBidId() : null;
+
+                PageDTO<BidTransactionDTO> pageData = bidHistoryApi.parseMyBidHistoryPage(response);
+                totalPages = pageData.getTotalPages();
+                totalElements = pageData.getTotalElements();
+                
+                int displayPage = page;
+                if (displayPage > totalPages && totalPages > 0) {
+                    displayPage = totalPages;
+                }
+                currentPage = displayPage;
+
+                List<BidTransactionDTO> data = pageData.getData() == null ? List.of() : pageData.getData();
+                bids.setAll(sortBidsByTimeDesc(data));
+
+                if (selectedBidId != null) {
+                    final String selBidId = selectedBidId;
+                    Platform.runLater(() -> selectBidInTable(selBidId));
+                }
+
+                updatePaginationLabels();
+                updateNavigationButtons(false);
+            }
+        });
+
+        Thread thread = new Thread(task, "my-bids-silent-loader");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private List<BidTransactionDTO> sortBidsByTimeDesc(List<BidTransactionDTO> list) {
+        if (list == null) return List.of();
+        java.util.ArrayList<BidTransactionDTO> sorted = new java.util.ArrayList<>(list);
+        sorted.sort((b1, b2) -> {
+            if (b1.getTime() == null && b2.getTime() == null) return 0;
+            if (b1.getTime() == null) return 1;
+            if (b2.getTime() == null) return -1;
+            return b2.getTime().compareTo(b1.getTime());
+        });
+        return sorted;
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+            autoRefreshTimeline = null;
+        }
     }
 
     private void applyTheme() {
@@ -223,6 +298,7 @@ public class MyBidsController {
 
     @FXML
     private void handleBack() {
+        stopAutoRefresh();
         SceneNavigator.showDashboard();
     }
 
@@ -261,9 +337,8 @@ public class MyBidsController {
      * Nhận và xử lý gói tin SocketResponse trả về từ Server phân trang
      */
     private void handlePageResponse(SocketResponse response, int requestedPage) {
-        if (myBidsTable != null) {
-            myBidsTable.getSelectionModel().clearSelection();
-        }
+        BidTransactionDTO selected = (myBidsTable != null) ? myBidsTable.getSelectionModel().getSelectedItem() : null;
+        String selectedBidId = selected != null ? selected.getBidId() : null;
 
         if (response == null) {
             showMessage("Server không phản hồi. Vui lòng kiểm tra kết nối.");
@@ -288,7 +363,12 @@ public class MyBidsController {
         }
 
         List<BidTransactionDTO> data = pageData.getData() == null ? List.of() : pageData.getData();
-        bids.setAll(data);
+        bids.setAll(sortBidsByTimeDesc(data));
+
+        if (selectedBidId != null) {
+            final String selBidId = selectedBidId;
+            Platform.runLater(() -> selectBidInTable(selBidId));
+        }
 
         updatePaginationLabels();
         updateNavigationButtons(false);
@@ -405,5 +485,17 @@ public class MyBidsController {
         emptyBox.getChildren().addAll(iconLabel, msgLabel);
 
         myBidsTable.setPlaceholder(emptyBox);
+    }
+
+    private void selectBidInTable(String bidId) {
+        if (myBidsTable == null || bidId == null || bidId.trim().isEmpty()) {
+            return;
+        }
+        for (BidTransactionDTO bid : bids) {
+            if (bidId.equals(bid.getBidId())) {
+                myBidsTable.getSelectionModel().select(bid);
+                return;
+            }
+        }
     }
 }

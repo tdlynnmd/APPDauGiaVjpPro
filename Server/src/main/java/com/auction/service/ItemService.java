@@ -134,7 +134,8 @@ public class ItemService {
                     item.getName(),
                     item.getStartingPrice(),
                     item.getItemType().name(),
-                    ramItem.getStatus().name()
+                    ramItem.getStatus().name(),
+                    item.getCreatedAt()
             ));
         }
         return result;
@@ -261,6 +262,10 @@ public class ItemService {
             Item item = getItemById(itemId);
             if (item == null) {
                 throw new AuctionException(AuctionErrorCode.ITEM_NOT_FOUND, "The target item for deletion does not exist.");
+            }
+
+            if (item.getStatus() == ItemStatus.BANNED) {
+                throw new AuctionException(AuctionErrorCode.ITEM_IS_LOCKED, "Vật phẩm này đã bị Admin cưỡng chế gỡ bỏ (BANNED) từ trước.");
             }
 
             if (item.getStatus() == ItemStatus.INACTIVE) {

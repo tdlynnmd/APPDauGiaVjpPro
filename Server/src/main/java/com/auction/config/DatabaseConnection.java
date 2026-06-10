@@ -17,7 +17,15 @@ public class DatabaseConnection {
     private static final String DEFAULT_USERNAME = "root";
 
     private static final String DEFAULT_PASSWORD = "";
-    private static final Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+    private static final Dotenv dotenv = loadDotenv();
+
+    private static Dotenv loadDotenv() {
+        Dotenv d = Dotenv.configure().ignoreIfMissing().load();
+        if (d.get("AUCTION_DB_URL") == null && d.get("DB_URL") == null) {
+            d = Dotenv.configure().directory("..").ignoreIfMissing().load();
+        }
+        return d;
+    }
 
     private DatabaseConnection() {}
 
@@ -66,6 +74,28 @@ public class DatabaseConnection {
                 stmt.execute("ALTER TABLE auctions DROP INDEX uq_item_id");
                 System.out.println("[DatabaseConnection] ✅ Đã xóa ràng buộc unique uq_item_id khỏi bảng auctions.");
             } catch (java.sql.SQLException ignored) {
+            }
+
+            try (java.sql.Connection conn = dataSource.getConnection();
+                 java.sql.Statement stmt = conn.createStatement()) {
+                String createTableSql = "CREATE TABLE IF NOT EXISTS `pending_bids` (" +
+                        "  `id` binary(16) NOT NULL," +
+                        "  `bidder_id` binary(16) NOT NULL," +
+                        "  `auction_id` binary(16) NOT NULL," +
+                        "  `amount` decimal(15,2) NOT NULL," +
+                        "  `new_bid_id` binary(16) NOT NULL," +
+                        "  `old_highest_bidder_id` binary(16) DEFAULT NULL," +
+                        "  `old_winning_bid_id` binary(16) DEFAULT NULL," +
+                        "  `old_price` decimal(15,2) NOT NULL," +
+                        "  `end_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                        "  `live_step_price` decimal(15,2) NOT NULL," +
+                        "  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP," +
+                        "  PRIMARY KEY (`id`)" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+                stmt.execute(createTableSql);
+                System.out.println("[DatabaseConnection] ✅ Đảm bảo bảng pending_bids tồn tại trong database.");
+            } catch (java.sql.SQLException e) {
+                System.err.println("[DatabaseConnection] ❌ Lỗi khi tự động thiết lập bảng pending_bids: " + e.getMessage());
             }
 
         } catch (Exception e) {

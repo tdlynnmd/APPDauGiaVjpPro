@@ -99,6 +99,45 @@ public class AuctionDetailController implements RealtimeUpdateListener {
     @FXML
     private Label endTimeLabel;
 
+    @FXML
+    private Label itemTypeLabel;
+
+    @FXML
+    private Label yearCreatedLabel;
+
+    @FXML
+    private VBox artSpecsBox;
+
+    @FXML
+    private Label painterLabel;
+
+    @FXML
+    private Label artStyleLabel;
+
+    @FXML
+    private VBox electronicsSpecsBox;
+
+    @FXML
+    private Label brandLabel;
+
+    @FXML
+    private Label warrantyLabel;
+
+    @FXML
+    private VBox vehicleSpecsBox;
+
+    @FXML
+    private Label modelLabel;
+
+    @FXML
+    private Label engineLabel;
+
+    @FXML
+    private Label licensePlateLabel;
+
+    @FXML
+    private Label kmAgeLabel;
+
     /**
      * FXML cần có: <Label fx:id="messageLabel" ... />
      */
@@ -122,6 +161,9 @@ public class AuctionDetailController implements RealtimeUpdateListener {
      */
     @FXML
     private TextField bidAmountField;
+
+    @FXML
+    private Label bidAmountWordsLabel;
 
     /**
      * FXML cần có: <TableView fx:id="bidHistoryTable" ... />
@@ -180,6 +222,7 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         applyTheme();
         setupBidHistoryTable();
         applyLiveBiddingAccess();
+        setupMoneyFieldFormatting(bidAmountField, bidAmountWordsLabel);
         showMessage("Chưa chọn phiên đấu giá.");
         Platform.runLater(this::applyTheme);
     }
@@ -399,6 +442,49 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             }
         }
 
+        // Populating new general and subclass fields
+        setLabelText(itemTypeLabel, detail.getItemType() != null ? detail.getItemType() : "UNKNOWN");
+        setLabelText(yearCreatedLabel, detail.getYearCreated() != null ? String.valueOf(detail.getYearCreated()) : "---");
+
+        if (artSpecsBox != null) {
+            artSpecsBox.setVisible(false);
+            artSpecsBox.setManaged(false);
+        }
+        if (electronicsSpecsBox != null) {
+            electronicsSpecsBox.setVisible(false);
+            electronicsSpecsBox.setManaged(false);
+        }
+        if (vehicleSpecsBox != null) {
+            vehicleSpecsBox.setVisible(false);
+            vehicleSpecsBox.setManaged(false);
+        }
+
+        String itemType = detail.getItemType() != null ? detail.getItemType().toUpperCase() : "";
+        if ("ART".equals(itemType)) {
+            if (artSpecsBox != null) {
+                artSpecsBox.setVisible(true);
+                artSpecsBox.setManaged(true);
+            }
+            setLabelText(painterLabel, safeText(detail.getPainter()));
+            setLabelText(artStyleLabel, safeText(detail.getArtStyle()));
+        } else if ("ELECTRONICS".equals(itemType)) {
+            if (electronicsSpecsBox != null) {
+                electronicsSpecsBox.setVisible(true);
+                electronicsSpecsBox.setManaged(true);
+            }
+            setLabelText(brandLabel, safeText(detail.getBrand()));
+            setLabelText(warrantyLabel, detail.getWarrantyMonths() != null ? detail.getWarrantyMonths() + " tháng" : "---");
+        } else if ("VEHICLES".equals(itemType) || "VEHICLE".equals(itemType)) {
+            if (vehicleSpecsBox != null) {
+                vehicleSpecsBox.setVisible(true);
+                vehicleSpecsBox.setManaged(true);
+            }
+            setLabelText(modelLabel, safeText(detail.getModel()));
+            setLabelText(engineLabel, safeText(detail.getEngineType()));
+            setLabelText(licensePlateLabel, safeText(detail.getLicensePlate()));
+            setLabelText(kmAgeLabel, detail.getKmAge() != null ? formatMoney(detail.getKmAge().doubleValue()) + " km" : "---");
+        }
+
         if (descriptionTextArea != null) {
             descriptionTextArea.setText(safeText(detail.getItemDescription()));
         }
@@ -582,10 +668,8 @@ public class AuctionDetailController implements RealtimeUpdateListener {
         }
 
         try {
-            String rawAmount = bidAmountField.getText().trim()
-                    .replace(" ", "")
-                    .replace(",", "");
-            return Double.parseDouble(rawAmount);
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(bidAmountField.getText());
+            return Double.parseDouble(parsed);
         } catch (NumberFormatException e) {
             showError("Số tiền đặt giá không hợp lệ.");
             return null;
@@ -999,5 +1083,73 @@ public class AuctionDetailController implements RealtimeUpdateListener {
             return String.format("%02d:%02d:%02d", hours, minutes, seconds);
         }
         return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    private void setupMoneyFieldFormatting(TextField field, Label wordsLabel) {
+        if (field == null) return;
+        
+        field.textProperty().addListener(new javafx.beans.value.ChangeListener<String>() {
+            private boolean updating = false;
+
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends String> obs, String oldVal, String newVal) {
+                if (updating || newVal == null) return;
+                updating = true;
+                try {
+                    String clean = newVal.replaceAll(",", "");
+                    if (clean.matches("^[0-9]+$")) {
+                        int caretPosition = field.getCaretPosition();
+                        int initialLen = newVal.length();
+
+                        double amount = Double.parseDouble(clean);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        String formatted = df.format(amount);
+
+                        field.setText(formatted);
+
+                        int finalLen = formatted.length();
+                        int newCaret = caretPosition + (finalLen - initialLen);
+                        if (newCaret >= 0 && newCaret <= formatted.length()) {
+                            field.selectPositionCaret(newCaret);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    updating = false;
+                }
+            }
+        });
+
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                String rawText = field.getText();
+                if (rawText != null && !rawText.trim().isEmpty()) {
+                    String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(rawText);
+                    try {
+                        double amount = Double.parseDouble(parsed);
+                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                        field.setText(df.format(amount));
+                    } catch (Exception e) {
+                        field.setText(parsed);
+                    }
+                }
+            }
+        });
+
+        field.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.trim().isEmpty()) {
+                if (wordsLabel != null) wordsLabel.setText("");
+                return;
+            }
+            String parsed = com.auction.util.CurrencyFormatter.parseMoneyShortcut(newVal);
+            try {
+                double amount = Double.parseDouble(parsed);
+                if (wordsLabel != null) {
+                    wordsLabel.setText("👉 " + com.auction.util.CurrencyFormatter.formatCurrencyWithWords(amount));
+                }
+            } catch (Exception e) {
+                if (wordsLabel != null) wordsLabel.setText("⚠️ Số tiền không hợp lệ.");
+            }
+        });
     }
 }
