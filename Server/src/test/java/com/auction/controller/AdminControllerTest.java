@@ -1,5 +1,6 @@
 package com.auction.controller;
 
+import com.auction.config.DatabaseConnection;
 import com.auction.dto.ActionLogDTO;
 import com.auction.dto.CancelAuctionRequest;
 import com.auction.dto.DeleteItemRequest;
@@ -20,15 +21,19 @@ import com.auction.service.AuctionService;
 import com.auction.service.ItemService;
 import com.auction.service.LogService;
 import com.auction.service.UserService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.lang.reflect.Field;
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class AdminControllerTest {
 
@@ -38,8 +43,15 @@ class AdminControllerTest {
     private FakeItemService itemService;
     private FakeLogService logService;
 
+    private MockedStatic<DatabaseConnection> mockedDbConnection;
+    private Connection fakeConnection;
+
     @BeforeEach
     void setUp() throws Exception {
+        fakeConnection = new FakeDbConnection();
+        mockedDbConnection = mockStatic(DatabaseConnection.class);
+        mockedDbConnection.when(DatabaseConnection::getConnection).thenReturn(fakeConnection);
+
         adminController = new AdminController();
 
         userService = new FakeUserService();
@@ -53,6 +65,13 @@ class AdminControllerTest {
         injectField(adminController, "logService", logService);
 
         clearAuctionManage();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (mockedDbConnection != null) {
+            mockedDbConnection.close();
+        }
     }
 
     // Inject fake service vào field private final
@@ -554,5 +573,62 @@ class AdminControllerTest {
         assertSame(page, result);
         assertEquals(0, logService.lastPage);
         assertEquals(-1, logService.lastPageSize);
+    }
+
+    private static class FakeDbConnection implements Connection {
+        @Override public void setAutoCommit(boolean autoCommit) {}
+        @Override public boolean getAutoCommit() { return true; }
+        @Override public void commit() {}
+        @Override public void rollback() {}
+        @Override public void close() {}
+        @Override public boolean isClosed() { return false; }
+        @Override public <T> T unwrap(Class<T> iface) { return null; }
+        @Override public boolean isWrapperFor(Class<?> iface) { return false; }
+        @Override public java.sql.Statement createStatement() { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql) { return null; }
+        @Override public java.sql.CallableStatement prepareCall(String sql) { return null; }
+        @Override public String nativeSQL(String sql) { return null; }
+        @Override public java.sql.DatabaseMetaData getMetaData() { return null; }
+        @Override public void setReadOnly(boolean readOnly) {}
+        @Override public boolean isReadOnly() { return false; }
+        @Override public void setCatalog(String catalog) {}
+        @Override public String getCatalog() { return null; }
+        @Override public void setTransactionIsolation(int level) {}
+        @Override public int getTransactionIsolation() { return Connection.TRANSACTION_NONE; }
+        @Override public java.sql.SQLWarning getWarnings() { return null; }
+        @Override public void clearWarnings() {}
+        @Override public java.sql.Statement createStatement(int resultSetType, int resultSetConcurrency) { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency) { return null; }
+        @Override public java.sql.CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) { return null; }
+        @Override public java.util.Map<String, Class<?>> getTypeMap() { return null; }
+        @Override public void setTypeMap(java.util.Map<String, Class<?>> map) {}
+        @Override public void setHoldability(int holdability) {}
+        @Override public int getHoldability() { return 0; }
+        @Override public java.sql.Savepoint setSavepoint() { return null; }
+        @Override public java.sql.Savepoint setSavepoint(String name) { return null; }
+        @Override public void rollback(java.sql.Savepoint savepoint) {}
+        @Override public void releaseSavepoint(java.sql.Savepoint savepoint) {}
+        @Override public java.sql.Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) { return null; }
+        @Override public java.sql.CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql, int[] columnIndexes) { return null; }
+        @Override public java.sql.PreparedStatement prepareStatement(String sql, String[] columnNames) { return null; }
+        @Override public java.sql.Clob createClob() { return null; }
+        @Override public java.sql.Blob createBlob() { return null; }
+        @Override public java.sql.NClob createNClob() { return null; }
+        @Override public java.sql.SQLXML createSQLXML() { return null; }
+        @Override public boolean isValid(int timeout) { return true; }
+        @Override public void setClientInfo(String name, String value) {}
+        @Override public void setClientInfo(java.util.Properties properties) {}
+        @Override public String getClientInfo(String name) { return null; }
+        @Override public java.util.Properties getClientInfo() { return null; }
+        @Override public java.sql.Array createArrayOf(String typeName, Object[] elements) { return null; }
+        @Override public java.sql.Struct createStruct(String typeName, Object[] attributes) { return null; }
+        @Override public void setSchema(String schema) {}
+        @Override public String getSchema() { return null; }
+        @Override public void abort(java.util.concurrent.Executor executor) {}
+        @Override public void setNetworkTimeout(java.util.concurrent.Executor executor, int milliseconds) {}
+        @Override public int getNetworkTimeout() { return 0; }
     }
 }

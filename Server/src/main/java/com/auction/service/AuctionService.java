@@ -1682,30 +1682,37 @@ public class AuctionService {
                 "old_price, end_time, live_step_price, created_at FROM pending_bids ORDER BY created_at ASC";
         
         List<BidTask> recoveredTasks = new ArrayList<>();
-        try (Connection conn = com.auction.config.DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            
-            while (rs.next()) {
-                String bidderId = rs.getString("bidder_id");
-                String auctionId = rs.getString("auction_id");
-                double amount = rs.getDouble("amount");
-                String newBidId = rs.getString("new_bid_id");
-                String oldHighestBidderId = rs.getString("old_highest_bidder_id");
-                String oldWinningBidId = rs.getString("old_winning_bid_id");
-                double oldPrice = rs.getDouble("old_price");
-                LocalDateTime endTime = rs.getTimestamp("end_time").toLocalDateTime();
-                double liveStepPrice = rs.getDouble("live_step_price");
-                LocalDateTime time = rs.getTimestamp("created_at").toLocalDateTime();
-                
-                recoveredTasks.add(new BidTask(
-                        bidderId, auctionId, amount, newBidId,
-                        oldHighestBidderId, oldWinningBidId, oldPrice,
-                        endTime, liveStepPrice, time
-                ));
+        try (Connection conn = com.auction.config.DatabaseConnection.getConnection()) {
+            if (conn != null) {
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    if (stmt != null) {
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            if (rs != null) {
+                                while (rs.next()) {
+                                    String bidderId = rs.getString("bidder_id");
+                                    String auctionId = rs.getString("auction_id");
+                                    double amount = rs.getDouble("amount");
+                                    String newBidId = rs.getString("new_bid_id");
+                                    String oldHighestBidderId = rs.getString("old_highest_bidder_id");
+                                    String oldWinningBidId = rs.getString("old_winning_bid_id");
+                                    double oldPrice = rs.getDouble("old_price");
+                                    LocalDateTime endTime = rs.getTimestamp("end_time").toLocalDateTime();
+                                    double liveStepPrice = rs.getDouble("live_step_price");
+                                    LocalDateTime time = rs.getTimestamp("created_at").toLocalDateTime();
+                                    
+                                    recoveredTasks.add(new BidTask(
+                                            bidderId, auctionId, amount, newBidId,
+                                            oldHighestBidderId, oldWinningBidId, oldPrice,
+                                            endTime, liveStepPrice, time
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        } catch (SQLException e) {
-            log.error("[Recovery] ❌ Lỗi khi đọc bảng pending_bids: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("[Recovery] ❌ Lỗi hoặc Null trong quá trình quét hàng đợi pending_bids: {}", e.getMessage());
             return;
         }
         
